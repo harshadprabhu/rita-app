@@ -1,0 +1,116 @@
+{
+  "common": {
+    "signOut": "Sign Out",
+    "cancel": "Cancel",
+    "save": "Save",
+    "retry": "Retry",
+    "loading": "Loading...",
+    "all": "All",
+    "submit": "Submit",
+    "send": "Send"
+  },
+  "auth": {
+    "subtitle": "Retail Issue Tracking AI · Indriya",
+    "emailLabel": "EMAIL",
+    "passwordLabel": "PASSWORD",
+    "otpLabel": "OTP CODE",
+    "signIn": "Sign In",
+    "signInWithPassword": "Sign in with password",
+    "signInWithOtp": "Sign in with OTP",
+    "sendOtp": "Send OTP",
+    "verifyOtp": "Verify & Sign In",
+    "forgotPasswordLink": "Forgot Password?",
+    "register": "Create an account",
+    "invalidEmail": "Enter a valid email address",
+    "passwordRequired": "Password is required",
+    "otpRequired": "Enter the code we sent you"
+  },
+  "register": {
+    "title": "Create your RITA account",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "mobile": "Mobile Phone",
+    "storeId": "Store ID (e.g. ST-5501)",
+    "storeName": "Store Name",
+    "storeLocation": "Store Location",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Register"
+  },
+  "pendingApproval": {
+    "title": "Pending Approval",
+    "body": "Your technician account is awaiting admin approval. You'll get access as soon as it's reviewed."
+  },
+  "status": {
+    "open": "Open",
+    "in_progress": "In Progress",
+    "resolved": "Resolved"
+  },
+  "lifecycle": {
+    "open": "Open",
+    "being_worked_on": "Being Worked On",
+    "pending_your_action": "Pending Your Action",
+    "escalated": "Escalated",
+    "resolved": "Resolved",
+    "closed": "Closed"
+  },
+  "category": {
+    "application_issues": "Application Issues",
+    "data_and_reporting": "Data & Reporting",
+    "data_sync_issue": "Data Sync Issue",
+    "digital_issues": "Digital Issues",
+    "facility_maintenance": "Facility Maintenance",
+    "franchisee_service": "Franchisee Service",
+    "infrastructure_issues": "Infrastructure Issues"
+  },
+  "home": {
+    "greeting": "Welcome, {{name}}"
+  },
+  "ticketList": {
+    "title": "My Tickets",
+    "empty": "No tickets yet",
+    "emptySubtitle": "Tap + to log a new issue"
+  },
+  "createTicket": {
+    "video": "Video"
+  },
+  "ticketDetail": {
+    "noAttachments": "No attachments"
+  },
+  "comments": {
+    "you": "You",
+    "unknownAuthor": "Unknown",
+    "internalNote": "Internal note (staff only)",
+    "addComment": "Add a comment…"
+  },
+  "chat": {
+    "group": "Store Chat",
+    "ritaBot": "RITA Bot",
+    "typeMessage": "Type a message…",
+    "presetTitle": "Quick scenarios"
+  },
+  "tabs": {
+    "home": "Home",
+    "myTickets": "My Tickets",
+    "allTickets": "All Tickets",
+    "alerts": "Alerts",
+    "chat": "Chat",
+    "sla": "SLA Console",
+    "accounts": "Accounts",
+    "analytics": "Analytics",
+    "profile": "Profile"
+  },
+  "profile": {
+    "title": "My Profile",
+    "phone": "Phone",
+    "email": "Email",
+    "store": "Store",
+    "designation": "Designation",
+    "language": "Language",
+    "selectLanguage": "Select language",
+    "badge": {
+      "approved": "Approved",
+      "pending": "Pending approval"
+    }
+  }
+}

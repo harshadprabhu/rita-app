@@ -1,0 +1,84 @@
+{
+  "expo": {
+    "name": "RITA POS Triage",
+    "slug": "rita-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "rita",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1B3A7A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "buildNumber": "1",
+      "bundleIdentifier": "com.indriyajewellery.rita",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used to attach photos to RITA tickets",
+        "NSPhotoLibraryUsageDescription": "Used to attach photos and videos from gallery to RITA tickets"
+      }
+    },
+    "android": {
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png",
+        "backgroundColor": "#1B3A7A"
+      },
+      "package": "com.indriyajewellery.rita",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/favicon.png",
+      "name": "RITA POS Triage",
+      "shortName": "RITA",
+      "themeColor": "#1B3A7A",
+      "backgroundColor": "#F4F6F9",
+      "display": "standalone"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#1B3A7A"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "RITA accesses your photos and videos to attach them to tickets.",
+          "cameraPermission": "RITA accesses your camera to attach photos to tickets."
+        }
+      ],
+      "expo-document-picker",
+      "expo-localization",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      }
+    }
+  }
+}
