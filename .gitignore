@@ -50,3 +50,4 @@ credentials.txt
 # generated native folders
 /ios
 /android
+supabase/.temp/
