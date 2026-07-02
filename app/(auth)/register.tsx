@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Screen } from '../../components/common/Screen';
 import { AppHeader } from '../../components/common/AppHeader';
 import { supabase } from '../../lib/supabase';
+import { getStoreByCode } from '../../lib/api/stores';
 import { isValidEmail, isValidPhone, isStrongPassword } from '../../lib/utils/validation';
 import { extractErrorMessage } from '../../lib/utils/error';
 import { theme } from '../../constants/theme';
@@ -31,6 +32,16 @@ export default function Register() {
     if (!storeId.trim()) { setError('Store ID is required'); return; }
 
     setLoading(true);
+
+    // Look up the store first — catching an unknown Store ID here (before creating
+    // the auth account) avoids leaving behind a signed-up user with no profile.
+    const store = await getStoreByCode(storeId.trim());
+    if (!store) {
+      setLoading(false);
+      setError(`Store ID "${storeId.trim().toUpperCase()}" was not found. Check with your admin, or ask them to add it in Supabase.`);
+      return;
+    }
+
     const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
     if (signUpError || !data.user) {
       setLoading(false);
@@ -43,9 +54,9 @@ export default function Register() {
       first_name: firstName.trim(),
       last_name: lastName.trim(),
       phone: phone.trim() || null,
-      store_id: storeId.trim().toUpperCase(),
-      store_name: storeName.trim() || null,
-      store_location: storeLocation.trim() || null,
+      store_id: store.id,
+      store_name: storeName.trim() || store.name,
+      store_location: storeLocation.trim() || store.city,
       role: 'user',
       approval_status: 'approved',
     });
