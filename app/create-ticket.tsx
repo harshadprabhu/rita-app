@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { Screen } from '../components/common/Screen';
 import { AppHeader } from '../components/common/AppHeader';
 import { createTicket, uploadAttachment } from '../lib/api/tickets';
-import { classifyTicket } from '../lib/utils/categoryClassifier';
+import { parseCategory, parsePriority } from '../lib/utils/chatTicketParser';
 import { useAuthStore } from '../stores/authStore';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { ALL_PRIORITIES } from '../constants/ticket';
@@ -17,23 +18,30 @@ import { theme } from '../constants/theme';
 const MAX_ATTACHMENTS = 5;
 
 export default function CreateTicket() {
+  const { t } = useTranslation();
   const profile = useAuthStore((s) => s.profile);
   const queryClient = useQueryClient();
   const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<TicketPriority>('medium');
+  // Priority + category are auto-assigned from the description by the local
+  // keyword parser. Priority stays overridable; once the user taps a pill,
+  // `priorityOverride` takes over and auto-sync stops.
+  const [priorityOverride, setPriorityOverride] = useState<TicketPriority | null>(null);
   const [images, setImages] = useState<{ uri: string; name: string }[]>([]);
+
+  const autoCategory = useMemo(() => parseCategory(description), [description]);
+  const autoPriority = useMemo(() => parsePriority(description), [description]);
+  const priority = priorityOverride ?? autoPriority;
 
   const submit = useMutation({
     mutationFn: async () => {
       if (!profile?.store_id) throw new Error('No store assigned to your account');
-      const { category, subcategory } = classifyTicket(description);
       const ticket = await createTicket({
         requester_id: profile.id,
         store_id: profile.store_id,
         description,
         priority,
-        category,
-        subcategory,
+        category: parseCategory(description),
+        subcategory: null,
         source: 'form',
       });
       for (const img of images) {
@@ -71,18 +79,27 @@ export default function CreateTicket() {
           numberOfLines={5}
         />
 
+        <Text style={[styles.label, styles.spaced]}>Category (auto-detected)</Text>
+        <View style={styles.categoryChip}>
+          <Ionicons name="pricetag-outline" size={14} color={theme.colors.brand} />
+          <Text style={styles.categoryChipText}>{t(`category.${autoCategory}`)}</Text>
+        </View>
+
         <Text style={[styles.label, styles.spaced]}>Priority</Text>
         <View style={styles.pillRow}>
           {ALL_PRIORITIES.map((p) => (
             <TouchableOpacity
               key={p}
               style={[styles.pill, priority === p && { backgroundColor: theme.priorityColors[p] + '22', borderColor: theme.priorityColors[p] }]}
-              onPress={() => setPriority(p)}
+              onPress={() => setPriorityOverride(p)}
             >
               <Text style={[styles.pillText, priority === p && { color: theme.priorityColors[p] }]}>{p}</Text>
             </TouchableOpacity>
           ))}
         </View>
+        <Text style={styles.hint}>
+          {priorityOverride ? 'Manually set — tap to change.' : 'Auto-detected from your description. Tap to override.'}
+        </Text>
 
         <Text style={[styles.label, styles.spaced]}>Photos ({images.length}/{MAX_ATTACHMENTS})</Text>
         <View style={styles.imagesRow}>
@@ -124,6 +141,13 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, backgroundColor: theme.colors.surface2, borderColor: theme.colors.border,
   },
   pillText: { fontSize: 12, fontWeight: '700', color: theme.colors.textTertiary, textTransform: 'capitalize' },
+  categoryChip: {
+    flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, alignSelf: 'flex-start',
+    backgroundColor: theme.colors.brand + '14', borderWidth: 1, borderColor: theme.colors.brand + '33',
+    borderRadius: theme.radius.full, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs + 1,
+  },
+  categoryChipText: { fontSize: 13, fontWeight: '700', color: theme.colors.brand },
+  hint: { fontSize: 11, color: theme.colors.textTertiary, marginTop: theme.spacing.xs },
   imagesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
   thumb: { width: 72, height: 72, borderRadius: theme.radius.sm, borderWidth: 1, borderColor: theme.colors.border },
   addThumb: {
