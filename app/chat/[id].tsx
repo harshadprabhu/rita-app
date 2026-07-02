@@ -9,7 +9,7 @@ import { AppHeader } from '../../components/common/AppHeader';
 import { getChannel, getMessages, sendMessage, postBotReply } from '../../lib/api/chat';
 import { subscribeToChannelMessages } from '../../lib/realtime/chatChannel';
 import { createTicket } from '../../lib/api/tickets';
-import { triageMessage } from '../../lib/utils/categoryClassifier';
+import { shouldCreateTicket, parseChatTicket, canRaiseChatTicket } from '../../lib/utils/chatTicketParser';
 import { useAuthStore } from '../../stores/authStore';
 import { PRESET_SCENARIOS } from '../../constants/presetScenarios';
 import { ChatMessageWithSender } from '../../types/chat';
@@ -46,12 +46,17 @@ export default function ChatThread() {
     if (isBotChannel) {
       setBotThinking(true);
       try {
-        // Local keyword triage — no AI API key, runs entirely in the app.
-        const { category, subcategory, priority, summary } = triageMessage(body);
-
-        if (!profile.store_id) {
+        // Local keyword parser — no AI API key, runs entirely in the app.
+        // Technicians/admins are exempt from raising tickets (avoids triage loops),
+        // and purely conversational messages don't create tickets.
+        if (!canRaiseChatTicket(profile.role)) {
+          await postBotReply(id, "Thanks for the message. Technician and admin accounts don't raise tickets here — this channel logs issues reported by store staff.");
+        } else if (!shouldCreateTicket(body)) {
+          await postBotReply(id, "Thanks! I didn't detect an issue to log. If you have a problem to report, describe it (e.g. \"POS not printing\" or \"price mismatch on SKU\") and I'll raise a ticket.");
+        } else if (!profile.store_id) {
           await postBotReply(id, "I couldn't log a ticket because your account has no store assigned. Please ask an admin to set your Store ID.");
         } else {
+          const { category, priority, summary } = parseChatTicket(body);
           const ticket = await createTicket({
             requester_id: profile.id,
             store_id: profile.store_id,
@@ -59,7 +64,7 @@ export default function ChatThread() {
             long_description: body,
             priority,
             category,
-            subcategory,
+            subcategory: null,
             source: 'chat_bot',
           });
           await postBotReply(

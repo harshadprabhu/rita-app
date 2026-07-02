@@ -82,7 +82,18 @@
     "digital_issues": "Digital Issues",
     "facility_maintenance": "Facility Maintenance",
     "franchisee_service": "Franchisee Service",
-    "infrastructure_issues": "Infrastructure Issues"
+    "infrastructure_issues": "Infrastructure Issues",
+    "access_authorization": "Access & Authorization",
+    "pos_system": "POS System Issues",
+    "erp_system": "ERP System Issues",
+    "pricing": "Pricing Issues",
+    "image_mismatch": "Image Mismatch",
+    "product": "Product Issues",
+    "data_not_reflecting": "Data Not Reflecting",
+    "inventory": "Inventory Issues",
+    "drp_order": "DRP Order Related Issues",
+    "order": "Order Related Issues",
+    "other": "Other"
   },
   "home": {
     "greeting": "Welcome, {{name}}"
