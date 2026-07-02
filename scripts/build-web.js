@@ -10,8 +10,16 @@
 // we retry ourselves, so this wrapper does that automatically.
 const { spawnSync } = require('node:child_process');
 
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = 4;
+const RETRY_DELAY_MS = 3000;
 const args = ['expo', 'export', '-p', 'web', ...process.argv.slice(2)];
+
+// Cross-platform synchronous sleep (no Windows `sleep` binary needed). Gives the
+// Tailwind CLI child a moment to flush the generated global.css to disk before
+// the next attempt re-resolves it — important on slower/cold CI filesystems.
+function sleepSync(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
 
 for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
   console.log(`\n[build-web] attempt ${attempt}/${MAX_ATTEMPTS}: npx ${args.join(' ')}\n`);
@@ -20,6 +28,10 @@ for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     process.exit(0);
   }
   console.log(`\n[build-web] attempt ${attempt} failed (exit ${result.status}).`);
+  if (attempt < MAX_ATTEMPTS) {
+    console.log(`[build-web] waiting ${RETRY_DELAY_MS}ms before retry…`);
+    sleepSync(RETRY_DELAY_MS);
+  }
 }
 
 console.error(`\n[build-web] all ${MAX_ATTEMPTS} attempts failed.`);
