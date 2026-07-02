@@ -56,6 +56,12 @@
     "title": "Pending Approval",
     "body": "Your technician account is awaiting admin approval. You'll get access as soon as it's reviewed."
   },
+  "time": {
+    "secondsAgo": "{{n}}s ago",
+    "minutesAgo": "{{n}}m ago",
+    "hoursAgo": "{{n}}h ago",
+    "daysAgo": "{{n}}d ago"
+  },
   "status": {
     "open": "Open",
     "in_progress": "In Progress",
