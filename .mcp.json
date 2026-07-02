@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "supabase-rita": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "-p",
+        "@supabase/mcp-server-supabase@latest",
+        "-p",
+        "zod@^3.25.0",
+        "-p",
+        "@modelcontextprotocol/sdk@^1.25.2",
+        "mcp-server-supabase",
+        "--project-ref=ftzczoiucqrirkcpzdyl"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "${SUPABASE_ACCESS_TOKEN}"
+      }
+    }
+  }
+}

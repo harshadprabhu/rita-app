@@ -1,20 +1,54 @@
-import { ViewStyle } from 'react-native';
+import { TextStyle, ViewStyle } from 'react-native';
 import { TicketStatus, TicketLifecycle, TicketPriority } from '../types';
+
+// Suppresses the browser's default focus ring on web (outlineWidth: 0 alone
+// isn't enough — Chromium's default outline-style: auto ignores an explicit
+// width). RN's TextStyle types don't include 'none' for this web-only CSS
+// property, hence the cast. Spread into a TextInput's style when it has its
+// own custom focus treatment (e.g. a highlighted border) that would otherwise
+// visually clash with the native ring.
+export const webNoOutline = { outlineStyle: 'none', outlineWidth: 0 } as unknown as TextStyle;
+
+const shadowXs: ViewStyle = {
+  shadowColor: '#0F1C2E',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.04,
+  shadowRadius: 2,
+  elevation: 1,
+};
 
 const shadowSm: ViewStyle = {
   shadowColor: '#0F1C2E',
-  shadowOffset: { width: 0, height: 1 },
-  shadowOpacity: 0.07,
-  shadowRadius: 3,
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.08,
+  shadowRadius: 6,
   elevation: 2,
 };
 
 const shadowMd: ViewStyle = {
   shadowColor: '#0F1C2E',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.09,
-  shadowRadius: 12,
+  shadowOffset: { width: 0, height: 6 },
+  shadowOpacity: 0.11,
+  shadowRadius: 16,
   elevation: 5,
+};
+
+const shadowLg: ViewStyle = {
+  shadowColor: '#0F1C2E',
+  shadowOffset: { width: 0, height: 14 },
+  shadowOpacity: 0.14,
+  shadowRadius: 28,
+  elevation: 9,
+};
+
+// Subtle brand-tinted glow for primary CTAs — a soft halo instead of a flat
+// black drop shadow reads as more premium on a saturated navy button.
+const shadowBrand: ViewStyle = {
+  shadowColor: '#1E3A5F',
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.28,
+  shadowRadius: 16,
+  elevation: 6,
 };
 
 export const theme = {
@@ -68,10 +102,15 @@ export const theme = {
     sm: 8,
     md: 12,
     lg: 16,
+    xl: 20,
+    xxl: 28,
     full: 999,
   },
   shadows: {
+    xs: shadowXs,
     sm: shadowSm,
     md: shadowMd,
+    lg: shadowLg,
+    brand: shadowBrand,
   },
 };

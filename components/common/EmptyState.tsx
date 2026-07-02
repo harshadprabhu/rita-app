@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
+import { theme } from '../../constants/theme';
 
 interface Props {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -12,7 +13,9 @@ interface Props {
 export function EmptyState({ icon = 'document-outline', title, subtitle }: Props) {
   return (
     <View style={styles.container}>
-      <Ionicons name={icon} size={64} color="#D1D5DB" />
+      <View style={styles.iconRing}>
+        <Ionicons name={icon} size={34} color={theme.colors.brandMid} />
+      </View>
       <Text variant="titleMedium" style={styles.title}>{title}</Text>
       {subtitle && <Text variant="bodySmall" style={styles.subtitle}>{subtitle}</Text>}
     </View>
@@ -26,14 +29,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 32,
   },
+  iconRing: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: theme.colors.surface2,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.md,
+  },
   title: {
-    marginTop: 16,
-    color: '#6B7280',
+    color: theme.colors.textSecondary,
+    fontWeight: '700',
     textAlign: 'center',
   },
   subtitle: {
-    marginTop: 8,
-    color: '#9CA3AF',
+    marginTop: theme.spacing.xs,
+    color: theme.colors.textTertiary,
     textAlign: 'center',
   },
 });

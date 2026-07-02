@@ -11,9 +11,10 @@ import { signInWithPassword, requestOtp, verifyOtp } from '../../lib/auth/sessio
 import { signInWithMicrosoft } from '../../lib/auth/oauth';
 import { isValidEmail } from '../../lib/utils/validation';
 import { extractErrorMessage } from '../../lib/utils/error';
-import { theme } from '../../constants/theme';
+import { theme, webNoOutline } from '../../constants/theme';
 
 type Mode = 'password' | 'otp-request' | 'otp-verify';
+type FieldName = 'email' | 'password' | 'otp';
 
 export default function Login() {
   const { t } = useTranslation();
@@ -25,6 +26,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [msLoading, setMsLoading] = useState(false);
+  const [focused, setFocused] = useState<FieldName | null>(null);
 
   const handleMicrosoftLogin = async () => {
     setError('');
@@ -72,21 +74,29 @@ export default function Login() {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="always">
           <View style={styles.hero}>
-            <View style={styles.logoContainer}>
+            {/* Layered translucent circles simulate depth/glow without a gradient dependency */}
+            <View style={styles.heroGlowLg} pointerEvents="none" />
+            <View style={styles.heroGlowSm} pointerEvents="none" />
+            <View style={[styles.logoContainer, theme.shadows.lg]}>
               <MaterialCommunityIcons name="ticket-confirmation-outline" size={40} color="#fff" />
             </View>
             <Text style={styles.brand}>RITA</Text>
             <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
           </View>
 
-          <View style={styles.card}>
-            {error ? <Text style={styles.error}>{error}</Text> : null}
+          <View style={[styles.card, theme.shadows.lg]}>
+            {error ? (
+              <View style={styles.errorRow}>
+                <MaterialCommunityIcons name="alert-circle" size={16} color={theme.colors.errorStrong} />
+                <Text style={styles.error}>{error}</Text>
+              </View>
+            ) : null}
 
             {/* Microsoft SSO — primary sign-in path */}
             <TouchableOpacity
               onPress={handleMicrosoftLogin}
               disabled={msLoading}
-              style={[styles.msBtn, theme.shadows.md, msLoading ? styles.signInBtnDisabled : null]}
+              style={[styles.msBtn, theme.shadows.sm, msLoading ? styles.signInBtnDisabled : null]}
               activeOpacity={0.85}
             >
               {msLoading
@@ -113,10 +123,10 @@ export default function Login() {
             </View>
 
             <Text style={styles.fieldLabel}>{t('auth.emailLabel')}</Text>
-            <View style={styles.inputWrapper}>
+            <View style={[styles.inputWrapper, focused === 'email' && styles.inputWrapperFocused]}>
               <MaterialCommunityIcons name="email-outline" size={20} color={theme.colors.brand} style={styles.inputIcon} />
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, webNoOutline]}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -125,29 +135,33 @@ export default function Login() {
                 editable={mode !== 'otp-verify'}
                 placeholder="your@email.com"
                 placeholderTextColor={theme.colors.textTertiary}
+                onFocus={() => setFocused('email')}
+                onBlur={() => setFocused(null)}
               />
             </View>
 
             {mode === 'password' && (
               <>
                 <Text style={[styles.fieldLabel, styles.fieldLabelSpaced]}>{t('auth.passwordLabel')}</Text>
-                <View style={styles.inputWrapper}>
+                <View style={[styles.inputWrapper, focused === 'password' && styles.inputWrapperFocused]}>
                   <MaterialCommunityIcons name="lock-outline" size={20} color={theme.colors.brand} style={styles.inputIcon} />
                   <TextInput
-                    style={styles.textInput}
+                    style={[styles.textInput, webNoOutline]}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPass}
                     autoCorrect={false}
                     placeholder="••••••••"
                     placeholderTextColor={theme.colors.textTertiary}
+                    onFocus={() => setFocused('password')}
+                    onBlur={() => setFocused(null)}
                   />
                   <TouchableOpacity onPress={() => setShowPass((v) => !v)} style={styles.eyeButton}>
                     <MaterialCommunityIcons name={showPass ? 'eye-off' : 'eye'} size={20} color={theme.colors.textSecondary} />
                   </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity onPress={handlePasswordLogin} disabled={loading} style={[styles.signInBtn, theme.shadows.md]} activeOpacity={0.85}>
+                <TouchableOpacity onPress={handlePasswordLogin} disabled={loading} style={[styles.signInBtn, theme.shadows.brand]} activeOpacity={0.85}>
                   {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.signInBtnText}>{t('auth.signIn')}</Text>}
                 </TouchableOpacity>
 
@@ -159,7 +173,7 @@ export default function Login() {
 
             {mode === 'otp-request' && (
               <>
-                <TouchableOpacity onPress={handleSendOtp} disabled={loading} style={[styles.signInBtn, theme.shadows.md]} activeOpacity={0.85}>
+                <TouchableOpacity onPress={handleSendOtp} disabled={loading} style={[styles.signInBtn, theme.shadows.brand]} activeOpacity={0.85}>
                   {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.signInBtnText}>{t('auth.sendOtp')}</Text>}
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => { setError(''); setMode('password'); }} style={styles.linkBtn}>
@@ -171,18 +185,20 @@ export default function Login() {
             {mode === 'otp-verify' && (
               <>
                 <Text style={[styles.fieldLabel, styles.fieldLabelSpaced]}>{t('auth.otpLabel')}</Text>
-                <View style={styles.inputWrapper}>
+                <View style={[styles.inputWrapper, focused === 'otp' && styles.inputWrapperFocused]}>
                   <MaterialCommunityIcons name="shield-key-outline" size={20} color={theme.colors.brand} style={styles.inputIcon} />
                   <TextInput
-                    style={styles.textInput}
+                    style={[styles.textInput, webNoOutline]}
                     value={otp}
                     onChangeText={setOtp}
                     keyboardType="number-pad"
                     placeholder="123456"
                     placeholderTextColor={theme.colors.textTertiary}
+                    onFocus={() => setFocused('otp')}
+                    onBlur={() => setFocused(null)}
                   />
                 </View>
-                <TouchableOpacity onPress={handleVerifyOtp} disabled={loading} style={[styles.signInBtn, theme.shadows.md]} activeOpacity={0.85}>
+                <TouchableOpacity onPress={handleVerifyOtp} disabled={loading} style={[styles.signInBtn, theme.shadows.brand]} activeOpacity={0.85}>
                   {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.signInBtnText}>{t('auth.verifyOtp')}</Text>}
                 </TouchableOpacity>
               </>
@@ -205,38 +221,53 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.brand,
     alignItems: 'center',
     paddingTop: theme.spacing.xxl * 2,
-    paddingBottom: theme.spacing.xl + theme.spacing.md,
+    paddingBottom: theme.spacing.xl + theme.spacing.xl,
     paddingHorizontal: theme.spacing.lg,
+    overflow: 'hidden',
+  },
+  heroGlowLg: {
+    position: 'absolute', top: -80, right: -60, width: 220, height: 220,
+    borderRadius: 110, backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  heroGlowSm: {
+    position: 'absolute', bottom: -40, left: -30, width: 140, height: 140,
+    borderRadius: 70, backgroundColor: theme.colors.accent + '1A',
   },
   logoContainer: {
-    width: 84, height: 84, borderRadius: theme.radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+    width: 84, height: 84, borderRadius: theme.radius.xl,
+    backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center', justifyContent: 'center', marginBottom: theme.spacing.md,
   },
-  brand: { color: '#fff', fontSize: 28, fontWeight: '700', letterSpacing: 1 },
-  subtitle: { color: 'rgba(255,255,255,0.6)', fontSize: 14, marginTop: theme.spacing.xs },
+  brand: { color: '#fff', fontSize: 30, fontWeight: '800', letterSpacing: 1.2 },
+  subtitle: { color: 'rgba(255,255,255,0.65)', fontSize: 14, marginTop: theme.spacing.xs, fontWeight: '500' },
   card: {
     flex: 1, backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: theme.radius.lg, borderTopRightRadius: theme.radius.lg,
-    marginTop: -theme.spacing.lg, zIndex: 2, padding: theme.spacing.xxl,
+    borderTopLeftRadius: theme.radius.xxl, borderTopRightRadius: theme.radius.xxl,
+    marginTop: -theme.spacing.xl, zIndex: 2, padding: theme.spacing.xxl,
     paddingBottom: theme.spacing.xxl + theme.spacing.lg,
   },
-  error: {
-    color: '#EF4444', backgroundColor: '#FEE2E2', padding: theme.spacing.md,
-    borderRadius: theme.radius.sm, marginBottom: theme.spacing.md, fontSize: 14,
+  errorRow: {
+    flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
+    backgroundColor: theme.colors.errorBg, padding: theme.spacing.md,
+    borderRadius: theme.radius.md, marginBottom: theme.spacing.md,
+    borderLeftWidth: 3, borderLeftColor: theme.colors.errorStrong,
   },
+  error: { flex: 1, color: theme.colors.errorStrong, fontSize: 13, fontWeight: '600' },
   fieldLabel: { fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary, letterSpacing: 0.8, marginBottom: theme.spacing.xs },
   fieldLabelSpaced: { marginTop: theme.spacing.lg },
   inputWrapper: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.surface2,
-    borderWidth: 1.5, borderColor: theme.colors.border, borderRadius: theme.radius.md,
-    paddingHorizontal: theme.spacing.md, height: 50,
+    borderWidth: 1.5, borderColor: theme.colors.border, borderRadius: theme.radius.lg,
+    paddingHorizontal: theme.spacing.md, height: 52,
+  },
+  inputWrapperFocused: {
+    borderColor: theme.colors.brand, backgroundColor: theme.colors.surface,
   },
   inputIcon: { marginRight: theme.spacing.sm },
   textInput: { flex: 1, color: theme.colors.textPrimary, fontSize: 15, paddingVertical: 0 },
   eyeButton: { padding: theme.spacing.xs, marginLeft: theme.spacing.xs },
   signInBtn: {
-    backgroundColor: theme.colors.brand, borderRadius: theme.radius.md, height: 52,
+    backgroundColor: theme.colors.brand, borderRadius: theme.radius.lg, height: 54,
     alignItems: 'center', justifyContent: 'center', marginTop: theme.spacing.xl, marginBottom: theme.spacing.sm,
   },
   signInBtnDisabled: { opacity: 0.75 },
@@ -245,8 +276,8 @@ const styles = StyleSheet.create({
   linkText: { color: theme.colors.brandMid, fontSize: 14, fontWeight: '600' },
   msBtn: {
     flexDirection: 'row', gap: theme.spacing.sm, backgroundColor: theme.colors.surface,
-    borderWidth: 1.5, borderColor: theme.colors.borderStrong, borderRadius: theme.radius.md,
-    height: 52, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: theme.colors.borderStrong, borderRadius: theme.radius.lg,
+    height: 54, alignItems: 'center', justifyContent: 'center',
   },
   msBtnText: { color: theme.colors.textPrimary, fontSize: 16, fontWeight: '700' },
   msLogo: {

@@ -136,10 +136,19 @@ function MessageBubble({ message, isOwn }: { message: ChatMessageWithSender; isO
   const isBot = message.sender_id === null;
   return (
     <View style={[styles.bubbleRow, isOwn && styles.bubbleRowOwn]}>
-      <View style={[styles.bubble, isOwn ? styles.bubbleOwn : isBot ? styles.bubbleBot : styles.bubbleOther]}>
-        {!isOwn && (
-          <Text style={styles.senderName}>{isBot ? 'RITA' : message.sender?.display_name ?? ''}</Text>
+      {isBot && !isOwn && (
+        <View style={styles.botAvatar}>
+          <Ionicons name="sparkles" size={13} color="#fff" />
+        </View>
+      )}
+      <View style={[
+        styles.bubble, theme.shadows.xs,
+        isOwn ? styles.bubbleOwn : isBot ? styles.bubbleBot : styles.bubbleOther,
+      ]}>
+        {!isOwn && !isBot && (
+          <Text style={styles.senderName}>{message.sender?.display_name ?? ''}</Text>
         )}
+        {isBot && <Text style={styles.senderNameBot}>RITA</Text>}
         <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn]}>{message.body}</Text>
       </View>
     </View>
@@ -148,14 +157,19 @@ function MessageBubble({ message, isOwn }: { message: ChatMessageWithSender; isO
 
 const styles = StyleSheet.create({
   list: { padding: theme.spacing.lg, gap: theme.spacing.sm },
-  bubbleRow: { alignItems: 'flex-start' },
-  bubbleRowOwn: { alignItems: 'flex-end' },
-  bubble: { maxWidth: '80%', borderRadius: theme.radius.md, padding: theme.spacing.md, marginBottom: theme.spacing.xs },
-  bubbleOwn: { backgroundColor: theme.colors.brand },
-  bubbleOther: { backgroundColor: theme.colors.surface2 },
-  bubbleBot: { backgroundColor: theme.colors.accentLight },
+  bubbleRow: { flexDirection: 'row', alignItems: 'flex-end', gap: theme.spacing.xs },
+  bubbleRowOwn: { justifyContent: 'flex-end' },
+  botAvatar: {
+    width: 24, height: 24, borderRadius: 12, backgroundColor: theme.colors.accent,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 2,
+  },
+  bubble: { maxWidth: '78%', borderRadius: theme.radius.lg, padding: theme.spacing.md, marginBottom: theme.spacing.xs },
+  bubbleOwn: { backgroundColor: theme.colors.brand, borderBottomRightRadius: 4 },
+  bubbleOther: { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderBottomLeftRadius: 4 },
+  bubbleBot: { backgroundColor: theme.colors.accentLight, borderWidth: 1, borderColor: theme.colors.accent + '33', borderBottomLeftRadius: 4 },
   senderName: { fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 2 },
-  bubbleText: { fontSize: 14, color: theme.colors.textPrimary },
+  senderNameBot: { fontSize: 11, fontWeight: '800', color: '#946E1E', marginBottom: 2, letterSpacing: 0.3 },
+  bubbleText: { fontSize: 14, color: theme.colors.textPrimary, lineHeight: 20 },
   bubbleTextOwn: { color: '#fff' },
   presets: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm, gap: theme.spacing.sm },
   presetChip: {
@@ -170,8 +184,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: theme.colors.border, backgroundColor: theme.colors.surface,
   },
   input: {
-    flex: 1, backgroundColor: theme.colors.surface2, borderRadius: theme.radius.md, paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm, maxHeight: 100, color: theme.colors.textPrimary, fontSize: 14,
+    flex: 1, backgroundColor: theme.colors.surface2, borderRadius: theme.radius.xl, paddingHorizontal: theme.spacing.md + 2,
+    paddingVertical: theme.spacing.sm + 2, maxHeight: 100, color: theme.colors.textPrimary, fontSize: 14,
+    borderWidth: 1, borderColor: theme.colors.border,
   },
-  sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: theme.colors.brand, alignItems: 'center', justifyContent: 'center' },
+  sendBtn: {
+    width: 42, height: 42, borderRadius: 21, backgroundColor: theme.colors.brand,
+    alignItems: 'center', justifyContent: 'center', ...theme.shadows.brand,
+  },
 });

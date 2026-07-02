@@ -16,6 +16,7 @@ interface StatDef {
   label: string;
   filters: Parameters<typeof getTickets>[0];
   color: string;
+  icon: keyof typeof Ionicons.glyphMap;
 }
 
 interface Props {
@@ -32,7 +33,10 @@ export function HomeDashboard({ stats, showCreateButton }: Props) {
       <AppHeader title="RITA" right={profile ? <ProfileIconButton profile={profile} /> : null} />
       <ScrollView contentContainerStyle={styles.body}>
         {profile && (
-          <Text style={styles.greeting}>{t('home.greeting', { name: profile.display_name.split(' ')[0] })}</Text>
+          <>
+            <Text style={styles.greeting}>{t('home.greeting', { name: profile.display_name.split(' ')[0] })}</Text>
+            <Text style={styles.greetingSubtitle}>Here's what's happening today</Text>
+          </>
         )}
 
         <View style={styles.statsGrid}>
@@ -42,7 +46,7 @@ export function HomeDashboard({ stats, showCreateButton }: Props) {
         </View>
 
         {showCreateButton && (
-          <TouchableOpacity style={[styles.createBtn, theme.shadows.md]} onPress={() => router.push('/create-ticket')} activeOpacity={0.85}>
+          <TouchableOpacity style={[styles.createBtn, theme.shadows.brand]} onPress={() => router.push('/create-ticket')} activeOpacity={0.85}>
             <Ionicons name="add-circle-outline" size={22} color="#fff" />
             <Text style={styles.createBtnText}>Report an issue</Text>
           </TouchableOpacity>
@@ -52,11 +56,13 @@ export function HomeDashboard({ stats, showCreateButton }: Props) {
   );
 }
 
-function StatCard({ label, filters, color }: StatDef) {
+function StatCard({ label, filters, color, icon }: StatDef) {
   const { data } = useQuery({ queryKey: QUERY_KEYS.tickets(filters), queryFn: () => getTickets(filters) });
   return (
-    <View style={[styles.statCard, theme.shadows.sm]}>
-      <View style={[styles.statDot, { backgroundColor: color }]} />
+    <View style={[styles.statCard, theme.shadows.xs]}>
+      <View style={[styles.statIconRing, { backgroundColor: color + '1F' }]}>
+        <Ionicons name={icon} size={17} color={color} />
+      </View>
       <Text style={styles.statValue}>{data?.length ?? '–'}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
@@ -65,18 +71,22 @@ function StatCard({ label, filters, color }: StatDef) {
 
 const styles = StyleSheet.create({
   body: { padding: theme.spacing.lg },
-  greeting: { fontSize: 20, fontWeight: '700', color: theme.colors.textPrimary, marginBottom: theme.spacing.lg },
+  greeting: { fontSize: 22, fontWeight: '800', color: theme.colors.textPrimary, letterSpacing: 0.2 },
+  greetingSubtitle: { fontSize: 13, color: theme.colors.textTertiary, marginTop: 2, marginBottom: theme.spacing.lg, fontWeight: '500' },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md },
   statCard: {
-    flexBasis: '47%', backgroundColor: theme.colors.surface, borderRadius: theme.radius.md,
-    padding: theme.spacing.md, gap: 4,
+    flexBasis: '47%', backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg,
+    borderWidth: 1, borderColor: theme.colors.border, padding: theme.spacing.md + 2, gap: 6,
   },
-  statDot: { width: 8, height: 8, borderRadius: 4 },
-  statValue: { fontSize: 22, fontWeight: '700', color: theme.colors.textPrimary },
-  statLabel: { fontSize: 12, color: theme.colors.textSecondary },
+  statIconRing: {
+    width: 34, height: 34, borderRadius: theme.radius.md,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 2,
+  },
+  statValue: { fontSize: 24, fontWeight: '800', color: theme.colors.textPrimary, letterSpacing: 0.2 },
+  statLabel: { fontSize: 12, color: theme.colors.textSecondary, fontWeight: '600' },
   createBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm,
-    backgroundColor: theme.colors.brand, borderRadius: theme.radius.md, height: 52, marginTop: theme.spacing.xl,
+    backgroundColor: theme.colors.brand, borderRadius: theme.radius.lg, height: 54, marginTop: theme.spacing.xl,
   },
   createBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });

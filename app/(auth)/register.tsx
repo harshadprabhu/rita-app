@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Screen } from '../../components/common/Screen';
 import { AppHeader } from '../../components/common/AppHeader';
 import { supabase } from '../../lib/supabase';
 import { getStoreByCode } from '../../lib/api/stores';
 import { isValidEmail, isValidPhone, isStrongPassword } from '../../lib/utils/validation';
 import { extractErrorMessage } from '../../lib/utils/error';
-import { theme } from '../../constants/theme';
+import { theme, webNoOutline } from '../../constants/theme';
 
 export default function Register() {
   const { t } = useTranslation();
@@ -69,23 +70,29 @@ export default function Register() {
     <Screen>
       <AppHeader title={t('register.title')} showBack />
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="always">
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? (
+          <View style={styles.errorRow}>
+            <MaterialCommunityIcons name="alert-circle" size={16} color={theme.colors.errorStrong} />
+            <Text style={styles.error}>{error}</Text>
+          </View>
+        ) : null}
 
-        <Field label={t('register.firstName')} value={firstName} onChangeText={setFirstName} />
-        <Field label={t('register.lastName')} value={lastName} onChangeText={setLastName} />
-        <Field label={t('register.mobile')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+        <Field label={t('register.firstName')} value={firstName} onChangeText={setFirstName} placeholder="Jane" />
+        <Field label={t('register.lastName')} value={lastName} onChangeText={setLastName} placeholder="Doe" />
+        <Field label={t('register.mobile')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="9876543210" />
         <Field
           label={t('register.storeId')}
           value={storeId}
           onChangeText={(v) => setStoreId(v.toUpperCase())}
           autoCapitalize="characters"
+          placeholder="ST-5501"
         />
-        <Field label={t('register.storeName')} value={storeName} onChangeText={setStoreName} />
-        <Field label={t('register.storeLocation')} value={storeLocation} onChangeText={setStoreLocation} />
-        <Field label={t('register.email')} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
-        <Field label={t('register.password')} value={password} onChangeText={setPassword} secureTextEntry />
+        <Field label={t('register.storeName')} value={storeName} onChangeText={setStoreName} placeholder="Indriya Bandra" />
+        <Field label={t('register.storeLocation')} value={storeLocation} onChangeText={setStoreLocation} placeholder="Mumbai" />
+        <Field label={t('register.email')} value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" placeholder="your@email.com" />
+        <Field label={t('register.password')} value={password} onChangeText={setPassword} secureTextEntry placeholder="At least 8 characters" />
 
-        <TouchableOpacity onPress={handleRegister} disabled={loading} style={[styles.submitBtn, theme.shadows.md]} activeOpacity={0.85}>
+        <TouchableOpacity onPress={handleRegister} disabled={loading} style={[styles.submitBtn, theme.shadows.brand]} activeOpacity={0.85}>
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>{t('register.submit')}</Text>}
         </TouchableOpacity>
       </ScrollView>
@@ -94,20 +101,24 @@ export default function Register() {
 }
 
 function Field(props: {
-  label: string; value: string; onChangeText: (v: string) => void;
+  label: string; value: string; onChangeText: (v: string) => void; placeholder?: string;
   keyboardType?: 'default' | 'phone-pad' | 'email-address'; autoCapitalize?: 'none' | 'characters'; secureTextEntry?: boolean;
 }) {
+  const [focused, setFocused] = useState(false);
   return (
     <View style={styles.fieldWrap}>
       <Text style={styles.fieldLabel}>{props.label}</Text>
       <TextInput
-        style={styles.textInput}
+        style={[styles.textInput, webNoOutline, focused && styles.textInputFocused]}
         value={props.value}
         onChangeText={props.onChangeText}
         keyboardType={props.keyboardType}
         autoCapitalize={props.autoCapitalize ?? 'words'}
         secureTextEntry={props.secureTextEntry}
+        placeholder={props.placeholder}
         placeholderTextColor={theme.colors.textTertiary}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
       />
     </View>
   );
@@ -115,19 +126,25 @@ function Field(props: {
 
 const styles = StyleSheet.create({
   scroll: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xxl * 2 },
-  error: {
-    color: '#EF4444', backgroundColor: '#FEE2E2', padding: theme.spacing.md,
-    borderRadius: theme.radius.sm, marginBottom: theme.spacing.md, fontSize: 14,
+  errorRow: {
+    flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
+    backgroundColor: theme.colors.errorBg, padding: theme.spacing.md,
+    borderRadius: theme.radius.md, marginBottom: theme.spacing.md,
+    borderLeftWidth: 3, borderLeftColor: theme.colors.errorStrong,
   },
+  error: { flex: 1, color: theme.colors.errorStrong, fontSize: 13, fontWeight: '600' },
   fieldWrap: { marginBottom: theme.spacing.lg },
   fieldLabel: { fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary, letterSpacing: 0.8, marginBottom: theme.spacing.xs },
   textInput: {
     backgroundColor: theme.colors.surface2, borderWidth: 1.5, borderColor: theme.colors.border,
-    borderRadius: theme.radius.md, paddingHorizontal: theme.spacing.md, height: 50,
+    borderRadius: theme.radius.lg, paddingHorizontal: theme.spacing.md, height: 52,
     color: theme.colors.textPrimary, fontSize: 15,
   },
+  textInputFocused: {
+    borderColor: theme.colors.brand, backgroundColor: theme.colors.surface,
+  },
   submitBtn: {
-    backgroundColor: theme.colors.brand, borderRadius: theme.radius.md, height: 52,
+    backgroundColor: theme.colors.brand, borderRadius: theme.radius.lg, height: 54,
     alignItems: 'center', justifyContent: 'center', marginTop: theme.spacing.md,
   },
   submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
