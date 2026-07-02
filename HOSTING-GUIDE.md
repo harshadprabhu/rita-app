@@ -6,12 +6,12 @@ real tickets, and the RITA helper bot — all working. No experience needed.
 You'll do 3 things:
 
 1. **Part A – The brain (database):** make a free Supabase account and paste in one file.
-2. **Part B – The website:** turn the app into a folder and drop it on a free host.
+2. **Part B – The website:** push your code to GitHub, and GitHub automatically builds and publishes it — every time you make a change and push, the live site updates itself.
 3. **Part C – Make yourself the boss (admin).**
 
 Total time: about 30–40 minutes. Take it slow, do the steps in order. ☕
 
-> 💡 There is **no AI key and no monthly bill** — everything here uses free plans.
+> 💡 There is **no AI key and no monthly bill** — everything here uses free plans (GitHub + Supabase free tiers).
 
 ---
 
@@ -81,52 +81,71 @@ Only if you want people to attach photos to tickets. The app works fine without 
 
 ---
 
-# PART B — The website 🌐
+# PART B — The website, hosted on GitHub 🌐
 
-Now we turn the app into a website and put it online.
+We'll push your code to GitHub. From then on, **every time you push a change,
+GitHub automatically builds the app and publishes it** — no manual building,
+no dragging folders, ever again.
 
-### B1. Put your keys into the app
-1. Open this file with **Notepad**:
-   `C:\Users\Hemant Prabhu\Desktop\rita-app\.env`
-   *(If it's not there, right-click in the folder → New → Text Document, name it exactly `.env`, and remove the “.txt”.)*
-2. Make it look **exactly** like this, using YOUR values from step A5:
-   ```
-   EXPO_PUBLIC_SUPABASE_URL=https://abcd1234xyz.supabase.co
-   EXPO_PUBLIC_SUPABASE_ANON_KEY=your-long-anon-key-here
-   ```
-3. Save and close (Ctrl+S).
+Your site will live at:
+**`https://YOUR-GITHUB-USERNAME.github.io/rita-app/`**
+
+### B1. Create the GitHub repository
+1. Go to **https://github.com/new**
+2. Repository name: exactly **`rita-app`** (must match — it's part of your website's link)
+3. Choose Public or Private — either works with GitHub Pages.
+4. **Don't** tick "Add a README".
+5. Click **Create repository**. Leave this tab open.
 
 ### B2. Open a terminal in the app folder
 1. Open the folder `C:\Users\Hemant Prabhu\Desktop\rita-app` in File Explorer.
 2. Click the address bar at the top, type **`powershell`**, and press Enter.
    A blue/black window opens — that's the terminal. It's already in the right folder. 👍
 
-### B3. Build the website (one command)
-1. In that terminal, type this and press Enter:
-   ```
-   npx expo export -p web
-   ```
-2. Wait 1–2 minutes. When it finishes you'll see a list of pages and the word **“Exported: dist”**.
-3. 🟡 **If instead you see a red error mentioning `global.css`**, don't worry — just press the **Up arrow** and **Enter** to run the same command again. It works on the second try.
+### B3. Push your code
+Type these one at a time (replace `YOUR-GITHUB-USERNAME` with your real username):
+```
+git remote add origin https://github.com/YOUR-GITHUB-USERNAME/rita-app.git
+git branch -M main
+git push -u origin main
+```
+A browser window may pop up asking you to log into GitHub — sign in there and it continues automatically.
 
-This created a new folder called **`dist`** inside your app folder. That folder *is* your website.
+### B4. Give GitHub your 2 secret keys
+The website needs your Supabase keys from step A5, but we **never put them in a
+file that gets uploaded** — instead we store them safely inside GitHub itself:
 
-### B4. Put it online (drag & drop — no account needed to try)
-1. Go to **https://app.netlify.com/drop** in your browser.
-2. Open File Explorer to `C:\Users\Hemant Prabhu\Desktop\rita-app`.
-3. **Drag the `dist` folder** onto the Netlify page where it says “Drag and drop your site folder here.”
-4. Wait a few seconds. Netlify gives you a live link like
-   `https://random-name-123.netlify.app` — **that's your app on the internet!** 🎉
-5. (It'll ask you to make a free account to keep the site — do that so the link stays alive.)
+1. On your repo's GitHub page, click **Settings** (top tab).
+2. Left sidebar → **Secrets and variables** → **Actions**.
+3. Click **New repository secret** and add this one:
+   - Name: `EXPO_PUBLIC_SUPABASE_URL`
+   - Value: your Project URL from step A5
+   - Click **Add secret**
+4. Click **New repository secret** again and add:
+   - Name: `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+   - Value: your anon public key from step A5
+   - Click **Add secret**
+
+### B5. Turn on GitHub Pages
+1. Still in **Settings** → left sidebar → **Pages**.
+2. Under **Build and deployment → Source**, choose **GitHub Actions**.
+   (Don't pick "Deploy from a branch" — we want Actions.)
+
+### B6. Watch it build
+1. Click the **Actions** tab (top of the repo page).
+2. You'll see a run called "Deploy web app to GitHub Pages" — click it and watch it go
+   (it takes 2–4 minutes: installs, builds, publishes).
+3. When it turns green ✅, go back to **Settings → Pages** — you'll see your live
+   link at the top: `https://YOUR-GITHUB-USERNAME.github.io/rita-app/`
 
 > 📝 Copy that live link — you need it for the next step.
 
-### B5. Tell Supabase your website is allowed
+### B7. Tell Supabase your website is allowed
 1. Back in Supabase → **Authentication** → **URL Configuration**.
-2. In **Site URL** (and **Redirect URLs**), paste your Netlify link (e.g. `https://random-name-123.netlify.app`).
+2. In **Site URL** (and **Redirect URLs**), paste your GitHub Pages link.
 3. Save.
 
-✅ **Part B done!** Open your Netlify link — you should see the **RITA login screen**. 🎊
+✅ **Part B done!** Open your GitHub Pages link — you should see the **RITA login screen**. 🎊
 
 ---
 
@@ -135,7 +154,7 @@ This created a new folder called **`dist`** inside your app folder. That folder 
 Right now anyone who signs up is a normal store user. Let's make YOU the admin so you can see all the dashboards.
 
 ### C1. Create your account in the app
-1. Open your Netlify link.
+1. Open your GitHub Pages link.
 2. Click **Create an account**.
 3. Fill it in. For **Store ID**, type one of the demo stores: **`ST-5501`**.
 4. Submit. You're now logged in as a normal user.
@@ -180,19 +199,34 @@ The app lives in `C:\Users\Hemant Prabhu\Desktop\rita-app`. When you want to cha
    `lib\utils\categoryClassifier.ts` — add words to the lists to change how it
    sorts tickets. No AI, just word matching.)*
 
-2. **Publish the new version:**
-   - Run `npx expo export -p web` again (rebuilds the `dist` folder).
-   - Go to your site on Netlify → **Deploys** tab → drag the new `dist` folder in again. Done.
+2. **Publish the new version — just push:**
+   ```
+   git add -A
+   git commit -m "describe what you changed"
+   git push
+   ```
+   That's it. GitHub automatically rebuilds and republishes the site (watch it
+   happen in the **Actions** tab) — usually live again in 2–4 minutes.
 
-For a more detailed developer workflow (testing on an Android phone, building the real iPhone/Android apps for the app stores, automatic publishing from GitHub), see **RUNNING.md** in the app folder.
+For a more detailed developer workflow (testing on an Android phone, building the real iPhone/Android apps for the app stores), see **RUNNING.md** in the app folder.
+
+---
+
+# 🔒 A rule to always follow
+
+**Never save passwords, keys, or secrets in any file inside this project folder**
+(not even a `.txt` "notes" file) — anything in this folder can accidentally get
+pushed to GitHub for the world to see. Keep secrets in your password manager, or
+in GitHub's own **Settings → Secrets** (step B4) — never in a plain file here.
 
 ---
 
 # 😅 If something goes wrong
 
-- **Login says something failed:** double-check the two keys in `.env` are exactly right (no extra spaces), then rebuild (B3) and re-drag (B4).
+- **Login says something failed:** double-check your 2 secrets in **Settings → Secrets and variables → Actions** (step B4) are exactly right, then re-run the build: **Actions** tab → click the latest run → **Re-run all jobs**.
 - **“Can't sign up” / spins forever:** make sure you turned **Confirm email OFF** (step A4).
 - **Ticket won't submit:** make sure your Store ID matches a store that exists (demo ones are `ST-5501`, `ST-5502`, `ST-5601`).
-- **The build error about `global.css`:** just run the build command again (it's a one-time hiccup).
+- **Actions tab shows a red ❌:** click into the failed run to read the error — usually a typo in one of the two secret names/values.
+- **Page shows GitHub's 404 instead of the app:** double-check **Settings → Pages → Source** is set to **GitHub Actions** (step B5), not "Deploy from a branch".
 
 You've got this. 💪
