@@ -86,6 +86,10 @@ function AuthGate() {
     let dest: string;
     if (!profile.is_active) {
       dest = 'login'; // deactivated accounts are bounced back to login
+    } else if (profile.role === 'user' && !profile.store_id) {
+      // Microsoft SSO provisions a bare 'user' profile with no store — Azure
+      // knows identity but not which store the person works at.
+      dest = 'onboarding';
     } else if (profile.role === 'technician' && profile.approval_status === 'pending') {
       dest = 'pending';
     } else if (profile.role === 'user' && profile.approval_status === 'approved') {
@@ -105,7 +109,8 @@ function AuthGate() {
     if (lastNav.current === dest) return;
     lastNav.current = dest;
 
-    if (dest === 'user') router.replace('/(user)/home');
+    if (dest === 'onboarding') router.replace('/onboarding-store');
+    else if (dest === 'user') router.replace('/(user)/home');
     else if (dest === 'manager') router.replace('/(manager)/home');
     else if (dest === 'technician') router.replace('/(technician)/home');
     else if (dest === 'admin') router.replace('/(admin)/home');
@@ -142,6 +147,8 @@ export default function RootLayout() {
             <Stack.Screen name="create-ticket" options={{ presentation: 'modal' }} />
             <Stack.Screen name="chat/[id]" options={{ presentation: 'card' }} />
             <Stack.Screen name="pending-approval" />
+            <Stack.Screen name="onboarding-store" />
+            <Stack.Screen name="auth/callback" />
           </Stack>
           <AuthGate />
         </SafeAreaProvider>

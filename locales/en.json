@@ -15,6 +15,8 @@
     "passwordLabel": "PASSWORD",
     "otpLabel": "OTP CODE",
     "signIn": "Sign In",
+    "signInMicrosoft": "Sign In with Microsoft",
+    "or": "or",
     "signInWithPassword": "Sign in with password",
     "signInWithOtp": "Sign in with OTP",
     "sendOtp": "Send OTP",
@@ -24,6 +26,19 @@
     "invalidEmail": "Enter a valid email address",
     "passwordRequired": "Password is required",
     "otpRequired": "Enter the code we sent you"
+  },
+  "onboarding": {
+    "greeting": "Welcome, {{name}}",
+    "selectStorePrompt": "Select your store to continue",
+    "searchPlaceholder": "Search by store name, code or city",
+    "noStores": "No stores found",
+    "continue": "Continue",
+    "technicianPrompt": "Are you IT support staff?",
+    "registerTechnician": "Register as a technician",
+    "confirmTitle": "Register as technician?",
+    "confirmBody": "Your account will be submitted to an admin for approval. You won't be able to use the app until an admin approves it.",
+    "confirmCta": "Submit for approval",
+    "cancel": "Cancel"
   },
   "register": {
     "title": "Create your RITA account",

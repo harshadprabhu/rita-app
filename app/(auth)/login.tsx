@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../../components/common/Screen';
 import { signInWithPassword, requestOtp, verifyOtp } from '../../lib/auth/session';
+import { signInWithMicrosoft } from '../../lib/auth/oauth';
 import { isValidEmail } from '../../lib/utils/validation';
 import { extractErrorMessage } from '../../lib/utils/error';
 import { theme } from '../../constants/theme';
@@ -23,6 +24,19 @@ export default function Login() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [msLoading, setMsLoading] = useState(false);
+
+  const handleMicrosoftLogin = async () => {
+    setError('');
+    setMsLoading(true);
+    try {
+      await signInWithMicrosoft();
+    } catch (e) {
+      setError(extractErrorMessage(e));
+    } finally {
+      setMsLoading(false);
+    }
+  };
 
   const handlePasswordLogin = async () => {
     setError('');
@@ -67,6 +81,36 @@ export default function Login() {
 
           <View style={styles.card}>
             {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            {/* Microsoft SSO — primary sign-in path */}
+            <TouchableOpacity
+              onPress={handleMicrosoftLogin}
+              disabled={msLoading}
+              style={[styles.msBtn, theme.shadows.md, msLoading ? styles.signInBtnDisabled : null]}
+              activeOpacity={0.85}
+            >
+              {msLoading
+                ? <ActivityIndicator color={theme.colors.brand} />
+                : (
+                  <>
+                    {/* Official Microsoft logo: four-color 2x2 grid */}
+                    <View style={styles.msLogo}>
+                      <View style={[styles.msSquare, { backgroundColor: '#F25022' }]} />
+                      <View style={[styles.msSquare, { backgroundColor: '#7FBA00' }]} />
+                      <View style={[styles.msSquare, { backgroundColor: '#00A4EF' }]} />
+                      <View style={[styles.msSquare, { backgroundColor: '#FFB900' }]} />
+                    </View>
+                    <Text style={styles.msBtnText}>{t('auth.signInMicrosoft')}</Text>
+                  </>
+                )
+              }
+            </TouchableOpacity>
+
+            <View style={styles.dividerRow}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>{t('auth.or')}</Text>
+              <View style={styles.dividerLine} />
+            </View>
 
             <Text style={styles.fieldLabel}>{t('auth.emailLabel')}</Text>
             <View style={styles.inputWrapper}>
@@ -195,7 +239,25 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.brand, borderRadius: theme.radius.md, height: 52,
     alignItems: 'center', justifyContent: 'center', marginTop: theme.spacing.xl, marginBottom: theme.spacing.sm,
   },
+  signInBtnDisabled: { opacity: 0.75 },
   signInBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   linkBtn: { alignItems: 'center', paddingVertical: theme.spacing.sm },
   linkText: { color: theme.colors.brandMid, fontSize: 14, fontWeight: '600' },
+  msBtn: {
+    flexDirection: 'row', gap: theme.spacing.sm, backgroundColor: theme.colors.surface,
+    borderWidth: 1.5, borderColor: theme.colors.borderStrong, borderRadius: theme.radius.md,
+    height: 52, alignItems: 'center', justifyContent: 'center',
+  },
+  msBtnText: { color: theme.colors.textPrimary, fontSize: 16, fontWeight: '700' },
+  msLogo: {
+    width: 20, height: 20, flexDirection: 'row', flexWrap: 'wrap',
+    justifyContent: 'space-between', alignContent: 'space-between',
+  },
+  msSquare: { width: 9, height: 9 },
+  dividerRow: {
+    flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
+    marginTop: theme.spacing.lg, marginBottom: theme.spacing.xs,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: theme.colors.border },
+  dividerText: { color: theme.colors.textTertiary, fontSize: 12, fontWeight: '600' },
 });

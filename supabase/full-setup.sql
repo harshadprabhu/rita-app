@@ -297,8 +297,48 @@ create policy "chat_messages: insert" on chat_messages for insert with check (
 create policy "account_audit: admin read" on account_audit_log for select using (current_role_is(array['admin']::user_role[]));
 create policy "account_audit: admin insert" on account_audit_log for insert with check (current_role_is(array['admin']::user_role[]));
 
+-- ---------- 6. MICROSOFT SSO: auto-provision a bare profile on first sign-in ----------
+-- Azure/Entra ID sign-in creates a Supabase auth user with no matching profiles
+-- row (there's no client-side code running at that moment to insert one). This
+-- trigger fills that gap for any non-email sign-in method; the app then routes
+-- the person to /onboarding-store to pick their store on first login. Regular
+-- email/password sign-ups are untouched (the app inserts their profile itself).
+create or replace function handle_new_sso_user() returns trigger as $$
+declare
+  meta jsonb := coalesce(new.raw_user_meta_data, '{}'::jsonb);
+  guessed_name text := coalesce(
+    nullif(meta->>'name', ''),
+    nullif(meta->>'full_name', ''),
+    split_part(new.email, '@', 1)
+  );
+  first text := coalesce(nullif(meta->>'given_name', ''), split_part(guessed_name, ' ', 1));
+  last text := coalesce(
+    nullif(meta->>'family_name', ''),
+    nullif(trim(substr(guessed_name, length(first) + 1)), ''),
+    'User'
+  );
+begin
+  if new.raw_app_meta_data->>'provider' = 'email' then
+    return new;
+  end if;
+
+  insert into profiles (id, first_name, last_name, role, approval_status, is_active)
+  values (new.id, first, last, 'user', 'approved', true)
+  on conflict (id) do nothing;
+
+  return new;
+end;
+$$ language plpgsql security definer set search_path = public;
+
+drop trigger if exists on_auth_user_created_sso on auth.users;
+create trigger on_auth_user_created_sso
+  after insert on auth.users
+  for each row execute function handle_new_sso_user();
+
 -- =====================================================================
 -- DONE. Next: enable Email auth, deploy the web app, then run the
 -- "make me admin" snippet from HOSTING-GUIDE.md after your first sign-up.
 -- (Photo attachments are optional — see supabase/storage-setup.sql.)
+-- (Microsoft SSO also needs an Azure app registration configured in
+-- Supabase → Authentication → Providers — see HOSTING-GUIDE.md Part D.)
 -- =====================================================================
