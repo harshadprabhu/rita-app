@@ -73,8 +73,7 @@
     ],
     "experiments": {
       "typedRoutes": true,
-      "reactCompiler": true,
-      "baseUrl": "/rita-app"
+      "reactCompiler": true
     },
     "extra": {
       "router": {

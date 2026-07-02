@@ -81,21 +81,22 @@ Only if you want people to attach photos to tickets. The app works fine without 
 
 ---
 
-# PART B — The website, hosted on GitHub 🌐
+# PART B — The website: GitHub + Netlify 🌐
 
-We'll push your code to GitHub. From then on, **every time you push a change,
-GitHub automatically builds the app and publishes it** — no manual building,
-no dragging folders, ever again.
+Your code lives on **GitHub**. **Netlify** watches that GitHub repo and
+automatically builds + publishes the site every time you push — no manual
+building, no dragging folders, ever again.
 
-Your site will live at:
-**`https://YOUR-GITHUB-USERNAME.github.io/rita-app/`**
+*(Why not GitHub Pages directly? Netlify hosts your site at its own clean
+address instead of a subfolder link, and its settings are easier to see and
+fix if something's wrong — fewer places for a typo to hide.)*
 
-### B1. Create the GitHub repository
+### B1. Create the GitHub repository (skip if you already did this)
 1. Go to **https://github.com/new**
-2. Repository name: exactly **`rita-app`** (must match — it's part of your website's link)
-3. Choose Public or Private — either works with GitHub Pages.
+2. Repository name: `rita-app`
+3. Choose Public or Private — either is fine.
 4. **Don't** tick "Add a README".
-5. Click **Create repository**. Leave this tab open.
+5. Click **Create repository**.
 
 ### B2. Open a terminal in the app folder
 1. Open the folder `C:\Users\Hemant Prabhu\Desktop\rita-app` in File Explorer.
@@ -110,42 +111,36 @@ git branch -M main
 git push -u origin main
 ```
 A browser window may pop up asking you to log into GitHub — sign in there and it continues automatically.
+*(If you already added the remote before, that first line will say "already exists" — that's fine, just skip it and run the other two.)*
 
-### B4. Give GitHub your 2 secret keys
-The website needs your Supabase keys from step A5, but we **never put them in a
-file that gets uploaded** — instead we store them safely inside GitHub itself:
+### B4. Connect Netlify to your GitHub repo
+1. Go to **https://app.netlify.com** and sign up / log in (GitHub sign-in is easiest).
+2. Click **Add new site** → **Import an existing project**.
+3. Choose **GitHub**, then pick your **`rita-app`** repository (you may need to authorize Netlify to see your repos first).
+4. Netlify will show build settings — it should already read them from the
+   `netlify.toml` file in your project:
+   - Build command: `npm run build:web`
+   - Publish directory: `dist`
+   Leave these as-is.
+5. **Before clicking Deploy**, click **Add environment variables** and add both:
+   - Key: `EXPO_PUBLIC_SUPABASE_URL` → Value: your Project URL from step A5
+   - Key: `EXPO_PUBLIC_SUPABASE_ANON_KEY` → Value: your anon public key from step A5
+6. Click **Deploy**.
 
-1. On your repo's GitHub page, click **Settings** (top tab).
-2. Left sidebar → **Secrets and variables** → **Actions**.
-3. Click **New repository secret** and add this one:
-   - Name: `EXPO_PUBLIC_SUPABASE_URL`
-   - Value: your Project URL from step A5
-   - Click **Add secret**
-4. Click **New repository secret** again and add:
-   - Name: `EXPO_PUBLIC_SUPABASE_ANON_KEY`
-   - Value: your anon public key from step A5
-   - Click **Add secret**
-
-### B5. Turn on GitHub Pages
-1. Still in **Settings** → left sidebar → **Pages**.
-2. Under **Build and deployment → Source**, choose **GitHub Actions**.
-   (Don't pick "Deploy from a branch" — we want Actions.)
-
-### B6. Watch it build
-1. Click the **Actions** tab (top of the repo page).
-2. You'll see a run called "Deploy web app to GitHub Pages" — click it and watch it go
-   (it takes 2–4 minutes: installs, builds, publishes).
-3. When it turns green ✅, go back to **Settings → Pages** — you'll see your live
-   link at the top: `https://YOUR-GITHUB-USERNAME.github.io/rita-app/`
+### B5. Watch it build
+1. Netlify shows a build log live — wait for it to say **"Site is live"** (2–4 minutes).
+2. At the top of the page you'll see your link, something like
+   `https://random-name-123.netlify.app` — **that's your app on the internet!** 🎉
+3. (Optional) Click **Site configuration → Change site name** to pick a nicer name, e.g. `rita-indriya.netlify.app`.
 
 > 📝 Copy that live link — you need it for the next step.
 
-### B7. Tell Supabase your website is allowed
+### B6. Tell Supabase your website is allowed
 1. Back in Supabase → **Authentication** → **URL Configuration**.
-2. In **Site URL** (and **Redirect URLs**), paste your GitHub Pages link.
+2. In **Site URL** (and **Redirect URLs**), paste your Netlify link.
 3. Save.
 
-✅ **Part B done!** Open your GitHub Pages link — you should see the **RITA login screen**. 🎊
+✅ **Part B done!** Open your Netlify link — you should see the **RITA login screen**. 🎊
 
 ---
 
@@ -154,7 +149,7 @@ file that gets uploaded** — instead we store them safely inside GitHub itself:
 Right now anyone who signs up is a normal store user. Let's make YOU the admin so you can see all the dashboards.
 
 ### C1. Create your account in the app
-1. Open your GitHub Pages link.
+1. Open your Netlify link.
 2. Click **Create an account**.
 3. Fill it in. For **Store ID**, type one of the demo stores: **`ST-5501`**.
 4. Submit. You're now logged in as a normal user.
@@ -205,8 +200,8 @@ The app lives in `C:\Users\Hemant Prabhu\Desktop\rita-app`. When you want to cha
    git commit -m "describe what you changed"
    git push
    ```
-   That's it. GitHub automatically rebuilds and republishes the site (watch it
-   happen in the **Actions** tab) — usually live again in 2–4 minutes.
+   That's it. Netlify automatically rebuilds and republishes the site (watch it
+   happen on your site's **Deploys** tab in Netlify) — usually live again in 2–4 minutes.
 
 For a more detailed developer workflow (testing on an Android phone, building the real iPhone/Android apps for the app stores), see **RUNNING.md** in the app folder.
 
@@ -217,16 +212,17 @@ For a more detailed developer workflow (testing on an Android phone, building th
 **Never save passwords, keys, or secrets in any file inside this project folder**
 (not even a `.txt` "notes" file) — anything in this folder can accidentally get
 pushed to GitHub for the world to see. Keep secrets in your password manager, or
-in GitHub's own **Settings → Secrets** (step B4) — never in a plain file here.
+in Netlify's own **Site configuration → Environment variables** — never in a
+plain file here.
 
 ---
 
 # 😅 If something goes wrong
 
-- **Login says something failed:** double-check your 2 secrets in **Settings → Secrets and variables → Actions** (step B4) are exactly right, then re-run the build: **Actions** tab → click the latest run → **Re-run all jobs**.
+- **Login says something failed:** in Netlify go to **Site configuration → Environment variables** and double-check both `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` are exactly right (no extra spaces), then **Deploys** tab → **Trigger deploy → Deploy site**.
 - **“Can't sign up” / spins forever:** make sure you turned **Confirm email OFF** (step A4).
 - **Ticket won't submit:** make sure your Store ID matches a store that exists (demo ones are `ST-5501`, `ST-5502`, `ST-5601`).
-- **Actions tab shows a red ❌:** click into the failed run to read the error — usually a typo in one of the two secret names/values.
-- **Page shows GitHub's 404 instead of the app:** double-check **Settings → Pages → Source** is set to **GitHub Actions** (step B5), not "Deploy from a branch".
+- **Netlify's Deploys tab shows a red "Failed":** click into that deploy to read the log — usually a typo in one of the two environment variable names/values. (A build that fails on the very first try and then works if you click "Retry deploy" is a known one-time hiccup in a bundler step — should now be rare since the build command auto-retries itself, but Netlify's own "Retry deploy" button always works as a manual fallback.)
+- **Blank white page:** hard-refresh the page (Ctrl+Shift+R) — sometimes your browser caches an old broken version.
 
 You've got this. 💪
