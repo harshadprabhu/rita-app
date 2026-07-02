@@ -223,7 +223,10 @@ create policy "profiles: self update" on profiles for update using (id = auth.ui
 create policy "profiles: admin manage" on profiles for all using (current_role_is(array['admin']::user_role[]));
 
 -- stores / departments
-create policy "stores: read all" on stores for select using (auth.uid() is not null);
+-- Publicly readable (not just to logged-in users): the registration screen
+-- looks up a Store ID BEFORE the person has an account, so this must work for
+-- anonymous requests too, or every new sign-up would fail to find any store.
+create policy "stores: read all" on stores for select using (true);
 create policy "stores: admin write" on stores for all using (current_role_is(array['admin']::user_role[]));
 create policy "departments: read all" on departments for select using (auth.uid() is not null);
 create policy "departments: admin write" on departments for all using (current_role_is(array['admin']::user_role[]));
