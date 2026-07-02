@@ -131,11 +131,45 @@ async function fetchD365Rate(
   return rate;
 }
 
-/** Fetch every target purity, one call each; returns those with a valid rate. */
-async function fetchD365Rates(token: string, dateStr: string, cfg: D365Config): Promise<D365Item[]> {
+/**
+ * Fetch the day's gold rates.
+ *
+ * Primary path is the OData entity query used by the proven indriya-it-app
+ * integration against novel.operations.dynamics.com. If that yields nothing
+ * (e.g. a different environment that only exposes the custom service), we fall
+ * back to PwC_JISchemeAppService.getMetalRate, one call per purity.
+ */
+async function fetchD365Rates(
+  token: string,
+  cfg: D365Config,
+  dateISO: string, // YYYY-MM-DD, for the OData EntryDate filter
+  dateDMY: string, // DD-MM-YYYY, for the getMetalRate service
+): Promise<D365Item[]> {
+  // --- Primary: OData entity ---
+  try {
+    const filter =
+      `RateType eq Microsoft.Dynamics.DataEntities.PwC_MetalRateType'Sale'` +
+      ` and IsRetail eq Microsoft.Dynamics.DataEntities.NoYes'Yes'` +
+      ` and EntryDate eq ${dateISO}` +
+      ` and Warehouse eq '${cfg.warehouse}'`;
+    const url = `${cfg.resourceUrl}/data/C_JISchemeAppMetalRate?$filter=${encodeURIComponent(filter)}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) {
+      const { value } = await res.json();
+      const items = ((value as D365Item[]) ?? []).filter((i) => i.Metal === 'Gold' && i.Rate > 0);
+      if (items.length) return items;
+      console.warn('[sync-gold-rate] OData entity returned no gold rows; trying getMetalRate');
+    } else {
+      console.warn(`[sync-gold-rate] OData entity HTTP ${res.status}; trying getMetalRate`);
+    }
+  } catch (e) {
+    console.warn('[sync-gold-rate] OData entity error; trying getMetalRate:', e);
+  }
+
+  // --- Fallback: getMetalRate custom service, one call per purity ---
   const out: D365Item[] = [];
   for (const [purity] of GOLD_RATE_DISPLAY) {
-    const rate = await fetchD365Rate(token, cfg, dateStr, purity);
+    const rate = await fetchD365Rate(token, cfg, dateDMY, purity);
     if (rate != null && rate > 0) out.push({ Metal: 'Gold', Purity: purity, Rate: rate });
   }
   return out;
@@ -205,7 +239,9 @@ Deno.serve(async (req) => {
   try {
     const cfg = await loadD365Config(supabase);
     const token = await getD365Token(cfg);
-    const filteredItems = await fetchD365Rates(token, dateApi, cfg);
+    const items = await fetchD365Rates(token, cfg, todayIST, dateApi);
+    const targetSet = new Set(TARGET_PURITIES);
+    const filteredItems = items.filter((i) => targetSet.has(i.Purity) && i.Rate > 0);
 
     if (!filteredItems.length) {
       throw new Error('D365 returned no valid rates for target purities');
