@@ -111,60 +111,7 @@ function AnnouncementCard({ item }: { item: FeedItem }) {
   );
 }
 
-// ─── B) Gold rate card ───────────────────────────────────────────────────────
-
-// Body produced by the sync-gold-rate edge function: lines joined by "\n", up to
-// two "label: ₹value" entries per line separated by " | ". Parse it back into
-// individual rate entries so each can be shown in its own box.
-function parseGoldRates(body: string | null): { label: string; value: string }[] {
-  if (!body) return [];
-  return body
-    .split('\n')
-    .flatMap((line) => line.split('|'))
-    .map((seg) => seg.trim())
-    .filter(Boolean)
-    .map((seg) => {
-      const i = seg.indexOf(':');
-      return i === -1
-        ? null
-        : { label: seg.slice(0, i).trim(), value: seg.slice(i + 1).trim() };
-    })
-    .filter((e): e is { label: string; value: string } => !!e && !!e.label && !!e.value);
-}
-
-function GoldRateNotifCard({ item }: { item: FeedItem }) {
-  const rates = parseGoldRates(item.body);
-
-  return (
-    <View style={styles.goldCard}>
-      <View style={styles.baseRow}>
-        <View style={styles.goldIconBox}>
-          <Ionicons name="trending-up" size={20} color="#C9A84C" />
-        </View>
-        <View style={styles.content}>
-          <Text style={styles.goldTitle} numberOfLines={1}>{item.title}</Text>
-
-          {rates.length > 0 ? (
-            <View style={styles.goldGrid}>
-              {rates.map((r) => (
-                <View key={r.label} style={styles.goldRateTile}>
-                  <Text style={styles.goldRateLabel}>{r.label}</Text>
-                  <Text style={styles.goldRateValue}>{r.value}</Text>
-                </View>
-              ))}
-            </View>
-          ) : item.body ? (
-            <Text style={styles.goldBody}>{item.body}</Text>
-          ) : null}
-
-          <Text style={styles.goldTime}>{timeAgo(item.created_at)}</Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-// ─── C) Ticket card ──────────────────────────────────────────────────────────
+// ─── B) Ticket card ──────────────────────────────────────────────────────────
 
 type TicketIconCfg = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -231,7 +178,6 @@ function TicketCard({ item, onMarkRead }: { item: FeedItem; onMarkRead?: (id: st
 
 export function UnifiedNotificationItem({ item, onMarkRead }: Props) {
   if (item.kind === 'announcement') return <AnnouncementCard item={item} />;
-  if (item.kind === 'gold_rate') return <GoldRateNotifCard item={item} />;
   return <TicketCard item={item} onMarkRead={onMarkRead} />;
 }
 
@@ -368,75 +314,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // ── B) Gold rate ──────────────────────────────────────────────────────────
-  goldCard: {
-    backgroundColor: '#2A1E00',
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    borderColor: 'rgba(201,168,76,0.25)',
-    padding: theme.spacing.md,
-    ...theme.shadows.sm,
-  },
-  goldIconBox: {
-    width: ICON_SIZE,
-    height: ICON_SIZE,
-    borderRadius: theme.radius.sm,
-    backgroundColor: 'rgba(201,168,76,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(201,168,76,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  goldTitle: {
-    color: '#C9A84C',
-    fontWeight: '700',
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: theme.spacing.sm,
-  },
-  goldBody: {
-    color: 'rgba(201,168,76,0.6)',
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  goldTime: {
-    color: 'rgba(201,168,76,0.3)',
-    fontSize: 11,
-    marginTop: theme.spacing.sm,
-  },
-  goldGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-  },
-  goldRateTile: {
-    flexBasis: '47%',
-    flexGrow: 1,
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-    gap: 6,
-    backgroundColor: 'rgba(201,168,76,0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(201,168,76,0.2)',
-    borderRadius: 6,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-  },
-  goldRateLabel: {
-    color: 'rgba(201,168,76,0.7)',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  goldRateValue: {
-    color: '#F0E2B8',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-
-  // ── C) Ticket ─────────────────────────────────────────────────────────────
+  // ── B) Ticket ─────────────────────────────────────────────────────────────
   ticketCard: {
     borderRadius: theme.radius.md,
     padding: theme.spacing.md,

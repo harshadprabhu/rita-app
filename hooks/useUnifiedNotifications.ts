@@ -7,7 +7,7 @@ import { getBroadcastsForStore, getBroadcastReadIds, markBroadcastsRead } from '
 import { supabase } from '../lib/supabase';
 import { useNotificationStore } from '../stores/notificationStore';
 
-export type NotificationKind = 'ticket' | 'announcement' | 'gold_rate';
+export type NotificationKind = 'ticket' | 'announcement';
 
 export interface FeedItem {
   id: string;
@@ -21,11 +21,7 @@ export interface FeedItem {
   ticket_id?: string | null;
   /** Original record -- use for mutation callbacks. */
   notificationId?: string; // set only for kind=ticket
-  broadcastId?: string;    // set only for kind=announcement / gold_rate
-}
-
-function isBroadcastGoldRate(title: string): boolean {
-  return title.toLowerCase().includes('gold rate');
+  broadcastId?: string;    // set only for kind=announcement
 }
 
 /**
@@ -107,7 +103,7 @@ export function useUnifiedNotifications(userId: string, storeId: string | null) 
     const broadcastItems: FeedItem[] = (broadcastQuery.data ?? []).map(
       (b: DbBroadcast) => ({
         id: 'b-' + b.id,
-        kind: (isBroadcastGoldRate(b.title) ? 'gold_rate' : 'announcement') as NotificationKind,
+        kind: 'announcement' as NotificationKind,
         title: b.title,
         body: b.body,
         created_at: b.created_at,
@@ -122,9 +118,7 @@ export function useUnifiedNotifications(userId: string, storeId: string | null) 
     );
 
     const tickets = all.filter((item) => item.kind === 'ticket');
-    const announcements = all.filter(
-      (item) => item.kind === 'announcement' || item.kind === 'gold_rate',
-    );
+    const announcements = all.filter((item) => item.kind === 'announcement');
 
     return { feed: all, ticketNotifications: tickets, announcementNotifications: announcements };
   }, [notifQuery.data, broadcastQuery.data, broadcastReadsQuery.data]);
