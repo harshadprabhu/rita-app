@@ -14,6 +14,7 @@ export default function AdminProfile() {
         <AdminLink icon="bar-chart-outline" label="Analytics" onPress={() => router.push('/(admin)/analytics')} />
         <AdminLink icon="checkmark-done-outline" label="Approvals" onPress={() => router.push('/(admin)/approvals')} />
         <AdminLink icon="megaphone-outline" label="Broadcasts" onPress={() => router.push('/(admin)/broadcasts')} />
+        <AdminLink icon="cog-outline" label="Integrations" onPress={() => router.push('/(admin)/integrations')} />
       </View>
     </View>
   );

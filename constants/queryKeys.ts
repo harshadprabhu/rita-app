@@ -21,4 +21,5 @@ export const QUERY_KEYS = {
   chatMessages: (channelId: string) => ['chat-messages', channelId] as const,
   goldRate: () => ['gold-rate'] as const,
   goldRateTrend: () => ['gold-rate-trend'] as const,
+  integrationSettings: () => ['integration-settings'] as const,
 };

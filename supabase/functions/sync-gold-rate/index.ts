@@ -5,7 +5,16 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const D365_BASE = 'https://novel.operations.dynamics.com';
+const D365_DEFAULT_BASE = 'https://novel.operations.dynamics.com';
+const D365_DEFAULT_WAREHOUSE = 'NS0001';
+
+interface D365Config {
+  clientId: string;
+  clientSecret: string;
+  tenantId: string;
+  resourceUrl: string;
+  warehouse: string;
+}
 
 interface D365Item {
   Metal: string;
@@ -19,15 +28,42 @@ interface DailyGoldRates {
   rates: Record<string, number>; // purity → rate, Gold metal only
 }
 
-async function getD365Token(): Promise<string> {
+/**
+ * Resolve the D365 credentials. The admin-managed `integration_settings` row
+ * takes precedence (so edits in the app apply on the next cron run without a
+ * redeploy); env-var secrets are the fallback for backwards compatibility.
+ */
+async function loadD365Config(
+  supabase: ReturnType<typeof createClient>,
+): Promise<D365Config> {
+  const { data } = await supabase
+    .from('integration_settings')
+    .select('d365_client_id, d365_client_secret, d365_tenant_id, d365_resource_url, d365_warehouse')
+    .eq('id', 1)
+    .maybeSingle();
+
+  const row = (data ?? {}) as Record<string, string | null>;
+  return {
+    clientId:     row.d365_client_id     || Deno.env.get('D365_CLIENT_ID')     || '',
+    clientSecret: row.d365_client_secret || Deno.env.get('D365_CLIENT_SECRET') || '',
+    tenantId:     row.d365_tenant_id     || Deno.env.get('D365_TENANT_ID')     || '',
+    resourceUrl:  row.d365_resource_url  || D365_DEFAULT_BASE,
+    warehouse:    row.d365_warehouse     || D365_DEFAULT_WAREHOUSE,
+  };
+}
+
+async function getD365Token(cfg: D365Config): Promise<string> {
+  if (!cfg.clientId || !cfg.clientSecret || !cfg.tenantId) {
+    throw new Error('D365 credentials not configured');
+  }
   const body = new URLSearchParams({
-    client_id:     Deno.env.get('D365_CLIENT_ID')!,
-    client_secret: Deno.env.get('D365_CLIENT_SECRET')!,
+    client_id:     cfg.clientId,
+    client_secret: cfg.clientSecret,
     grant_type:    'client_credentials',
-    resource:      D365_BASE,
+    resource:      cfg.resourceUrl,
   });
   const res = await fetch(
-    `https://login.microsoftonline.com/${Deno.env.get('D365_TENANT_ID')}/oauth2/token`,
+    `https://login.microsoftonline.com/${cfg.tenantId}/oauth2/token`,
     { method: 'POST', body },
   );
   if (!res.ok) throw new Error(`OAuth failed: ${res.status}`);
@@ -35,13 +71,13 @@ async function getD365Token(): Promise<string> {
   return access_token as string;
 }
 
-async function fetchD365Rates(token: string, dateIST: string): Promise<D365Item[]> {
+async function fetchD365Rates(token: string, dateIST: string, cfg: D365Config): Promise<D365Item[]> {
   const filter =
     `RateType eq Microsoft.Dynamics.DataEntities.PwC_MetalRateType'Sale'` +
     ` and IsRetail eq Microsoft.Dynamics.DataEntities.NoYes'Yes'` +
     ` and EntryDate eq ${dateIST}` +
-    ` and Warehouse eq 'NS0001'`;
-  const url = `${D365_BASE}/data/C_JISchemeAppMetalRate?$filter=${encodeURIComponent(filter)}`;
+    ` and Warehouse eq '${cfg.warehouse}'`;
+  const url = `${cfg.resourceUrl}/data/C_JISchemeAppMetalRate?$filter=${encodeURIComponent(filter)}`;
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) throw new Error(`D365 API failed: ${res.status}`);
   const { value } = await res.json();
@@ -105,8 +141,9 @@ Deno.serve(async (req) => {
 
   // Fetch from D365 and detect changes
   try {
-    const token = await getD365Token();
-    const items = await fetchD365Rates(token, todayIST);
+    const cfg = await loadD365Config(supabase);
+    const token = await getD365Token(cfg);
+    const items = await fetchD365Rates(token, todayIST, cfg);
 
     if (!items.length) throw new Error('D365 returned no rates');
 

@@ -35,6 +35,7 @@ export default function AdminLayout() {
       <Tabs.Screen name="chat" options={{ href: null }} />
       <Tabs.Screen name="broadcasts" options={{ href: null }} />
       <Tabs.Screen name="approvals" options={{ href: null }} />
+      <Tabs.Screen name="integrations" options={{ href: null }} />
       <Tabs.Screen name="profile" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     </Tabs>
   );

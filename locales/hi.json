@@ -213,5 +213,28 @@
     "accountApprovedBody": "Your technician account has been approved. You can now log in and start taking tickets!",
     "accountRejectedTitle": "Account rejected",
     "accountRejectedBody": "Your technician account application was not approved"
+  },
+  "integrations": {
+    "title": "Integrations",
+    "goldTitle": "Gold Rate API",
+    "goldSubtitle": "Dynamics 365 credentials for live gold rates",
+    "ssoTitle": "Microsoft SSO",
+    "ssoSubtitle": "Azure AD credentials for Sign in with Microsoft",
+    "clientId": "Client ID",
+    "clientSecret": "Client Secret",
+    "tenantId": "Tenant ID",
+    "resourceUrl": "Resource URL",
+    "warehouse": "Warehouse",
+    "tenantUrl": "Azure Tenant URL",
+    "ssoEnabled": "Enable Microsoft sign-in",
+    "secretStored": "•••••••• (stored — leave blank to keep)",
+    "secretEmpty": "Not set",
+    "save": "Save",
+    "saveApply": "Save & Apply",
+    "goldSaved": "Gold rate credentials saved",
+    "ssoApplied": "Microsoft SSO configuration applied",
+    "ssoSavedNotApplied": "Saved. It will apply once the management token is set.",
+    "goldHint": "Rates sync automatically every few minutes. New credentials take effect on the next sync.",
+    "ssoHint": "Applying pushes these values to Supabase Auth. Requires SUPABASE_MANAGEMENT_TOKEN to be set on the apply-sso-config function."
   }
 }
