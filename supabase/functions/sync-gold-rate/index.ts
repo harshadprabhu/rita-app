@@ -71,17 +71,74 @@ async function getD365Token(cfg: D365Config): Promise<string> {
   return access_token as string;
 }
 
-async function fetchD365Rates(token: string, dateIST: string, cfg: D365Config): Promise<D365Item[]> {
-  const filter =
-    `RateType eq Microsoft.Dynamics.DataEntities.PwC_MetalRateType'Sale'` +
-    ` and IsRetail eq Microsoft.Dynamics.DataEntities.NoYes'Yes'` +
-    ` and EntryDate eq ${dateIST}` +
-    ` and Warehouse eq '${cfg.warehouse}'`;
-  const url = `${cfg.resourceUrl}/data/C_JISchemeAppMetalRate?$filter=${encodeURIComponent(filter)}`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-  if (!res.ok) throw new Error(`D365 API failed: ${res.status}`);
-  const { value } = await res.json();
-  return value as D365Item[];
+// Pull a numeric rate out of whatever shape the custom service returns:
+// a bare number, a numeric string, a JSON string, or an object wrapping the
+// value under a common key. Deep-scans as a last resort.
+function parseRate(data: unknown): number | null {
+  if (typeof data === 'number') return isFinite(data) ? data : null;
+  if (typeof data === 'string') {
+    const n = Number(data.trim());
+    if (isFinite(n) && data.trim() !== '') return n;
+    try { return parseRate(JSON.parse(data)); } catch { return null; }
+  }
+  if (data && typeof data === 'object') {
+    const obj = data as Record<string, unknown>;
+    for (const k of ['value', 'Value', 'Rate', 'rate', 'MetalRate', 'metalRate', 'Result', 'result', 'ReturnValue']) {
+      if (k in obj) { const r = parseRate(obj[k]); if (r != null) return r; }
+    }
+    for (const v of Object.values(obj)) { const r = parseRate(v); if (r != null) return r; }
+  }
+  return null;
+}
+
+/**
+ * Fetch one purity's rate via the D365 custom service. This environment exposes
+ * gold rates through PwC_JISchemeAppService.getMetalRate (invoked once per
+ * purity), NOT a queryable OData entity.
+ *
+ * Parameter order (per the service contract):
+ *   [ dateStr(DD-MM-YYYY), purity, warehouse, metalType('1'=Gold), rateType('Sale'), isRetail('Yes') ]
+ */
+async function fetchD365Rate(
+  token: string,
+  cfg: D365Config,
+  dateStr: string,
+  purity: string,
+): Promise<number | null> {
+  const url = `${cfg.resourceUrl}/api/services/PwC_JIServices/PwC_JISchemeAppService/InvokeMethod`;
+  const payload = {
+    request: {
+      MethodName: 'getMetalRate',
+      Parameters: [dateStr, purity, cfg.warehouse, '1', 'Sale', 'Yes'],
+    },
+  };
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    console.error(`[sync-gold-rate] getMetalRate(${purity}) HTTP ${res.status}: ${text.slice(0, 250)}`);
+    return null;
+  }
+  let data: unknown;
+  try { data = JSON.parse(text); } catch { data = text; }
+  const rate = parseRate(data);
+  if (rate == null) {
+    console.warn(`[sync-gold-rate] getMetalRate(${purity}) unparseable response: ${text.slice(0, 250)}`);
+  }
+  return rate;
+}
+
+/** Fetch every target purity, one call each; returns those with a valid rate. */
+async function fetchD365Rates(token: string, dateStr: string, cfg: D365Config): Promise<D365Item[]> {
+  const out: D365Item[] = [];
+  for (const [purity] of GOLD_RATE_DISPLAY) {
+    const rate = await fetchD365Rate(token, cfg, dateStr, purity);
+    if (rate != null && rate > 0) out.push({ Metal: 'Gold', Purity: purity, Rate: rate });
+  }
+  return out;
 }
 
 function buildDailyRates(
@@ -120,8 +177,13 @@ Deno.serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
-  // Today's date in IST (India Standard Time, UTC+5:30)
+  // Today's date in IST (India Standard Time, UTC+5:30).
+  // `todayIST` (YYYY-MM-DD) is used for the DB `entry_date` column; the D365
+  // getMetalRate service wants DD-MM-YYYY, so we derive that too.
   const todayIST = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+  const dateApi = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Kolkata', day: '2-digit', month: '2-digit', year: 'numeric',
+  }).format(new Date()).replace(/\//g, '-'); // DD-MM-YYYY
 
   const TARGET_PURITIES = GOLD_RATE_DISPLAY.map(([key]) => key);
 
@@ -143,14 +205,10 @@ Deno.serve(async (req) => {
   try {
     const cfg = await loadD365Config(supabase);
     const token = await getD365Token(cfg);
-    const items = await fetchD365Rates(token, todayIST, cfg);
+    const filteredItems = await fetchD365Rates(token, dateApi, cfg);
 
-    if (!items.length) throw new Error('D365 returned no rates');
-
-    const targetSet = new Set(TARGET_PURITIES);
-    const filteredItems = items.filter((i) => i.Metal === 'Gold' && targetSet.has(i.Purity) && i.Rate > 0);
     if (!filteredItems.length) {
-      throw new Error(`D365 returned no valid rates for target purities; available: ${items.map((i) => `${i.Metal}/${i.Purity}`).join(', ')}`);
+      throw new Error('D365 returned no valid rates for target purities');
     }
 
     // Check if any rate value actually changed vs what's in DB
