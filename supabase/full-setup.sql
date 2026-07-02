@@ -338,10 +338,42 @@ create trigger on_auth_user_created_sso
   after insert on auth.users
   for each row execute function handle_new_sso_user();
 
+-- ---------- 7. GOLD RATE + BROADCAST READ-TRACKING ----------
+create table gold_rates (
+  id uuid primary key default gen_random_uuid(),
+  entry_date date not null,
+  metal text not null,
+  purity text not null,
+  rate numeric not null,
+  currency text not null default 'INR',
+  updated_at timestamptz not null default now(),
+  unique (entry_date, metal, purity)
+);
+
+alter table gold_rates enable row level security;
+create policy "gold_rates: authenticated read" on gold_rates for select to authenticated using (true);
+-- Writes only happen via the sync-gold-rate edge function (service-role key,
+-- bypasses RLS) — no insert/update policy needed.
+
+create table broadcast_reads (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references profiles(id) on delete cascade,
+  broadcast_id uuid not null references broadcasts(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  unique (user_id, broadcast_id)
+);
+
+alter table broadcast_reads enable row level security;
+create policy "broadcast_reads: own read" on broadcast_reads for select using (user_id = auth.uid());
+create policy "broadcast_reads: own insert" on broadcast_reads for insert with check (user_id = auth.uid());
+
 -- =====================================================================
 -- DONE. Next: enable Email auth, deploy the web app, then run the
 -- "make me admin" snippet from HOSTING-GUIDE.md after your first sign-up.
 -- (Photo attachments are optional — see supabase/storage-setup.sql.)
 -- (Microsoft SSO also needs an Azure app registration configured in
 -- Supabase → Authentication → Providers — see HOSTING-GUIDE.md Part D.)
+-- (Gold Rate needs D365 secrets + a cron schedule — see
+-- supabase/add-remaining-features.sql section 3, and
+-- supabase/functions/sync-gold-rate for the edge function.)
 -- =====================================================================

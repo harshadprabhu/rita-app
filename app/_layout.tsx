@@ -13,9 +13,11 @@ import { useTranslation } from 'react-i18next';
 import { loadSavedLanguage } from '../lib/i18n';
 import { queryClient } from '../lib/queryClient';
 import { useAuth } from '../hooks/useAuth';
+import { useUnifiedNotifications } from '../hooks/useUnifiedNotifications';
 import { useAuthStore } from '../stores/authStore';
 import { updatePushToken } from '../lib/api/profiles';
 import { LoadingOverlay } from '../components/common/LoadingOverlay';
+import { ToastHost } from '../components/common/ToastHost';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -46,6 +48,11 @@ function AuthGate() {
   // Guard against React Strict Mode double-invoking effects and re-firing the
   // same router.replace() twice (which can knock focus out of a TextInput).
   const lastNav = useRef<string | null>(null);
+
+  // Fetch notifications + broadcasts globally so the bottom-bar badge reflects
+  // both ticket alerts and announcement unread counts before the user opens the
+  // Alerts tab. React Query caches results, so the tab reuses them for free.
+  useUnifiedNotifications(profile?.id ?? '', profile?.store_id ?? null);
 
   useEffect(() => {
     if (!profile) return;
@@ -151,6 +158,7 @@ export default function RootLayout() {
             <Stack.Screen name="auth/callback" />
           </Stack>
           <AuthGate />
+          <ToastHost />
         </SafeAreaProvider>
       </PaperProvider>
     </QueryClientProvider>

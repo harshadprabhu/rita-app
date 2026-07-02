@@ -12,6 +12,8 @@ export default function AdminProfile() {
       <View style={styles.linksRow}>
         <AdminLink icon="people-outline" label="Accounts" onPress={() => router.push('/(admin)/accounts')} />
         <AdminLink icon="bar-chart-outline" label="Analytics" onPress={() => router.push('/(admin)/analytics')} />
+        <AdminLink icon="checkmark-done-outline" label="Approvals" onPress={() => router.push('/(admin)/approvals')} />
+        <AdminLink icon="megaphone-outline" label="Broadcasts" onPress={() => router.push('/(admin)/broadcasts')} />
       </View>
     </View>
   );
@@ -27,9 +29,9 @@ function AdminLink({ icon, label, onPress }: { icon: keyof typeof Ionicons.glyph
 }
 
 const styles = StyleSheet.create({
-  linksRow: { position: 'absolute', bottom: theme.spacing.xl, left: theme.spacing.lg, right: theme.spacing.lg, flexDirection: 'row', gap: theme.spacing.md },
+  linksRow: { position: 'absolute', bottom: theme.spacing.xl, left: theme.spacing.lg, right: theme.spacing.lg, flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md },
   link: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm,
+    flexBasis: '47%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm,
     backgroundColor: theme.colors.surface2, borderRadius: theme.radius.md, paddingVertical: theme.spacing.md,
   },
   linkText: { color: theme.colors.brand, fontWeight: '700', fontSize: 13 },

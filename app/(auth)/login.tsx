@@ -165,9 +165,14 @@ export default function Login() {
                   {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.signInBtnText}>{t('auth.signIn')}</Text>}
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => { setError(''); setMode('otp-request'); }} style={styles.linkBtn}>
-                  <Text style={styles.linkText}>{t('auth.signInWithOtp')}</Text>
-                </TouchableOpacity>
+                <View style={styles.linkRow}>
+                  <TouchableOpacity onPress={() => { setError(''); setMode('otp-request'); }} style={styles.linkBtnInline}>
+                    <Text style={styles.linkText}>{t('auth.signInWithOtp')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')} style={styles.linkBtnInline}>
+                    <Text style={styles.linkText}>{t('auth.forgotPasswordLink')}</Text>
+                  </TouchableOpacity>
+                </View>
               </>
             )}
 
@@ -273,6 +278,8 @@ const styles = StyleSheet.create({
   signInBtnDisabled: { opacity: 0.75 },
   signInBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   linkBtn: { alignItems: 'center', paddingVertical: theme.spacing.sm },
+  linkRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: theme.spacing.sm },
+  linkBtnInline: { paddingVertical: theme.spacing.xs },
   linkText: { color: theme.colors.brandMid, fontSize: 14, fontWeight: '600' },
   msBtn: {
     flexDirection: 'row', gap: theme.spacing.sm, backgroundColor: theme.colors.surface,

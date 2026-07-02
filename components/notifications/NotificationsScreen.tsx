@@ -1,32 +1,23 @@
 import React from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../common/Screen';
 import { AppHeader } from '../common/AppHeader';
 import { ProfileIconButton } from '../common/ProfileIconButton';
 import { EmptyState } from '../common/EmptyState';
 import { LoadingOverlay } from '../common/LoadingOverlay';
-import { NotificationItem } from './NotificationItem';
-import { getNotifications, markNotificationRead } from '../../lib/api/notifications';
+import { UnifiedNotificationItem } from './UnifiedNotificationItem';
+import { useUnifiedNotifications } from '../../hooks/useUnifiedNotifications';
+import { useMarkRead } from '../../hooks/useNotifications';
 import { useAuthStore } from '../../stores/authStore';
-import { QUERY_KEYS } from '../../constants/queryKeys';
 import { theme } from '../../constants/theme';
 
 export function NotificationsScreen() {
   const { t } = useTranslation();
   const profile = useAuthStore((s) => s.profile);
-  const queryClient = useQueryClient();
-  const { data, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: QUERY_KEYS.notifications(profile?.id ?? ''),
-    queryFn: () => getNotifications(profile!.id),
-    enabled: !!profile,
-  });
-
-  const markRead = useMutation({
-    mutationFn: markNotificationRead,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.notifications(profile?.id ?? '') }),
-  });
+  const userId = profile?.id ?? '';
+  const { feed, isLoading, isRefetching, refetch } = useUnifiedNotifications(userId, profile?.store_id ?? null);
+  const { markOne } = useMarkRead(userId);
 
   return (
     <Screen edges={['top', 'left', 'right']}>
@@ -35,11 +26,11 @@ export function NotificationsScreen() {
         <LoadingOverlay />
       ) : (
         <FlatList
-          data={data ?? []}
+          data={feed}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.itemWrap}>
-              <NotificationItem notification={item} onRead={(id) => markRead.mutate(id)} />
+              <UnifiedNotificationItem item={item} onMarkRead={(id) => markOne.mutate(id)} />
             </View>
           )}
           contentContainerStyle={styles.list}

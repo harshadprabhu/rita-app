@@ -133,5 +133,85 @@
       "approved": "Approved",
       "pending": "Pending approval"
     }
+  },
+  "goldRate": {
+    "title": "Gold Rate",
+    "updated": "Updated {{time}}",
+    "unavailable": "Gold rate unavailable. Please try again later.",
+    "trendTitle": "{{purity}} · 7-Day Trend",
+    "noTrend": "No trend data available."
+  },
+  "approvals": {
+    "title": "Pending Approvals",
+    "emptyTitle": "No pending approvals",
+    "emptySubtitle": "All technician requests have been reviewed",
+    "approvedToast": "Technician approved",
+    "approveFailed": "Failed to approve",
+    "rejectedToast": "Technician rejected",
+    "rejectFailed": "Failed to reject"
+  },
+  "approvalCard": {
+    "technicianAccount": "TECHNICIAN ACCOUNT",
+    "registered": "Registered {{time}}",
+    "reject": "Reject",
+    "approve": "Approve"
+  },
+  "broadcasts": {
+    "title": "Publish Announcement",
+    "pastBroadcasts": "Past Broadcasts",
+    "emptyTitle": "No broadcasts yet",
+    "specificStore": "Specific store",
+    "sentToast": "Broadcast sent!",
+    "sendFailed": "Failed to send broadcast",
+    "form": {
+      "sendBroadcast": "Send Broadcast",
+      "titlePlaceholder": "Title",
+      "messagePlaceholder": "Message",
+      "storePickerLabel": "Send to (select stores, or leave blank for all)",
+      "sendToAll": "Send to all stores",
+      "sendToStore": "Send to {{store}}",
+      "sendToStores": "Send to {{n}} stores",
+      "selectedStoreFallback": "selected store"
+    }
+  },
+  "storePicker": {
+    "allStores": "All stores",
+    "selectedStore": "Selected store",
+    "storesSelected": "{{n}} stores selected",
+    "selectStoresTitle": "Select stores",
+    "selectStoreTitle": "Select store",
+    "searchPlaceholder": "Search by name, code or city...",
+    "storeCount_one": "{{count}} store",
+    "storeCount_other": "{{count}} stores",
+    "sendToEveryone": "Send to Everyone",
+    "noMatch": "No stores match \"{{query}}\"",
+    "confirmAll": "Confirm (All stores)",
+    "confirmCount_one": "Confirm ({{count}} store)",
+    "confirmCount_other": "Confirm ({{count}} stores)"
+  },
+  "announcements": {
+    "title": "Announcements",
+    "emptyTitle": "No announcements",
+    "emptySubtitle": "Admin announcements will appear here",
+    "yourStore": "Your store",
+    "allStores": "All stores"
+  },
+  "forgotPassword": {
+    "title": "Forgot password",
+    "subtitle": "Enter your email address and we'll send you a link to reset your password.",
+    "emailLabel": "Email",
+    "sendResetLink": "Send reset link",
+    "checkEmailTitle": "Check your email",
+    "checkEmailBody": "We've sent a password reset link to {{email}}"
+  },
+  "notify": {
+    "ticketResolvedTitle": "Ticket Resolved",
+    "ticketResolvedBody": "Your ticket {{number}} has been resolved",
+    "ticketUpdatedTitle": "Ticket Updated",
+    "ticketUpdatedBody": "Your ticket {{number}} status changed to {{status}}",
+    "accountApprovedTitle": "Account approved",
+    "accountApprovedBody": "Your technician account has been approved. You can now log in and start taking tickets!",
+    "accountRejectedTitle": "Account rejected",
+    "accountRejectedBody": "Your technician account application was not approved"
   }
 }

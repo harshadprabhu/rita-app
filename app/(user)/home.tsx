@@ -7,6 +7,7 @@ export default function UserHome() {
   return (
     <HomeDashboard
       showCreateButton
+      showGoldRate
       stats={[
         { label: 'Open Tickets', filters: { requester_id: requesterId, status: 'open' }, color: '#3B82F6', icon: 'ellipse-outline' },
         { label: 'In Progress', filters: { requester_id: requesterId, status: 'in_progress' }, color: '#F59E0B', icon: 'sync-outline' },

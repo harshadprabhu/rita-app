@@ -19,4 +19,6 @@ export const QUERY_KEYS = {
   analytics: (range?: string) => ['analytics', range ?? 'all'] as const,
   chatChannels: (userId: string) => ['chat-channels', userId] as const,
   chatMessages: (channelId: string) => ['chat-messages', channelId] as const,
+  goldRate: () => ['gold-rate'] as const,
+  goldRateTrend: () => ['gold-rate-trend'] as const,
 };

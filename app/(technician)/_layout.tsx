@@ -7,6 +7,8 @@ import { theme } from '../../constants/theme';
 export default function TechnicianLayout() {
   const { t } = useTranslation();
   const unreadCount = useNotificationStore((s) => s.unreadCount);
+  const unreadAnnouncementCount = useNotificationStore((s) => s.unreadAnnouncementCount);
+  const totalUnread = unreadCount + unreadAnnouncementCount;
 
   return (
     <Tabs
@@ -25,10 +27,11 @@ export default function TechnicianLayout() {
         options={{
           title: t('tabs.alerts'),
           tabBarIcon: ({ color, size }) => <Ionicons name="notifications-outline" size={size} color={color} />,
-          tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
+          tabBarBadge: totalUnread > 0 ? totalUnread : undefined,
         }}
       />
       <Tabs.Screen name="my-tickets" options={{ href: null }} />
+      <Tabs.Screen name="announcements" options={{ href: null }} />
       <Tabs.Screen name="profile" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     </Tabs>
   );

@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { Screen } from '../common/Screen';
 import { AppHeader } from '../common/AppHeader';
 import { ProfileIconButton } from '../common/ProfileIconButton';
+import { GoldRateCard } from './GoldRateCard';
 import { getTickets } from '../../lib/api/tickets';
 import { useAuthStore } from '../../stores/authStore';
 import { QUERY_KEYS } from '../../constants/queryKeys';
@@ -22,9 +23,11 @@ interface StatDef {
 interface Props {
   stats: StatDef[];
   showCreateButton?: boolean;
+  /** Store-facing roles (user/manager) see the gold rate card; admin doesn't. */
+  showGoldRate?: boolean;
 }
 
-export function HomeDashboard({ stats, showCreateButton }: Props) {
+export function HomeDashboard({ stats, showCreateButton, showGoldRate }: Props) {
   const { t } = useTranslation();
   const profile = useAuthStore((s) => s.profile);
 
@@ -38,6 +41,8 @@ export function HomeDashboard({ stats, showCreateButton }: Props) {
             <Text style={styles.greetingSubtitle}>Here's what's happening today</Text>
           </>
         )}
+
+        {showGoldRate && <GoldRateCard />}
 
         <View style={styles.statsGrid}>
           {stats.map((stat) => (

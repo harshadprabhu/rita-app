@@ -6,6 +6,7 @@ export default function ManagerHome() {
   const storeId = profile?.store_id ?? undefined;
   return (
     <HomeDashboard
+      showGoldRate
       stats={[
         { label: 'Open (Store)', filters: { store_id: storeId, status: 'open' }, color: '#3B82F6', icon: 'ellipse-outline' },
         { label: 'In Progress', filters: { store_id: storeId, status: 'in_progress' }, color: '#F59E0B', icon: 'sync-outline' },
