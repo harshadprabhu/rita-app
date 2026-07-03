@@ -1,5 +1,5 @@
 import { TicketListScreen } from '../../components/tickets/TicketListScreen';
 
 export default function TechnicianAllTickets() {
-  return <TicketListScreen title="All Tickets" filters={{}} />;
+  return <TicketListScreen title="All Tickets" filters={{}} enableFilters />;
 }
