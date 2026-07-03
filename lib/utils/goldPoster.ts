@@ -1,7 +1,8 @@
-// Generates a downloadable "Today's Gold Rates" poster (Indriya branded) entirely
-// on an HTML canvas — no external template asset needed. Ported from the AI Studio
-// issue-tracker build's procedural poster renderer. Web-only (uses the DOM canvas +
-// anchor download); guarded so native/SSR callers no-op safely.
+// Generates a downloadable "Today's Gold Rates" poster by drawing the exact
+// Indriya template image (assets/gold-rate-template.png) and overlaying only the
+// dynamic bits — today's date on the "Date:" line and each rate inside its ₹ box.
+// Web-only (uses the DOM canvas + anchor download); guarded for native/SSR.
+import { Image as RNImage } from 'react-native';
 
 export interface PosterRates {
   '24k_999': number;
@@ -9,6 +10,25 @@ export interface PosterRates {
   '22k_916': number;
   '18k_750': number;
 }
+
+// The template's native pixel size — all overlay coordinates below are in this space.
+const TPL_W = 1054;
+const TPL_H = 1492;
+const GOLD = '#f2d98a';
+
+// Resolved bundled URL for the template image (works on web with the base path).
+const TEMPLATE_URI: string | undefined =
+  RNImage.resolveAssetSource(require('../../assets/gold-rate-template.png'))?.uri;
+
+// Centre of each empty ₹ value box (x is right of the printed ₹ glyph), and the
+// baseline point for the date on the "Date: ____" line.
+const DATE_POINT = { x: 596, y: 512 };
+const RATE_POINTS = [
+  { key: '24k_999', x: 792, y: 652 },
+  { key: '24k_995', x: 792, y: 806 },
+  { key: '22k_916', x: 792, y: 960 },
+  { key: '18k_750', x: 792, y: 1113 },
+] as const;
 
 function ordinal(day: number): string {
   if (day > 3 && day < 21) return 'th';
@@ -37,178 +57,62 @@ export function ratesFromGold(rates: Record<string, number>): PosterRates | null
   return r;
 }
 
-const W = 1200;
-const H = 1600;
-const GOLD = '#f0d27b';
-
 export function isPosterSupported(): boolean {
-  return typeof document !== 'undefined' && typeof document.createElement === 'function';
+  return typeof document !== 'undefined' && typeof document.createElement === 'function' && !!TEMPLATE_URI;
 }
 
 /**
- * Render the poster with the given rates + date and trigger a PNG download.
- * @param scale render multiplier (1 = 1200x1600 digital, 2.5 = 4K print).
+ * Render the poster (exact template + overlaid date & rates) and download a PNG.
+ * @param scale render multiplier (1 = native 1054x1492; 2 = higher-res print).
  */
-export function downloadGoldRatePoster(rates: PosterRates, date = new Date(), scale = 1): void {
-  if (!isPosterSupported()) return;
+export function downloadGoldRatePoster(rates: PosterRates, date = new Date(), scale = 2): void {
+  if (!isPosterSupported() || !TEMPLATE_URI) return;
 
-  const canvas = document.createElement('canvas');
-  canvas.width = W * scale;
-  canvas.height = H * scale;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
+  const img = new window.Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = TPL_W * scale;
+    canvas.height = TPL_H * scale;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-  const rows = [
-    { label: '24K per Gram', ppt: '(999)', price: rates['24k_999'], y: 684 },
-    { label: '24K per Gram', ppt: '(995)', price: rates['24k_995'], y: 839 },
-    { label: '22K per Gram', ppt: '(916)', price: rates['22k_916'], y: 994 },
-    { label: '18K per Gram', ppt: '(750)', price: rates['18k_750'], y: 1149 },
-  ];
+    // 1. Draw the exact template as the background.
+    ctx.drawImage(img, 0, 0, TPL_W * scale, TPL_H * scale);
 
-  // 1. Deep navy background
-  ctx.fillStyle = '#0d3f66';
-  ctx.fillRect(0, 0, W * scale, H * scale);
-
-  // 2. indriya.com top-left
-  ctx.save();
-  ctx.fillStyle = 'rgba(245, 223, 163, 0.65)';
-  ctx.font = `600 ${Math.round(20 * scale)}px "Playfair Display", Georgia, serif`;
-  ctx.textAlign = 'left';
-  ctx.fillText('indriya.com', 70 * scale, 70 * scale);
-  ctx.restore();
-
-  // 3. Deer + INDRIYA + ADITYA BIRLA | JEWELLERY
-  ctx.save();
-  ctx.translate((600 - 250) * scale, (225 - 100) * scale);
-  ctx.font = `${Math.round(90 * scale)}px sans-serif`;
-  ctx.fillText('🦌', 0, 75 * scale); // 🦌
-  ctx.textAlign = 'left';
-  ctx.fillStyle = GOLD;
-  ctx.font = `bold ${Math.round(76 * scale)}px "Playfair Display", Cinzel, Georgia, serif`;
-  ctx.fillText('INDRIYA', 140 * scale, 30 * scale);
-  ctx.strokeStyle = 'rgba(240, 210, 123, 0.4)';
-  ctx.lineWidth = Math.round(1.2 * scale);
-  ctx.beginPath();
-  ctx.moveTo(145 * scale, 50 * scale);
-  ctx.lineTo(545 * scale, 50 * scale);
-  ctx.stroke();
-  ctx.font = `bold ${Math.round(20.5 * scale)}px Poppins, Inter, sans-serif`;
-  ctx.fillText('ADITYA BIRLA  |  JEWELLERY', 140 * scale, 88 * scale);
-  ctx.restore();
-
-  // 4. Today's Gold Rates* header + divider
-  ctx.save();
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#f5dfa3';
-  ctx.font = `italic bold ${Math.round(52 * scale)}px "Playfair Display", Georgia, serif`;
-  ctx.fillText("Today's Gold Rates*", 600 * scale, 395 * scale);
-  ctx.strokeStyle = GOLD;
-  ctx.lineWidth = Math.round(1.5 * scale);
-  ctx.beginPath();
-  ctx.moveTo(400 * scale, 437 * scale);
-  ctx.lineTo(575 * scale, 437 * scale);
-  ctx.moveTo(625 * scale, 437 * scale);
-  ctx.lineTo(800 * scale, 437 * scale);
-  ctx.stroke();
-  ctx.font = `${Math.round(18 * scale)}px sans-serif`;
-  ctx.fillText('🦌', 600 * scale, 442 * scale);
-  ctx.restore();
-
-  // 5. Date centered + underline
-  ctx.save();
-  ctx.textAlign = 'center';
-  ctx.fillStyle = GOLD;
-  ctx.font = `bold ${Math.round(30 * scale)}px Outfit, Poppins, Inter, sans-serif`;
-  ctx.fillText(formatPosterDate(date), 600 * scale, 512 * scale);
-  ctx.strokeStyle = GOLD;
-  ctx.lineWidth = Math.round(2.5 * scale);
-  ctx.beginPath();
-  ctx.moveTo(480 * scale, 528 * scale);
-  ctx.lineTo(720 * scale, 528 * scale);
-  ctx.stroke();
-  ctx.restore();
-
-  // 6. Four rate rows: gold badge + ₹ outline box + value + star
-  rows.forEach((row) => {
-    const radius = 18 * scale;
-
-    // Gold badge (left)
-    const bx = 160 * scale, by = (row.y - 55) * scale, bw = 390 * scale, bh = 110 * scale;
-    const grad = ctx.createLinearGradient(bx, by, bx + bw, by);
-    grad.addColorStop(0, '#cfab51');
-    grad.addColorStop(0.5, '#f1df96');
-    grad.addColorStop(1, '#b08d32');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, radius); else ctx.rect(bx, by, bw, bh);
-    ctx.fill();
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#1e1401';
-    ctx.font = `bold ${Math.round(24 * scale)}px Poppins, Inter, sans-serif`;
-    ctx.fillText(row.label, bx + bw / 2, by + 48 * scale);
-    ctx.font = `bold ${Math.round(16.5 * scale)}px "JetBrains Mono", monospace`;
-    ctx.fillText(row.ppt, bx + bw / 2, by + 82 * scale);
-
-    // Price outline box (right)
-    const rx = 580 * scale, ry = (row.y - 55) * scale, rw = 460 * scale, rh = 110 * scale;
-    ctx.strokeStyle = GOLD;
-    ctx.lineWidth = Math.round(2 * scale);
-    ctx.beginPath();
-    if (ctx.roundRect) ctx.roundRect(rx, ry, rw, rh, radius); else ctx.rect(rx, ry, rw, rh);
-    ctx.stroke();
-
-    // ₹ symbol
-    ctx.save();
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
     ctx.fillStyle = GOLD;
-    ctx.font = `bold ${Math.round(44 * scale)}px Poppins, Inter, sans-serif`;
-    ctx.fillText('₹', rx + 42 * scale, ry + rh / 2);
-    // Rate value, centered in the box
-    ctx.textAlign = 'center';
-    ctx.font = `700 ${Math.round(50 * scale)}px Outfit, Poppins, Inter, sans-serif`;
-    ctx.fillText(`${row.price.toLocaleString('en-IN')}/-`, (835 + 30) * scale, ry + rh / 2);
-    ctx.restore();
 
-    // Corner star
+    // 2. Date on the "Date:" line.
     ctx.save();
-    const sx = 1040 * scale, sy = ry;
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(sx, sy, 2 * scale, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = GOLD;
-    ctx.lineWidth = Math.round(1 * scale);
-    ctx.beginPath();
-    ctx.moveTo(sx, sy - 8 * scale); ctx.lineTo(sx, sy + 8 * scale);
-    ctx.moveTo(sx - 8 * scale, sy); ctx.lineTo(sx + 8 * scale, sy);
-    ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'alphabetic';
+    ctx.font = `600 ${Math.round(30 * scale)}px Georgia, "Playfair Display", serif`;
+    ctx.fillText(formatPosterDate(date), DATE_POINT.x * scale, DATE_POINT.y * scale);
     ctx.restore();
-  });
 
-  // 7. Tagline + T&C
-  ctx.save();
-  ctx.textAlign = 'center';
-  ctx.fillStyle = 'rgba(240, 210, 123, 0.7)';
-  ctx.font = `italic ${Math.round(22 * scale)}px "Playfair Display", Georgia, serif`;
-  ctx.fillText('Purity. Trust. Timeless.', 600 * scale, 1320 * scale);
-  ctx.font = `${Math.round(18 * scale)}px Poppins, Inter, sans-serif`;
-  ctx.fillText('Indriya — Where every sparkle tells a story.', 600 * scale, 1352 * scale);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = 'rgba(212, 175, 55, 0.5)';
-  ctx.font = `bold ${Math.round(18 * scale)}px Poppins, Inter, sans-serif`;
-  ctx.fillText('*T&C Apply.', (W - 80) * scale, (H - 64) * scale);
-  ctx.restore();
+    // 3. Each rate value, centred in its ₹ box (whole rupees).
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `700 ${Math.round(46 * scale)}px "Outfit", "Poppins", Arial, sans-serif`;
+    for (const pt of RATE_POINTS) {
+      const value = rates[pt.key as keyof PosterRates];
+      if (!(value > 0)) continue;
+      ctx.fillText(Math.round(value).toLocaleString('en-IN'), pt.x * scale, pt.y * scale);
+    }
+    ctx.restore();
 
-  // Download
-  try {
-    const link = document.createElement('a');
-    link.download = `indriya_gold_rates_${date.toISOString().slice(0, 10)}.png`;
-    link.href = canvas.toDataURL('image/png');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  } catch {
-    // Export can throw if the canvas is tainted; nothing we draw taints it, so this is defensive.
-  }
+    // 4. Download.
+    try {
+      const link = document.createElement('a');
+      link.download = `indriya_gold_rates_${date.toISOString().slice(0, 10)}.png`;
+      link.href = canvas.toDataURL('image/png');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch {
+      // Defensive: same-origin asset shouldn't taint the canvas.
+    }
+  };
+  img.src = TEMPLATE_URI;
 }
