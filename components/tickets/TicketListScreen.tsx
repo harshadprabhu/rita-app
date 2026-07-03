@@ -12,6 +12,7 @@ import { EmptyState } from '../common/EmptyState';
 import { LoadingOverlay } from '../common/LoadingOverlay';
 import { TicketCard } from './TicketCard';
 import { getTickets } from '../../lib/api/tickets';
+import { exportTicketsToSpreadsheet } from '../../lib/utils/export';
 import { useAuthStore } from '../../stores/authStore';
 import { QUERY_KEYS } from '../../constants/queryKeys';
 import { ALL_PRIORITIES } from '../../constants/ticket';
@@ -98,9 +99,19 @@ export function TicketListScreen({ title, filters, showCreateButton, enableFilte
         ))}
       </ScrollView>
 
-      <Text style={styles.count}>
-        {filteredTickets.length} of {(tickets ?? []).length} tickets
-      </Text>
+      <View style={styles.countRow}>
+        <Text style={styles.count}>
+          {filteredTickets.length} of {(tickets ?? []).length} tickets
+        </Text>
+        <TouchableOpacity
+          style={styles.exportBtn}
+          onPress={() => exportTicketsToSpreadsheet(filteredTickets).catch(() => null)}
+          disabled={filteredTickets.length === 0}
+        >
+          <Ionicons name="download-outline" size={13} color={theme.colors.brand} />
+          <Text style={styles.exportText}>Export</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -166,5 +177,12 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
   chipText: { fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary },
   chipTextActive: { color: '#fff' },
-  count: { fontSize: 11, color: theme.colors.textTertiary, fontWeight: '600', paddingTop: 2 },
+  countRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 2 },
+  count: { fontSize: 11, color: theme.colors.textTertiary, fontWeight: '600' },
+  exportBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: theme.colors.brand + '14', borderWidth: 1, borderColor: theme.colors.brand + '33',
+    borderRadius: theme.radius.full, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs,
+  },
+  exportText: { fontSize: 11, fontWeight: '800', color: theme.colors.brand },
 });

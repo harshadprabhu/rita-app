@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
+  KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Image,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -77,10 +77,9 @@ export default function Login() {
             {/* Layered translucent circles simulate depth/glow without a gradient dependency */}
             <View style={styles.heroGlowLg} pointerEvents="none" />
             <View style={styles.heroGlowSm} pointerEvents="none" />
-            <View style={[styles.logoContainer, theme.shadows.lg]}>
-              <MaterialCommunityIcons name="ticket-confirmation-outline" size={40} color="#fff" />
+            <View style={[styles.logoCard, theme.shadows.lg]}>
+              <Image source={require('../../assets/rita-logo.png')} style={styles.logoImage} resizeMode="contain" />
             </View>
-            <Text style={styles.brand}>RITA</Text>
             <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
           </View>
 
@@ -238,13 +237,13 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: -40, left: -30, width: 140, height: 140,
     borderRadius: 70, backgroundColor: theme.colors.accent + '1A',
   },
-  logoContainer: {
-    width: 84, height: 84, borderRadius: theme.radius.xl,
-    backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center', justifyContent: 'center', marginBottom: theme.spacing.md,
+  logoCard: {
+    backgroundColor: '#fff', borderRadius: theme.radius.xl,
+    paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md,
+    marginBottom: theme.spacing.md, alignItems: 'center', justifyContent: 'center',
   },
-  brand: { color: '#fff', fontSize: 30, fontWeight: '800', letterSpacing: 1.2 },
-  subtitle: { color: 'rgba(255,255,255,0.65)', fontSize: 14, marginTop: theme.spacing.xs, fontWeight: '500' },
+  logoImage: { width: 200, height: 120 },
+  subtitle: { color: 'rgba(255,255,255,0.75)', fontSize: 14, marginTop: theme.spacing.xs, fontWeight: '600' },
   card: {
     flex: 1, backgroundColor: theme.colors.surface,
     borderTopLeftRadius: theme.radius.xxl, borderTopRightRadius: theme.radius.xxl,
