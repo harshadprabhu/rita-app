@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useGoldRate, useGoldRateTrend } from '../../hooks/useGoldRate';
 import { timeAgo } from '../../lib/utils/date';
+import { downloadGoldRatePoster, ratesFromGold, isPosterSupported } from '../../lib/utils/goldPoster';
 import { theme } from '../../constants/theme';
 import { GoldRateTrendChart } from './GoldRateTrendChart';
 
@@ -80,6 +81,19 @@ export function GoldRateCard() {
           <Text style={styles.cardTitle}>{t('goldRate.title')}</Text>
         </View>
         <View style={styles.headerRight}>
+          {isPosterSupported() && data && (
+            <TouchableOpacity
+              onPress={() => {
+                const posterRates = ratesFromGold(data.rates);
+                if (posterRates) downloadGoldRatePoster(posterRates, new Date(data.updated_at));
+              }}
+              style={styles.refreshBtn}
+              hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+              accessibilityLabel="Download gold rate poster"
+            >
+              <Ionicons name="download-outline" size={18} color={theme.colors.accent} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             onPress={() => refetch()}
             disabled={isRefetching}
