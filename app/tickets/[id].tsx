@@ -11,11 +11,12 @@ import { PriorityBadge } from '../../components/common/PriorityBadge';
 import { AttachmentGrid } from '../../components/tickets/AttachmentGrid';
 import { CommentBubble } from '../../components/tickets/CommentBubble';
 import { CommentInput } from '../../components/tickets/CommentInput';
-import { getTicketById, updateTicket, claimTicket } from '../../lib/api/tickets';
+import { getTicketById, updateTicket, claimTicket, reassignTicket } from '../../lib/api/tickets';
+import { getTechnicians } from '../../lib/api/profiles';
 import { getComments, addComment } from '../../lib/api/comments';
 import { getTicketAuditLog } from '../../lib/api/auditLog';
 import { useAuthStore } from '../../stores/authStore';
-import { canAssignTicket, canChangeStatus, canSeeInternalComments } from '../../lib/auth/permissions';
+import { canAssignTicket, canChangeStatus, canSeeInternalComments, canReassignTicket } from '../../lib/auth/permissions';
 import { ALL_LIFECYCLES, LIFECYCLE_TO_STATUS } from '../../constants/ticket';
 import { QUERY_KEYS } from '../../constants/queryKeys';
 import { timeAgo } from '../../lib/utils/date';
@@ -54,9 +55,28 @@ export default function TicketDetail() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ticket(id) }),
   });
 
+  const canAssign = !!profile && canAssignTicket(profile);
+  const canReassign = !!profile && canReassignTicket(profile);
+  const [showTechPicker, setShowTechPicker] = useState(false);
+
+  const { data: technicians } = useQuery({
+    queryKey: QUERY_KEYS.technicians(),
+    queryFn: getTechnicians,
+    enabled: canReassign,
+  });
+
+  const reassign = useMutation({
+    mutationFn: (technicianId: string) => reassignTicket(id, technicianId, profile!.id),
+    onSuccess: () => {
+      setShowTechPicker(false);
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ticket(id) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ticketAuditLog(id) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tickets() });
+    },
+  });
+
   if (isLoading || !ticket || !profile) return <LoadingOverlay />;
 
-  const canAssign = canAssignTicket(profile);
   const canStatus = canChangeStatus(profile);
   const canInternal = canSeeInternalComments(profile);
   const visibleComments = (comments ?? []).filter((c) => !c.is_internal || canInternal);
@@ -95,6 +115,50 @@ export default function TicketDetail() {
             <TouchableOpacity style={styles.claimBtn} onPress={() => claim.mutate()} disabled={claim.isPending}>
               <Text style={styles.claimBtnText}>Claim this ticket</Text>
             </TouchableOpacity>
+          )}
+
+          {canReassign && (
+            <>
+              <Text style={styles.sectionLabel}>Assignment</Text>
+              <View style={styles.assignBox}>
+                <View style={styles.assignRow}>
+                  <Text style={styles.assignCurrent} numberOfLines={1}>
+                    {ticket.assignee?.display_name ?? 'Unassigned'}
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.reassignBtn}
+                    onPress={() => setShowTechPicker((v) => !v)}
+                  >
+                    <Text style={styles.reassignBtnText}>{ticket.assignee_id ? 'Reassign' : 'Assign'}</Text>
+                  </TouchableOpacity>
+                </View>
+                {showTechPicker && (
+                  <View style={styles.techList}>
+                    {(technicians ?? []).length === 0 ? (
+                      <Text style={styles.techEmpty}>No approved technicians available.</Text>
+                    ) : (
+                      (technicians ?? []).map((tech) => {
+                        const isCurrent = tech.id === ticket.assignee_id;
+                        return (
+                          <TouchableOpacity
+                            key={tech.id}
+                            style={[styles.techRow, isCurrent && styles.techRowActive]}
+                            onPress={() => !isCurrent && reassign.mutate(tech.id)}
+                            disabled={reassign.isPending || isCurrent}
+                          >
+                            <View style={{ flex: 1 }}>
+                              <Text style={styles.techName}>{tech.display_name}</Text>
+                              <Text style={styles.techDept}>{tech.designation ?? 'Technician'}</Text>
+                            </View>
+                            {isCurrent && <Text style={styles.techCurrentTag}>Current</Text>}
+                          </TouchableOpacity>
+                        );
+                      })
+                    )}
+                  </View>
+                )}
+              </View>
+            </>
           )}
 
           {canStatus && (
@@ -161,6 +225,18 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary, letterSpacing: 0.8, marginTop: theme.spacing.lg, marginBottom: theme.spacing.sm },
   claimBtn: { backgroundColor: theme.colors.brand, borderRadius: theme.radius.md, paddingVertical: theme.spacing.md, alignItems: 'center', marginTop: theme.spacing.lg },
   claimBtnText: { color: '#fff', fontWeight: '700' },
+  assignBox: { backgroundColor: theme.colors.surface2, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md, padding: theme.spacing.md },
+  assignRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: theme.spacing.md },
+  assignCurrent: { flex: 1, fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary },
+  reassignBtn: { backgroundColor: theme.colors.brand, borderRadius: theme.radius.sm, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs + 2 },
+  reassignBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  techList: { marginTop: theme.spacing.md, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: theme.spacing.sm, gap: theme.spacing.xs },
+  techEmpty: { fontSize: 12, color: theme.colors.textTertiary, fontStyle: 'italic', paddingVertical: theme.spacing.sm },
+  techRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.sm, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm },
+  techRowActive: { borderColor: theme.colors.brand, backgroundColor: theme.colors.brand + '10' },
+  techName: { fontSize: 13, fontWeight: '700', color: theme.colors.textPrimary },
+  techDept: { fontSize: 11, color: theme.colors.textTertiary, marginTop: 1 },
+  techCurrentTag: { fontSize: 10, fontWeight: '800', color: theme.colors.brand, textTransform: 'uppercase', letterSpacing: 0.5 },
   lifecycleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.xs },
   lifecyclePill: { borderWidth: 1.5, borderColor: theme.colors.border, borderRadius: theme.radius.sm, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs },
   lifecyclePillActive: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },

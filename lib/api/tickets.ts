@@ -117,6 +117,34 @@ export async function claimTicket(ticketId: string, technicianId: string): Promi
   return data as DbTicket;
 }
 
+/**
+ * Admin/manager (re)assignment to a specific technician. Unlike claimTicket this
+ * overwrites any existing assignee, moves the ticket into active work, and logs
+ * the change with the acting admin as the actor for a clean audit trail.
+ */
+export async function reassignTicket(
+  ticketId: string,
+  technicianId: string,
+  actorId: string,
+): Promise<DbTicket> {
+  const before = await getTicketById(ticketId).catch(() => null);
+  const { data, error } = await supabase
+    .from('tickets')
+    .update({ assignee_id: technicianId, lifecycle: 'being_worked_on' satisfies TicketLifecycle, status: 'in_progress' satisfies TicketStatus })
+    .eq('id', ticketId)
+    .select()
+    .single();
+  if (error) throw error;
+  await logTicketAction(
+    ticketId,
+    actorId,
+    'reassigned',
+    before?.assignee_id ?? 'unassigned',
+    technicianId,
+  );
+  return data as DbTicket;
+}
+
 function getMimeType(fileName: string, fileType: 'image' | 'video' | 'document'): string {
   const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
   if (fileType === 'image') {
