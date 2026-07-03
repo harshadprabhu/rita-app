@@ -145,6 +145,11 @@ export async function reassignTicket(
   return data as DbTicket;
 }
 
+export async function deleteTicket(ticketId: string): Promise<void> {
+  const { error } = await supabase.from('tickets').delete().eq('id', ticketId);
+  if (error) throw error;
+}
+
 function getMimeType(fileName: string, fileType: 'image' | 'video' | 'document'): string {
   const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
   if (fileType === 'image') {
