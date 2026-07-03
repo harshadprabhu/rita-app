@@ -16,9 +16,19 @@ const TPL_W = 1054;
 const TPL_H = 1492;
 const GOLD = '#f2d98a';
 
-// Resolved bundled URL for the template image (works on web with the base path).
-const TEMPLATE_URI: string | undefined =
-  RNImage.resolveAssetSource(require('../../assets/gold-rate-template.png'))?.uri;
+// Resolve the bundled template image URL lazily and defensively — doing this at
+// module scope can throw on some web/SSR loads and take the whole app down.
+let _templateUri: string | undefined | null = null; // null = not resolved yet
+function getTemplateUri(): string | undefined {
+  if (_templateUri === null) {
+    try {
+      _templateUri = RNImage.resolveAssetSource(require('../../assets/gold-rate-template.png'))?.uri;
+    } catch {
+      _templateUri = undefined;
+    }
+  }
+  return _templateUri ?? undefined;
+}
 
 // Centre of each empty ₹ value box (x is right of the printed ₹ glyph), and the
 // baseline point for the date on the "Date: ____" line.
@@ -58,7 +68,7 @@ export function ratesFromGold(rates: Record<string, number>): PosterRates | null
 }
 
 export function isPosterSupported(): boolean {
-  return typeof document !== 'undefined' && typeof document.createElement === 'function' && !!TEMPLATE_URI;
+  return typeof document !== 'undefined' && typeof document.createElement === 'function' && !!getTemplateUri();
 }
 
 /**
@@ -66,7 +76,8 @@ export function isPosterSupported(): boolean {
  * @param scale render multiplier (1 = native 1054x1492; 2 = higher-res print).
  */
 export function downloadGoldRatePoster(rates: PosterRates, date = new Date(), scale = 2): void {
-  if (!isPosterSupported() || !TEMPLATE_URI) return;
+  const templateUri = getTemplateUri();
+  if (!isPosterSupported() || !templateUri) return;
 
   const img = new window.Image();
   img.crossOrigin = 'anonymous';
@@ -114,5 +125,5 @@ export function downloadGoldRatePoster(rates: PosterRates, date = new Date(), sc
       // Defensive: same-origin asset shouldn't taint the canvas.
     }
   };
-  img.src = TEMPLATE_URI;
+  img.src = templateUri;
 }

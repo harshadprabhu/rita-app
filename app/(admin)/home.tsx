@@ -3,6 +3,7 @@ import { HomeDashboard } from '../../components/home/HomeDashboard';
 export default function AdminHome() {
   return (
     <HomeDashboard
+      showGoldRate
       stats={[
         { label: 'Open', filters: { status: 'open' }, color: '#3B82F6', icon: 'ellipse-outline' },
         { label: 'In Progress', filters: { status: 'in_progress' }, color: '#F59E0B', icon: 'sync-outline' },
