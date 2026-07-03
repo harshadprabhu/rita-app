@@ -143,8 +143,8 @@ export function parseChatTicket(message: string): ParsedChatTicket {
   };
 }
 
-/** Store roles that may auto-raise tickets from chat. Technicians/admins are
- *  exempt to avoid triage loops (per the parser spec). */
+/** Roles that may auto-raise tickets from chat. Only technicians are exempt, to
+ *  avoid triage loops (they work tickets rather than report them). */
 export function canRaiseChatTicket(role: string | undefined | null): boolean {
-  return role === 'user' || role === 'manager';
+  return role === 'user' || role === 'manager' || role === 'admin';
 }

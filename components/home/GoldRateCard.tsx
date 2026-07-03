@@ -58,9 +58,6 @@ export function GoldRateCard() {
       })
     : [];
 
-  // Headline rate for the collapsed view: 24K (999), falling back to the first available column.
-  const headline = columns.find((c) => c.purity === '24KT 999') ?? columns[0];
-
   const toggle = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpanded((e) => !e);
@@ -107,37 +104,21 @@ export function GoldRateCard() {
       {isLoading ? (
         <ActivityIndicator color={theme.colors.accent} style={{ marginVertical: theme.spacing.xl }} />
       ) : columns.length > 0 ? (
-        !expanded ? (
-          /* Collapsed: headline 24K (999) only */
-          headline ? (
-            <View style={styles.headlineRow}>
-              <Text style={styles.headlineLabel}>{headline.label}</Text>
-              <Text style={styles.headlineValue}>
-                {RUPEE}{headline.rate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </Text>
-            </View>
-          ) : null
-        ) : (
-          /* Expanded: all rates + trend graph + footer */
-          <>
-            <View style={styles.ratesGrid}>
-              {columns.map((col) => (
-                <RateTile
-                  key={col.purity}
-                  karat={col.label}
-                  rate={col.rate}
-                />
-              ))}
-            </View>
-            <GoldRateTrendChart points={trend ?? []} />
-            <View style={styles.footer}>
-              <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.35)" />
-              <Text style={styles.updatedText}>
-                {t('goldRate.updated', { time: timeAgo(data!.updated_at) })}
-              </Text>
-            </View>
-          </>
-        )
+        /* All rates always visible; chevron expands the 7-day trend chart. */
+        <>
+          <View style={styles.ratesGrid}>
+            {columns.map((col) => (
+              <RateTile key={col.purity} karat={col.label} rate={col.rate} />
+            ))}
+          </View>
+          {expanded && <GoldRateTrendChart points={trend ?? []} />}
+          <View style={styles.footer}>
+            <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.35)" />
+            <Text style={styles.updatedText}>
+              {t('goldRate.updated', { time: timeAgo(data!.updated_at) })}
+            </Text>
+          </View>
+        </>
       ) : (
         <View style={styles.noRateWrap}>
           <Ionicons name="information-circle-outline" size={20} color={theme.colors.accent} />

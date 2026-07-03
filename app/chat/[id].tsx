@@ -8,7 +8,8 @@ import { Screen } from '../../components/common/Screen';
 import { AppHeader } from '../../components/common/AppHeader';
 import { getChannel, getMessages, sendMessage, postBotReply } from '../../lib/api/chat';
 import { subscribeToChannelMessages } from '../../lib/realtime/chatChannel';
-import { createTicket } from '../../lib/api/tickets';
+import { createTicket, updateTicket } from '../../lib/api/tickets';
+import { getTechnicians } from '../../lib/api/profiles';
 import { shouldCreateTicket, parseChatTicket, canRaiseChatTicket } from '../../lib/utils/chatTicketParser';
 import { useAuthStore } from '../../stores/authStore';
 import { PRESET_SCENARIOS } from '../../constants/presetScenarios';
@@ -50,12 +51,13 @@ export default function ChatThread() {
         // Technicians/admins are exempt from raising tickets (avoids triage loops),
         // and purely conversational messages don't create tickets.
         if (!canRaiseChatTicket(profile.role)) {
-          await postBotReply(id, "Thanks for the message. Technician and admin accounts don't raise tickets here — this channel logs issues reported by store staff.");
+          await postBotReply(id, "Thanks for the message. Technician accounts don't raise tickets here — this channel logs issues reported by store staff.");
         } else if (!shouldCreateTicket(body)) {
           await postBotReply(id, "Thanks! I didn't detect an issue to log. If you have a problem to report, describe it (e.g. \"POS not printing\" or \"price mismatch on SKU\") and I'll raise a ticket.");
         } else if (!profile.store_id) {
           await postBotReply(id, "I couldn't log a ticket because your account has no store assigned. Please ask an admin to set your Store ID.");
         } else {
+          // RITA AI runs the local parser to auto-triage: category + priority.
           const { category, priority, summary } = parseChatTicket(body);
           const ticket = await createTicket({
             requester_id: profile.id,
@@ -67,10 +69,31 @@ export default function ChatThread() {
             subcategory: null,
             source: 'chat_bot',
           });
+
+          // RITA AI auto-assigns to an available technician so the ticket doesn't
+          // sit unassigned. Falls back to the queue if none are available.
+          let assignedName: string | null = null;
+          try {
+            const techs = await getTechnicians();
+            if (techs.length > 0) {
+              const tech = techs[0];
+              await updateTicket(ticket.id, {
+                assignee_id: tech.id,
+                lifecycle: 'being_worked_on',
+                status: 'in_progress',
+              });
+              assignedName = tech.display_name;
+            }
+          } catch {
+            // Assignment is best-effort; the ticket is already logged.
+          }
+
           await postBotReply(
             id,
-            `Got it — I've logged ticket ${ticket.ticket_number} ` +
-              `(${t(`category.${category}`)} · ${priority} priority). A technician will follow up shortly.`,
+            `RITA AI triaged this as ${t(`category.${category}`)} · ${priority} priority and logged ticket ${ticket.ticket_number}. ` +
+              (assignedName
+                ? `Auto-assigned to ${assignedName}, who will follow up shortly.`
+                : `It's queued for the next available technician.`),
             ticket.id,
           );
         }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../common/Screen';
@@ -16,8 +16,19 @@ export function NotificationsScreen() {
   const { t } = useTranslation();
   const profile = useAuthStore((s) => s.profile);
   const userId = profile?.id ?? '';
-  const { feed, isLoading, isRefetching, refetch } = useUnifiedNotifications(userId, profile?.store_id ?? null);
-  const { markOne } = useMarkRead(userId);
+  const {
+    feed, isLoading, isRefetching, refetch,
+    unreadTicketCount, unreadAnnouncementCount, markAllBroadcastsRead,
+  } = useUnifiedNotifications(userId, profile?.store_id ?? null);
+  const { markOne, markAll } = useMarkRead(userId);
+
+  // Opening the Alerts inbox clears the unread badge: mark ticket alerts and
+  // announcements read once they've been surfaced here.
+  useEffect(() => {
+    if (!userId) return;
+    if (unreadTicketCount > 0) markAll.mutate();
+    if (unreadAnnouncementCount > 0) markAllBroadcastsRead();
+  }, [userId, unreadTicketCount, unreadAnnouncementCount]);
 
   return (
     <Screen edges={['top', 'left', 'right']}>
