@@ -147,16 +147,32 @@ async function fetchD365Rates(
 ): Promise<D365Item[]> {
   // --- Primary: OData entity ---
   try {
+    // EntryDate is a datetime stamped at noon (e.g. 2026-07-03T12:00:00Z), so an
+    // `eq <date>` match fails — filter by a [today, tomorrow) UTC range instead.
+    // Warehouse is filtered client-side (the working query omits it), and the
+    // entity returns many rows per purity across the day, so keep the latest.
+    const start = `${dateISO}T00:00:00Z`;
+    const next = new Date(`${dateISO}T00:00:00Z`);
+    next.setUTCDate(next.getUTCDate() + 1);
+    const end = `${next.toISOString().slice(0, 10)}T00:00:00Z`;
     const filter =
       `RateType eq Microsoft.Dynamics.DataEntities.PwC_MetalRateType'Sale'` +
       ` and IsRetail eq Microsoft.Dynamics.DataEntities.NoYes'Yes'` +
-      ` and EntryDate eq ${dateISO}` +
-      ` and Warehouse eq '${cfg.warehouse}'`;
-    const url = `${cfg.resourceUrl}/data/C_JISchemeAppMetalRate?$filter=${encodeURIComponent(filter)}`;
+      ` and EntryDate ge ${start} and EntryDate lt ${end}`;
+    const url = `${cfg.resourceUrl}/data/C_JISchemeAppMetalRate?$top=1000&$filter=${encodeURIComponent(filter)}`;
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) {
       const { value } = await res.json();
-      const items = ((value as D365Item[]) ?? []).filter((i) => i.Metal === 'Gold' && i.Rate > 0);
+      const rows = (value ?? []) as Array<{ Metal: string; Purity: string; Rate: number; Warehouse?: string; EntryTime?: number }>;
+      const latest = new Map<string, { rate: number; t: number }>();
+      for (const r of rows) {
+        if (r.Metal !== 'Gold' || !(r.Rate > 0)) continue;
+        if (cfg.warehouse && r.Warehouse && r.Warehouse !== cfg.warehouse) continue;
+        const t = r.EntryTime ?? 0;
+        const ex = latest.get(r.Purity);
+        if (!ex || t >= ex.t) latest.set(r.Purity, { rate: r.Rate, t });
+      }
+      const items: D365Item[] = [...latest].map(([Purity, v]) => ({ Metal: 'Gold', Purity, Rate: v.rate }));
       if (items.length) return items;
       console.warn('[sync-gold-rate] OData entity returned no gold rows; trying getMetalRate');
     } else {
