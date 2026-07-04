@@ -1,0 +1,253 @@
+{
+  "common": {
+    "signOut": "ਸਾਈਨ ਆਊਟ",
+    "cancel": "ਰੱਦ ਕਰੋ",
+    "save": "ਸੰਭਾਲੋ",
+    "retry": "ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ",
+    "loading": "ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ...",
+    "all": "ਸਾਰੇ",
+    "submit": "ਜਮ੍ਹਾਂ ਕਰੋ",
+    "send": "ਭੇਜੋ",
+    "clearAll": "ਸਭ ਸਾਫ਼ ਕਰੋ"
+  },
+  "auth": {
+    "subtitle": "ਰਿਟੇਲ ਇਸ਼ੂ ਟ੍ਰੈਕਿੰਗ AI · Indriya",
+    "emailLabel": "ਈਮੇਲ",
+    "passwordLabel": "ਪਾਸਵਰਡ",
+    "otpLabel": "OTP ਕੋਡ",
+    "signIn": "ਸਾਈਨ ਇਨ",
+    "signInMicrosoft": "Microsoft ਨਾਲ ਸਾਈਨ ਇਨ",
+    "or": "ਜਾਂ",
+    "signInWithPassword": "ਪਾਸਵਰਡ ਨਾਲ ਸਾਈਨ ਇਨ",
+    "signInWithOtp": "OTP ਨਾਲ ਸਾਈਨ ਇਨ",
+    "sendOtp": "OTP ਭੇਜੋ",
+    "verifyOtp": "ਪੁਸ਼ਟੀ ਕਰੋ ਅਤੇ ਸਾਈਨ ਇਨ ਕਰੋ",
+    "forgotPasswordLink": "ਪਾਸਵਰਡ ਭੁੱਲ ਗਏ?",
+    "register": "ਖਾਤਾ ਬਣਾਓ",
+    "invalidEmail": "ਇੱਕ ਵੈਧ ਈਮੇਲ ਪਤਾ ਦਰਜ ਕਰੋ",
+    "passwordRequired": "ਪਾਸਵਰਡ ਲੋੜੀਂਦਾ ਹੈ",
+    "otpRequired": "ਅਸੀਂ ਭੇਜਿਆ ਕੋਡ ਦਰਜ ਕਰੋ"
+  },
+  "onboarding": {
+    "greeting": "ਜੀ ਆਇਆਂ ਨੂੰ, {{name}}",
+    "selectStorePrompt": "ਜਾਰੀ ਰੱਖਣ ਲਈ ਆਪਣਾ ਸਟੋਰ ਚੁਣੋ",
+    "searchPlaceholder": "ਸਟੋਰ ਦਾ ਨਾਮ, ਕੋਡ ਜਾਂ ਸ਼ਹਿਰ ਦੁਆਰਾ ਖੋਜੋ",
+    "noStores": "ਕੋਈ ਸਟੋਰ ਨਹੀਂ ਮਿਲਿਆ",
+    "continue": "ਜਾਰੀ ਰੱਖੋ",
+    "technicianPrompt": "ਕੀ ਤੁਸੀਂ IT ਸਹਾਇਤਾ ਸਟਾਫ ਹੋ?",
+    "registerTechnician": "ਤਕਨੀਸ਼ੀਅਨ ਵਜੋਂ ਰਜਿਸਟਰ ਕਰੋ",
+    "confirmTitle": "ਤਕਨੀਸ਼ੀਅਨ ਵਜੋਂ ਰਜਿਸਟਰ ਕਰਨਾ ਹੈ?",
+    "confirmBody": "ਤੁਹਾਡਾ ਖਾਤਾ ਮਨਜ਼ੂਰੀ ਲਈ ਐਡਮਿਨ ਨੂੰ ਭੇਜਿਆ ਜਾਵੇਗਾ। ਜਦੋਂ ਤੱਕ ਐਡਮਿਨ ਮਨਜ਼ੂਰ ਨਹੀਂ ਕਰਦਾ, ਤੁਸੀਂ ਐਪ ਵਰਤ ਨਹੀਂ ਸਕੋਗੇ।",
+    "confirmCta": "ਮਨਜ਼ੂਰੀ ਲਈ ਜਮ੍ਹਾਂ ਕਰੋ",
+    "cancel": "ਰੱਦ ਕਰੋ"
+  },
+  "register": {
+    "title": "ਆਪਣਾ RITA ਖਾਤਾ ਬਣਾਓ",
+    "firstName": "ਪਹਿਲਾ ਨਾਮ",
+    "lastName": "ਆਖਰੀ ਨਾਮ",
+    "mobile": "ਮੋਬਾਈਲ ਫ਼ੋਨ",
+    "storeId": "ਸਟੋਰ ID (ਜਿਵੇਂ ST-5501)",
+    "storeName": "ਸਟੋਰ ਦਾ ਨਾਮ",
+    "storeLocation": "ਸਟੋਰ ਦੀ ਥਾਂ",
+    "email": "ਈਮੇਲ",
+    "password": "ਪਾਸਵਰਡ",
+    "submit": "ਰਜਿਸਟਰ ਕਰੋ"
+  },
+  "pendingApproval": {
+    "title": "ਮਨਜ਼ੂਰੀ ਬਾਕੀ ਹੈ",
+    "body": "ਤੁਹਾਡਾ ਤਕਨੀਸ਼ੀਅਨ ਖਾਤਾ ਐਡਮਿਨ ਮਨਜ਼ੂਰੀ ਦੀ ਉਡੀਕ ਵਿੱਚ ਹੈ। ਸਮੀਖਿਆ ਹੁੰਦੇ ਹੀ ਤੁਹਾਨੂੰ ਪਹੁੰਚ ਮਿਲ ਜਾਵੇਗੀ।"
+  },
+  "time": {
+    "secondsAgo": "{{n}} ਸਕਿੰਟ ਪਹਿਲਾਂ",
+    "minutesAgo": "{{n}} ਮਿੰਟ ਪਹਿਲਾਂ",
+    "hoursAgo": "{{n}} ਘੰਟੇ ਪਹਿਲਾਂ",
+    "daysAgo": "{{n}} ਦਿਨ ਪਹਿਲਾਂ"
+  },
+  "status": {
+    "open": "ਖੁੱਲ੍ਹਾ",
+    "in_progress": "ਜਾਰੀ ਹੈ",
+    "resolved": "ਹੱਲ ਹੋ ਗਿਆ"
+  },
+  "lifecycle": {
+    "open": "ਖੁੱਲ੍ਹਾ",
+    "being_worked_on": "ਕੰਮ ਚੱਲ ਰਿਹਾ ਹੈ",
+    "pending_your_action": "ਤੁਹਾਡੀ ਕਾਰਵਾਈ ਬਾਕੀ",
+    "escalated": "ਐਸਕਲੇਟ ਕੀਤਾ",
+    "resolved": "ਹੱਲ ਹੋ ਗਿਆ",
+    "closed": "ਬੰਦ"
+  },
+  "category": {
+    "application_issues": "ਐਪਲੀਕੇਸ਼ਨ ਸਮੱਸਿਆਵਾਂ",
+    "data_and_reporting": "ਡਾਟਾ ਅਤੇ ਰਿਪੋਰਟਿੰਗ",
+    "data_sync_issue": "ਡਾਟਾ ਸਿੰਕ ਸਮੱਸਿਆ",
+    "digital_issues": "ਡਿਜੀਟਲ ਸਮੱਸਿਆਵਾਂ",
+    "facility_maintenance": "ਸਹੂਲਤ ਰੱਖ-ਰਖਾਅ",
+    "franchisee_service": "ਫ੍ਰੈਂਚਾਈਜ਼ੀ ਸੇਵਾ",
+    "infrastructure_issues": "ਬੁਨਿਆਦੀ ਢਾਂਚਾ ਸਮੱਸਿਆਵਾਂ",
+    "access_authorization": "ਪਹੁੰਚ ਅਤੇ ਅਧਿਕਾਰ",
+    "pos_system": "POS ਸਿਸਟਮ ਸਮੱਸਿਆਵਾਂ",
+    "erp_system": "ERP ਸਿਸਟਮ ਸਮੱਸਿਆਵਾਂ",
+    "pricing": "ਕੀਮਤ ਸਮੱਸਿਆਵਾਂ",
+    "image_mismatch": "ਤਸਵੀਰ ਮੇਲ ਨਹੀਂ ਖਾਂਦੀ",
+    "product": "ਉਤਪਾਦ ਸਮੱਸਿਆਵਾਂ",
+    "data_not_reflecting": "ਡਾਟਾ ਪ੍ਰਤੀਬਿੰਬਿਤ ਨਹੀਂ ਹੋ ਰਿਹਾ",
+    "inventory": "ਇਨਵੈਂਟਰੀ ਸਮੱਸਿਆਵਾਂ",
+    "drp_order": "DRP ਆਰਡਰ ਸਬੰਧੀ ਸਮੱਸਿਆਵਾਂ",
+    "order": "ਆਰਡਰ ਸਬੰਧੀ ਸਮੱਸਿਆਵਾਂ",
+    "other": "ਹੋਰ"
+  },
+  "home": {
+    "greeting": "ਜੀ ਆਇਆਂ ਨੂੰ, {{name}}"
+  },
+  "ticketList": {
+    "title": "ਮੇਰੀਆਂ ਟਿਕਟਾਂ",
+    "empty": "ਹਾਲੇ ਕੋਈ ਟਿਕਟ ਨਹੀਂ",
+    "emptySubtitle": "ਨਵੀਂ ਸਮੱਸਿਆ ਦਰਜ ਕਰਨ ਲਈ + 'ਤੇ ਟੈਪ ਕਰੋ"
+  },
+  "createTicket": {
+    "video": "ਵੀਡੀਓ"
+  },
+  "ticketDetail": {
+    "noAttachments": "ਕੋਈ ਅਟੈਚਮੈਂਟ ਨਹੀਂ"
+  },
+  "comments": {
+    "you": "ਤੁਸੀਂ",
+    "unknownAuthor": "ਅਗਿਆਤ",
+    "internalNote": "ਅੰਦਰੂਨੀ ਨੋਟ (ਸਿਰਫ਼ ਸਟਾਫ)",
+    "addComment": "ਇੱਕ ਟਿੱਪਣੀ ਸ਼ਾਮਲ ਕਰੋ…"
+  },
+  "chat": {
+    "group": "ਸਟੋਰ ਚੈਟ",
+    "ritaBot": "RITA ਬੋਟ",
+    "typeMessage": "ਇੱਕ ਸੁਨੇਹਾ ਟਾਈਪ ਕਰੋ…",
+    "presetTitle": "ਤੇਜ਼ ਸਥਿਤੀਆਂ"
+  },
+  "tabs": {
+    "home": "ਹੋਮ",
+    "myTickets": "ਮੇਰੀਆਂ ਟਿਕਟਾਂ",
+    "allTickets": "ਸਾਰੀਆਂ ਟਿਕਟਾਂ",
+    "alerts": "ਚੇਤਾਵਨੀਆਂ",
+    "chat": "ਚੈਟ",
+    "sla": "SLA ਕੰਸੋਲ",
+    "accounts": "ਖਾਤੇ",
+    "analytics": "ਵਿਸ਼ਲੇਸ਼ਣ",
+    "profile": "ਪ੍ਰੋਫਾਈਲ"
+  },
+  "profile": {
+    "title": "ਮੇਰੀ ਪ੍ਰੋਫਾਈਲ",
+    "phone": "ਫ਼ੋਨ",
+    "email": "ਈਮੇਲ",
+    "store": "ਸਟੋਰ",
+    "designation": "ਅਹੁਦਾ",
+    "language": "ਭਾਸ਼ਾ",
+    "selectLanguage": "ਭਾਸ਼ਾ ਚੁਣੋ",
+    "badge": {
+      "approved": "ਮਨਜ਼ੂਰ",
+      "pending": "ਮਨਜ਼ੂਰੀ ਬਾਕੀ"
+    }
+  },
+  "goldRate": {
+    "title": "ਸੋਨੇ ਦਾ ਭਾਅ",
+    "updated": "{{time}} ਅੱਪਡੇਟ ਕੀਤਾ",
+    "unavailable": "ਸੋਨੇ ਦਾ ਭਾਅ ਉਪਲਬਧ ਨਹੀਂ। ਕਿਰਪਾ ਕਰਕੇ ਬਾਅਦ ਵਿੱਚ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+    "trendTitle": "{{purity}} · 7-ਦਿਨ ਦਾ ਰੁਝਾਨ",
+    "noTrend": "ਹੋਰ ਦਿਨਾਂ ਦੇ ਭਾਅ ਇਕੱਠੇ ਹੋਣ 'ਤੇ ਰੁਝਾਨ ਦਿਖਾਈ ਦੇਵੇਗਾ।",
+    "downloadPoster": "ਭਾਅ ਪੋਸਟਰ ਡਾਊਨਲੋਡ ਕਰੋ"
+  },
+  "approvals": {
+    "title": "ਬਾਕੀ ਮਨਜ਼ੂਰੀਆਂ",
+    "emptyTitle": "ਕੋਈ ਬਾਕੀ ਮਨਜ਼ੂਰੀ ਨਹੀਂ",
+    "emptySubtitle": "ਸਾਰੀਆਂ ਤਕਨੀਸ਼ੀਅਨ ਬੇਨਤੀਆਂ ਦੀ ਸਮੀਖਿਆ ਹੋ ਗਈ ਹੈ",
+    "approvedToast": "ਤਕਨੀਸ਼ੀਅਨ ਮਨਜ਼ੂਰ",
+    "approveFailed": "ਮਨਜ਼ੂਰ ਕਰਨ ਵਿੱਚ ਅਸਫਲ",
+    "rejectedToast": "ਤਕਨੀਸ਼ੀਅਨ ਰੱਦ ਕੀਤਾ",
+    "rejectFailed": "ਰੱਦ ਕਰਨ ਵਿੱਚ ਅਸਫਲ"
+  },
+  "approvalCard": {
+    "technicianAccount": "ਤਕਨੀਸ਼ੀਅਨ ਖਾਤਾ",
+    "registered": "{{time}} ਰਜਿਸਟਰ ਕੀਤਾ",
+    "reject": "ਰੱਦ ਕਰੋ",
+    "approve": "ਮਨਜ਼ੂਰ ਕਰੋ"
+  },
+  "broadcasts": {
+    "title": "ਐਲਾਨ ਪ੍ਰਕਾਸ਼ਿਤ ਕਰੋ",
+    "pastBroadcasts": "ਪਿਛਲੇ ਐਲਾਨ",
+    "emptyTitle": "ਹਾਲੇ ਕੋਈ ਐਲਾਨ ਨਹੀਂ",
+    "specificStore": "ਖਾਸ ਸਟੋਰ",
+    "sentToast": "ਐਲਾਨ ਭੇਜਿਆ ਗਿਆ!",
+    "sendFailed": "ਐਲਾਨ ਭੇਜਣ ਵਿੱਚ ਅਸਫਲ",
+    "form": {
+      "sendBroadcast": "ਐਲਾਨ ਭੇਜੋ",
+      "titlePlaceholder": "ਸਿਰਲੇਖ",
+      "messagePlaceholder": "ਸੁਨੇਹਾ",
+      "storePickerLabel": "ਇਨ੍ਹਾਂ ਨੂੰ ਭੇਜੋ (ਸਟੋਰ ਚੁਣੋ, ਜਾਂ ਸਾਰਿਆਂ ਲਈ ਖਾਲੀ ਛੱਡੋ)",
+      "sendToAll": "ਸਾਰੇ ਸਟੋਰਾਂ ਨੂੰ ਭੇਜੋ",
+      "sendToStore": "{{store}} ਨੂੰ ਭੇਜੋ",
+      "sendToStores": "{{n}} ਸਟੋਰਾਂ ਨੂੰ ਭੇਜੋ",
+      "selectedStoreFallback": "ਚੁਣਿਆ ਸਟੋਰ"
+    }
+  },
+  "storePicker": {
+    "allStores": "ਸਾਰੇ ਸਟੋਰ",
+    "selectedStore": "ਚੁਣਿਆ ਸਟੋਰ",
+    "storesSelected": "{{n}} ਸਟੋਰ ਚੁਣੇ ਗਏ",
+    "selectStoresTitle": "ਸਟੋਰ ਚੁਣੋ",
+    "selectStoreTitle": "ਸਟੋਰ ਚੁਣੋ",
+    "searchPlaceholder": "ਨਾਮ, ਕੋਡ ਜਾਂ ਸ਼ਹਿਰ ਦੁਆਰਾ ਖੋਜੋ...",
+    "storeCount_one": "{{count}} ਸਟੋਰ",
+    "storeCount_other": "{{count}} ਸਟੋਰ",
+    "sendToEveryone": "ਸਾਰਿਆਂ ਨੂੰ ਭੇਜੋ",
+    "noMatch": "\"{{query}}\" ਨਾਲ ਕੋਈ ਸਟੋਰ ਮੇਲ ਨਹੀਂ ਖਾਂਦਾ",
+    "confirmAll": "ਪੁਸ਼ਟੀ ਕਰੋ (ਸਾਰੇ ਸਟੋਰ)",
+    "confirmCount_one": "ਪੁਸ਼ਟੀ ਕਰੋ ({{count}} ਸਟੋਰ)",
+    "confirmCount_other": "ਪੁਸ਼ਟੀ ਕਰੋ ({{count}} ਸਟੋਰ)"
+  },
+  "announcements": {
+    "title": "ਐਲਾਨ",
+    "emptyTitle": "ਕੋਈ ਐਲਾਨ ਨਹੀਂ",
+    "emptySubtitle": "ਐਡਮਿਨ ਦੇ ਐਲਾਨ ਇੱਥੇ ਦਿਖਾਈ ਦੇਣਗੇ",
+    "yourStore": "ਤੁਹਾਡਾ ਸਟੋਰ",
+    "allStores": "ਸਾਰੇ ਸਟੋਰ"
+  },
+  "forgotPassword": {
+    "title": "ਪਾਸਵਰਡ ਭੁੱਲ ਗਏ",
+    "subtitle": "ਆਪਣਾ ਈਮੇਲ ਪਤਾ ਦਰਜ ਕਰੋ, ਅਸੀਂ ਤੁਹਾਨੂੰ ਪਾਸਵਰਡ ਰੀਸੈੱਟ ਕਰਨ ਲਈ ਇੱਕ ਲਿੰਕ ਭੇਜਾਂਗੇ।",
+    "emailLabel": "ਈਮੇਲ",
+    "sendResetLink": "ਰੀਸੈੱਟ ਲਿੰਕ ਭੇਜੋ",
+    "checkEmailTitle": "ਆਪਣੀ ਈਮੇਲ ਵੇਖੋ",
+    "checkEmailBody": "ਅਸੀਂ {{email}} 'ਤੇ ਪਾਸਵਰਡ ਰੀਸੈੱਟ ਲਿੰਕ ਭੇਜਿਆ ਹੈ"
+  },
+  "notify": {
+    "ticketResolvedTitle": "ਟਿਕਟ ਹੱਲ ਹੋਈ",
+    "ticketResolvedBody": "ਤੁਹਾਡੀ ਟਿਕਟ {{number}} ਹੱਲ ਹੋ ਗਈ ਹੈ",
+    "ticketUpdatedTitle": "ਟਿਕਟ ਅੱਪਡੇਟ ਹੋਈ",
+    "ticketUpdatedBody": "ਤੁਹਾਡੀ ਟਿਕਟ {{number}} ਦੀ ਸਥਿਤੀ {{status}} ਵਿੱਚ ਬਦਲ ਗਈ",
+    "accountApprovedTitle": "ਖਾਤਾ ਮਨਜ਼ੂਰ",
+    "accountApprovedBody": "ਤੁਹਾਡਾ ਤਕਨੀਸ਼ੀਅਨ ਖਾਤਾ ਮਨਜ਼ੂਰ ਹੋ ਗਿਆ ਹੈ। ਹੁਣ ਤੁਸੀਂ ਲੌਗ ਇਨ ਕਰਕੇ ਟਿਕਟਾਂ ਲੈਣੀਆਂ ਸ਼ੁਰੂ ਕਰ ਸਕਦੇ ਹੋ!",
+    "accountRejectedTitle": "ਖਾਤਾ ਰੱਦ ਕੀਤਾ",
+    "accountRejectedBody": "ਤੁਹਾਡੇ ਤਕਨੀਸ਼ੀਅਨ ਖਾਤੇ ਦੀ ਅਰਜ਼ੀ ਮਨਜ਼ੂਰ ਨਹੀਂ ਹੋਈ"
+  },
+  "integrations": {
+    "title": "ਇੰਟੀਗ੍ਰੇਸ਼ਨ",
+    "goldTitle": "ਸੋਨੇ ਦਾ ਭਾਅ API",
+    "goldSubtitle": "ਲਾਈਵ ਸੋਨੇ ਦੇ ਭਾਅ ਲਈ Dynamics 365 ਪ੍ਰਮਾਣ",
+    "ssoTitle": "Microsoft SSO",
+    "ssoSubtitle": "Microsoft ਨਾਲ ਸਾਈਨ ਇਨ ਲਈ Azure AD ਪ੍ਰਮਾਣ",
+    "clientId": "Client ID",
+    "clientSecret": "Client Secret",
+    "tenantId": "Tenant ID",
+    "resourceUrl": "Resource URL",
+    "warehouse": "ਵੇਅਰਹਾਊਸ",
+    "tenantUrl": "Azure Tenant URL",
+    "ssoEnabled": "Microsoft ਸਾਈਨ-ਇਨ ਸਮਰੱਥ ਕਰੋ",
+    "secretStored": "•••••••• (ਸੰਭਾਲਿਆ — ਰੱਖਣ ਲਈ ਖਾਲੀ ਛੱਡੋ)",
+    "secretEmpty": "ਸੈੱਟ ਨਹੀਂ ਕੀਤਾ",
+    "save": "ਸੰਭਾਲੋ",
+    "saveApply": "ਸੰਭਾਲੋ ਅਤੇ ਲਾਗੂ ਕਰੋ",
+    "goldSaved": "ਸੋਨੇ ਦੇ ਭਾਅ ਦੇ ਪ੍ਰਮਾਣ ਸੰਭਾਲੇ ਗਏ",
+    "ssoApplied": "Microsoft SSO ਸੰਰਚਨਾ ਲਾਗੂ ਕੀਤੀ",
+    "ssoSavedNotApplied": "ਸੰਭਾਲਿਆ। ਪ੍ਰਬੰਧਨ ਟੋਕਨ ਸੈੱਟ ਹੋਣ 'ਤੇ ਇਹ ਲਾਗੂ ਹੋਵੇਗਾ।",
+    "goldHint": "ਭਾਅ ਹਰ ਕੁਝ ਮਿੰਟਾਂ ਬਾਅਦ ਆਪਣੇ ਆਪ ਸਿੰਕ ਹੁੰਦੇ ਹਨ। ਨਵੇਂ ਪ੍ਰਮਾਣ ਅਗਲੇ ਸਿੰਕ 'ਤੇ ਲਾਗੂ ਹੋਣਗੇ।",
+    "ssoHint": "ਲਾਗੂ ਕਰਨ ਨਾਲ ਇਹ ਮੁੱਲ Supabase Auth ਨੂੰ ਭੇਜੇ ਜਾਂਦੇ ਹਨ। apply-sso-config ਫੰਕਸ਼ਨ 'ਤੇ SUPABASE_MANAGEMENT_TOKEN ਸੈੱਟ ਹੋਣਾ ਜ਼ਰੂਰੀ ਹੈ।"
+  }
+}

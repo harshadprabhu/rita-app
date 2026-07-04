@@ -1,0 +1,253 @@
+{
+  "common": {
+    "signOut": "সাইন আউট",
+    "cancel": "বাতিল করুন",
+    "save": "সংরক্ষণ করুন",
+    "retry": "আবার চেষ্টা করুন",
+    "loading": "লোড হচ্ছে...",
+    "all": "সব",
+    "submit": "জমা দিন",
+    "send": "পাঠান",
+    "clearAll": "সব সাফ করুন"
+  },
+  "auth": {
+    "subtitle": "রিটেল ইস্যু ট্র্যাকিং AI · Indriya",
+    "emailLabel": "ইমেল",
+    "passwordLabel": "পাসওয়ার্ড",
+    "otpLabel": "OTP কোড",
+    "signIn": "সাইন ইন",
+    "signInMicrosoft": "Microsoft দিয়ে সাইন ইন",
+    "or": "অথবা",
+    "signInWithPassword": "পাসওয়ার্ড দিয়ে সাইন ইন",
+    "signInWithOtp": "OTP দিয়ে সাইন ইন",
+    "sendOtp": "OTP পাঠান",
+    "verifyOtp": "যাচাই করে সাইন ইন করুন",
+    "forgotPasswordLink": "পাসওয়ার্ড ভুলে গেছেন?",
+    "register": "একটি অ্যাকাউন্ট তৈরি করুন",
+    "invalidEmail": "একটি বৈধ ইমেল ঠিকানা লিখুন",
+    "passwordRequired": "পাসওয়ার্ড প্রয়োজন",
+    "otpRequired": "আমরা যে কোডটি পাঠিয়েছি তা লিখুন"
+  },
+  "onboarding": {
+    "greeting": "স্বাগতম, {{name}}",
+    "selectStorePrompt": "চালিয়ে যেতে আপনার স্টোর নির্বাচন করুন",
+    "searchPlaceholder": "স্টোরের নাম, কোড বা শহর দিয়ে অনুসন্ধান করুন",
+    "noStores": "কোনো স্টোর পাওয়া যায়নি",
+    "continue": "চালিয়ে যান",
+    "technicianPrompt": "আপনি কি IT সাপোর্ট কর্মী?",
+    "registerTechnician": "টেকনিশিয়ান হিসেবে নিবন্ধন করুন",
+    "confirmTitle": "টেকনিশিয়ান হিসেবে নিবন্ধন করবেন?",
+    "confirmBody": "আপনার অ্যাকাউন্ট অনুমোদনের জন্য একজন অ্যাডমিনের কাছে পাঠানো হবে। অ্যাডমিন অনুমোদন না করা পর্যন্ত আপনি অ্যাপটি ব্যবহার করতে পারবেন না।",
+    "confirmCta": "অনুমোদনের জন্য জমা দিন",
+    "cancel": "বাতিল করুন"
+  },
+  "register": {
+    "title": "আপনার RITA অ্যাকাউন্ট তৈরি করুন",
+    "firstName": "প্রথম নাম",
+    "lastName": "শেষ নাম",
+    "mobile": "মোবাইল ফোন",
+    "storeId": "স্টোর ID (যেমন ST-5501)",
+    "storeName": "স্টোরের নাম",
+    "storeLocation": "স্টোরের অবস্থান",
+    "email": "ইমেল",
+    "password": "পাসওয়ার্ড",
+    "submit": "নিবন্ধন করুন"
+  },
+  "pendingApproval": {
+    "title": "অনুমোদন মুলতুবি",
+    "body": "আপনার টেকনিশিয়ান অ্যাকাউন্ট অ্যাডমিন অনুমোদনের অপেক্ষায় আছে। পর্যালোচনা হওয়ার সাথে সাথে আপনি অ্যাক্সেস পাবেন।"
+  },
+  "time": {
+    "secondsAgo": "{{n}} সেকেন্ড আগে",
+    "minutesAgo": "{{n}} মিনিট আগে",
+    "hoursAgo": "{{n}} ঘণ্টা আগে",
+    "daysAgo": "{{n}} দিন আগে"
+  },
+  "status": {
+    "open": "খোলা",
+    "in_progress": "চলমান",
+    "resolved": "সমাধান হয়েছে"
+  },
+  "lifecycle": {
+    "open": "খোলা",
+    "being_worked_on": "কাজ চলছে",
+    "pending_your_action": "আপনার পদক্ষেপ মুলতুবি",
+    "escalated": "এস্কেলেট করা হয়েছে",
+    "resolved": "সমাধান হয়েছে",
+    "closed": "বন্ধ"
+  },
+  "category": {
+    "application_issues": "অ্যাপ্লিকেশন সমস্যা",
+    "data_and_reporting": "ডেটা ও রিপোর্টিং",
+    "data_sync_issue": "ডেটা সিঙ্ক সমস্যা",
+    "digital_issues": "ডিজিটাল সমস্যা",
+    "facility_maintenance": "সুবিধা রক্ষণাবেক্ষণ",
+    "franchisee_service": "ফ্র্যাঞ্চাইজি সেবা",
+    "infrastructure_issues": "পরিকাঠামো সমস্যা",
+    "access_authorization": "অ্যাক্সেস ও অনুমোদন",
+    "pos_system": "POS সিস্টেম সমস্যা",
+    "erp_system": "ERP সিস্টেম সমস্যা",
+    "pricing": "মূল্য নির্ধারণ সমস্যা",
+    "image_mismatch": "ছবি মিলছে না",
+    "product": "পণ্য সমস্যা",
+    "data_not_reflecting": "ডেটা প্রতিফলিত হচ্ছে না",
+    "inventory": "ইনভেন্টরি সমস্যা",
+    "drp_order": "DRP অর্ডার সম্পর্কিত সমস্যা",
+    "order": "অর্ডার সম্পর্কিত সমস্যা",
+    "other": "অন্যান্য"
+  },
+  "home": {
+    "greeting": "স্বাগতম, {{name}}"
+  },
+  "ticketList": {
+    "title": "আমার টিকিট",
+    "empty": "এখনও কোনো টিকিট নেই",
+    "emptySubtitle": "নতুন সমস্যা নথিভুক্ত করতে + ট্যাপ করুন"
+  },
+  "createTicket": {
+    "video": "ভিডিও"
+  },
+  "ticketDetail": {
+    "noAttachments": "কোনো সংযুক্তি নেই"
+  },
+  "comments": {
+    "you": "আপনি",
+    "unknownAuthor": "অজানা",
+    "internalNote": "অভ্যন্তরীণ নোট (শুধুমাত্র কর্মী)",
+    "addComment": "একটি মন্তব্য যোগ করুন…"
+  },
+  "chat": {
+    "group": "স্টোর চ্যাট",
+    "ritaBot": "RITA বট",
+    "typeMessage": "একটি বার্তা টাইপ করুন…",
+    "presetTitle": "দ্রুত পরিস্থিতি"
+  },
+  "tabs": {
+    "home": "হোম",
+    "myTickets": "আমার টিকিট",
+    "allTickets": "সব টিকিট",
+    "alerts": "সতর্কতা",
+    "chat": "চ্যাট",
+    "sla": "SLA কনসোল",
+    "accounts": "অ্যাকাউন্ট",
+    "analytics": "বিশ্লেষণ",
+    "profile": "প্রোফাইল"
+  },
+  "profile": {
+    "title": "আমার প্রোফাইল",
+    "phone": "ফোন",
+    "email": "ইমেল",
+    "store": "স্টোর",
+    "designation": "পদবি",
+    "language": "ভাষা",
+    "selectLanguage": "ভাষা নির্বাচন করুন",
+    "badge": {
+      "approved": "অনুমোদিত",
+      "pending": "অনুমোদন মুলতুবি"
+    }
+  },
+  "goldRate": {
+    "title": "সোনার দর",
+    "updated": "{{time}} আপডেট হয়েছে",
+    "unavailable": "সোনার দর উপলব্ধ নেই। অনুগ্রহ করে পরে আবার চেষ্টা করুন।",
+    "trendTitle": "{{purity}} · 7-দিনের প্রবণতা",
+    "noTrend": "আরও দিনের দর সংগ্রহ হলে প্রবণতা দেখা যাবে।",
+    "downloadPoster": "দর পোস্টার ডাউনলোড করুন"
+  },
+  "approvals": {
+    "title": "মুলতুবি অনুমোদন",
+    "emptyTitle": "কোনো মুলতুবি অনুমোদন নেই",
+    "emptySubtitle": "সমস্ত টেকনিশিয়ান অনুরোধ পর্যালোচনা করা হয়েছে",
+    "approvedToast": "টেকনিশিয়ান অনুমোদিত",
+    "approveFailed": "অনুমোদন করতে ব্যর্থ",
+    "rejectedToast": "টেকনিশিয়ান প্রত্যাখ্যাত",
+    "rejectFailed": "প্রত্যাখ্যান করতে ব্যর্থ"
+  },
+  "approvalCard": {
+    "technicianAccount": "টেকনিশিয়ান অ্যাকাউন্ট",
+    "registered": "{{time}} নিবন্ধিত",
+    "reject": "প্রত্যাখ্যান করুন",
+    "approve": "অনুমোদন করুন"
+  },
+  "broadcasts": {
+    "title": "ঘোষণা প্রকাশ করুন",
+    "pastBroadcasts": "পূর্ববর্তী ঘোষণা",
+    "emptyTitle": "এখনও কোনো ঘোষণা নেই",
+    "specificStore": "নির্দিষ্ট স্টোর",
+    "sentToast": "ঘোষণা পাঠানো হয়েছে!",
+    "sendFailed": "ঘোষণা পাঠাতে ব্যর্থ",
+    "form": {
+      "sendBroadcast": "ঘোষণা পাঠান",
+      "titlePlaceholder": "শিরোনাম",
+      "messagePlaceholder": "বার্তা",
+      "storePickerLabel": "এদের পাঠান (স্টোর নির্বাচন করুন, বা সবার জন্য খালি রাখুন)",
+      "sendToAll": "সব স্টোরে পাঠান",
+      "sendToStore": "{{store}} এ পাঠান",
+      "sendToStores": "{{n}} স্টোরে পাঠান",
+      "selectedStoreFallback": "নির্বাচিত স্টোর"
+    }
+  },
+  "storePicker": {
+    "allStores": "সব স্টোর",
+    "selectedStore": "নির্বাচিত স্টোর",
+    "storesSelected": "{{n}} স্টোর নির্বাচিত",
+    "selectStoresTitle": "স্টোর নির্বাচন করুন",
+    "selectStoreTitle": "স্টোর নির্বাচন করুন",
+    "searchPlaceholder": "নাম, কোড বা শহর দিয়ে অনুসন্ধান করুন...",
+    "storeCount_one": "{{count}} স্টোর",
+    "storeCount_other": "{{count}} স্টোর",
+    "sendToEveryone": "সবাইকে পাঠান",
+    "noMatch": "\"{{query}}\" এর সাথে কোনো স্টোর মেলে না",
+    "confirmAll": "নিশ্চিত করুন (সব স্টোর)",
+    "confirmCount_one": "নিশ্চিত করুন ({{count}} স্টোর)",
+    "confirmCount_other": "নিশ্চিত করুন ({{count}} স্টোর)"
+  },
+  "announcements": {
+    "title": "ঘোষণা",
+    "emptyTitle": "কোনো ঘোষণা নেই",
+    "emptySubtitle": "অ্যাডমিনের ঘোষণা এখানে দেখা যাবে",
+    "yourStore": "আপনার স্টোর",
+    "allStores": "সব স্টোর"
+  },
+  "forgotPassword": {
+    "title": "পাসওয়ার্ড ভুলে গেছেন",
+    "subtitle": "আপনার ইমেল ঠিকানা লিখুন, আমরা পাসওয়ার্ড রিসেট করার জন্য একটি লিঙ্ক পাঠাব।",
+    "emailLabel": "ইমেল",
+    "sendResetLink": "রিসেট লিঙ্ক পাঠান",
+    "checkEmailTitle": "আপনার ইমেল দেখুন",
+    "checkEmailBody": "আমরা {{email}} এ একটি পাসওয়ার্ড রিসেট লিঙ্ক পাঠিয়েছি"
+  },
+  "notify": {
+    "ticketResolvedTitle": "টিকিট সমাধান হয়েছে",
+    "ticketResolvedBody": "আপনার টিকিট {{number}} সমাধান হয়েছে",
+    "ticketUpdatedTitle": "টিকিট আপডেট হয়েছে",
+    "ticketUpdatedBody": "আপনার টিকিট {{number}} এর অবস্থা {{status}} এ পরিবর্তিত হয়েছে",
+    "accountApprovedTitle": "অ্যাকাউন্ট অনুমোদিত",
+    "accountApprovedBody": "আপনার টেকনিশিয়ান অ্যাকাউন্ট অনুমোদিত হয়েছে। এখন আপনি লগ ইন করে টিকিট নেওয়া শুরু করতে পারেন!",
+    "accountRejectedTitle": "অ্যাকাউন্ট প্রত্যাখ্যাত",
+    "accountRejectedBody": "আপনার টেকনিশিয়ান অ্যাকাউন্টের আবেদন অনুমোদিত হয়নি"
+  },
+  "integrations": {
+    "title": "ইন্টিগ্রেশন",
+    "goldTitle": "সোনার দর API",
+    "goldSubtitle": "লাইভ সোনার দরের জন্য Dynamics 365 শংসাপত্র",
+    "ssoTitle": "Microsoft SSO",
+    "ssoSubtitle": "Microsoft দিয়ে সাইন ইনের জন্য Azure AD শংসাপত্র",
+    "clientId": "Client ID",
+    "clientSecret": "Client Secret",
+    "tenantId": "Tenant ID",
+    "resourceUrl": "Resource URL",
+    "warehouse": "গুদাম",
+    "tenantUrl": "Azure Tenant URL",
+    "ssoEnabled": "Microsoft সাইন-ইন সক্ষম করুন",
+    "secretStored": "•••••••• (সংরক্ষিত — রাখতে খালি রাখুন)",
+    "secretEmpty": "সেট করা নেই",
+    "save": "সংরক্ষণ করুন",
+    "saveApply": "সংরক্ষণ করে প্রয়োগ করুন",
+    "goldSaved": "সোনার দরের শংসাপত্র সংরক্ষিত হয়েছে",
+    "ssoApplied": "Microsoft SSO কনফিগারেশন প্রয়োগ করা হয়েছে",
+    "ssoSavedNotApplied": "সংরক্ষিত হয়েছে। ম্যানেজমেন্ট টোকেন সেট হলে এটি প্রয়োগ হবে।",
+    "goldHint": "দর প্রতি কয়েক মিনিট অন্তর স্বয়ংক্রিয়ভাবে সিঙ্ক হয়। নতুন শংসাপত্র পরবর্তী সিঙ্কে কার্যকর হবে।",
+    "ssoHint": "প্রয়োগ করলে এই মানগুলো Supabase Auth এ পাঠানো হয়। apply-sso-config ফাংশনে SUPABASE_MANAGEMENT_TOKEN সেট থাকা প্রয়োজন।"
+  }
+}

@@ -5,8 +5,14 @@ import { getLocales } from 'expo-localization';
 import en from '../locales/en.json';
 import hi from '../locales/hi.json';
 import mr from '../locales/mr.json';
+import ta from '../locales/ta.json';
+import te from '../locales/te.json';
+import kn from '../locales/kn.json';
+import bn from '../locales/bn.json';
+import gu from '../locales/gu.json';
+import pa from '../locales/pa.json';
 
-export const SUPPORTED_LANGUAGES = ['en', 'hi', 'mr'] as const;
+export const SUPPORTED_LANGUAGES = ['en', 'hi', 'mr', 'ta', 'te', 'kn', 'bn', 'gu', 'pa'] as const;
 export type AppLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
 export const LANGUAGE_STORAGE_KEY = 'app.language';
@@ -16,6 +22,12 @@ export const LANGUAGE_NAMES: Record<AppLanguage, string> = {
   en: 'English',
   hi: 'हिंदी',
   mr: 'मराठी',
+  ta: 'தமிழ்',
+  te: 'తెలుగు',
+  kn: 'ಕನ್ನಡ',
+  bn: 'বাংলা',
+  gu: 'ગુજરાતી',
+  pa: 'ਪੰਜਾਬੀ',
 };
 
 i18n.use(initReactI18next).init({
@@ -23,6 +35,12 @@ i18n.use(initReactI18next).init({
     en: { translation: en },
     hi: { translation: hi },
     mr: { translation: mr },
+    ta: { translation: ta },
+    te: { translation: te },
+    kn: { translation: kn },
+    bn: { translation: bn },
+    gu: { translation: gu },
+    pa: { translation: pa },
   },
   lng: 'en',
   fallbackLng: 'en',

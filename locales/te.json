@@ -1,0 +1,253 @@
+{
+  "common": {
+    "signOut": "సైన్ అవుట్",
+    "cancel": "రద్దు చేయి",
+    "save": "సేవ్ చేయి",
+    "retry": "మళ్లీ ప్రయత్నించు",
+    "loading": "లోడ్ అవుతోంది...",
+    "all": "అన్నీ",
+    "submit": "సమర్పించు",
+    "send": "పంపు",
+    "clearAll": "అన్నీ క్లియర్ చేయి"
+  },
+  "auth": {
+    "subtitle": "రిటైల్ ఇష్యూ ట్రాకింగ్ AI · Indriya",
+    "emailLabel": "ఇమెయిల్",
+    "passwordLabel": "పాస్‌వర్డ్",
+    "otpLabel": "OTP కోడ్",
+    "signIn": "సైన్ ఇన్",
+    "signInMicrosoft": "Microsoft తో సైన్ ఇన్",
+    "or": "లేదా",
+    "signInWithPassword": "పాస్‌వర్డ్‌తో సైన్ ఇన్",
+    "signInWithOtp": "OTP తో సైన్ ఇన్",
+    "sendOtp": "OTP పంపు",
+    "verifyOtp": "ధృవీకరించి సైన్ ఇన్ చేయి",
+    "forgotPasswordLink": "పాస్‌వర్డ్ మర్చిపోయారా?",
+    "register": "ఖాతా సృష్టించు",
+    "invalidEmail": "సరైన ఇమెయిల్ చిరునామాను నమోదు చేయండి",
+    "passwordRequired": "పాస్‌వర్డ్ అవసరం",
+    "otpRequired": "మేము పంపిన కోడ్‌ను నమోదు చేయండి"
+  },
+  "onboarding": {
+    "greeting": "స్వాగతం, {{name}}",
+    "selectStorePrompt": "కొనసాగించడానికి మీ స్టోర్‌ను ఎంచుకోండి",
+    "searchPlaceholder": "స్టోర్ పేరు, కోడ్ లేదా నగరం ద్వారా వెతకండి",
+    "noStores": "స్టోర్లు కనుగొనబడలేదు",
+    "continue": "కొనసాగించు",
+    "technicianPrompt": "మీరు IT సపోర్ట్ సిబ్బందినా?",
+    "registerTechnician": "టెక్నీషియన్‌గా నమోదు చేయండి",
+    "confirmTitle": "టెక్నీషియన్‌గా నమోదు చేయాలా?",
+    "confirmBody": "మీ ఖాతా ఆమోదం కోసం అడ్మిన్‌కు పంపబడుతుంది. అడ్మిన్ ఆమోదించే వరకు మీరు యాప్‌ను ఉపయోగించలేరు.",
+    "confirmCta": "ఆమోదం కోసం సమర్పించు",
+    "cancel": "రద్దు చేయి"
+  },
+  "register": {
+    "title": "మీ RITA ఖాతాను సృష్టించండి",
+    "firstName": "మొదటి పేరు",
+    "lastName": "చివరి పేరు",
+    "mobile": "మొబైల్ ఫోన్",
+    "storeId": "స్టోర్ ID (ఉదా. ST-5501)",
+    "storeName": "స్టోర్ పేరు",
+    "storeLocation": "స్టోర్ స్థానం",
+    "email": "ఇమెయిల్",
+    "password": "పాస్‌వర్డ్",
+    "submit": "నమోదు చేయి"
+  },
+  "pendingApproval": {
+    "title": "ఆమోదం పెండింగ్‌లో ఉంది",
+    "body": "మీ టెక్నీషియన్ ఖాతా అడ్మిన్ ఆమోదం కోసం వేచి ఉంది. సమీక్షించిన వెంటనే మీకు ప్రవేశం లభిస్తుంది."
+  },
+  "time": {
+    "secondsAgo": "{{n}} సెకన్ల క్రితం",
+    "minutesAgo": "{{n}} నిమిషాల క్రితం",
+    "hoursAgo": "{{n}} గంటల క్రితం",
+    "daysAgo": "{{n}} రోజుల క్రితం"
+  },
+  "status": {
+    "open": "తెరిచి ఉంది",
+    "in_progress": "పురోగతిలో ఉంది",
+    "resolved": "పరిష్కరించబడింది"
+  },
+  "lifecycle": {
+    "open": "తెరిచి ఉంది",
+    "being_worked_on": "పని జరుగుతోంది",
+    "pending_your_action": "మీ చర్య పెండింగ్‌లో",
+    "escalated": "ఎస్కలేట్ చేయబడింది",
+    "resolved": "పరిష్కరించబడింది",
+    "closed": "మూసివేయబడింది"
+  },
+  "category": {
+    "application_issues": "అప్లికేషన్ సమస్యలు",
+    "data_and_reporting": "డేటా & రిపోర్టింగ్",
+    "data_sync_issue": "డేటా సింక్ సమస్య",
+    "digital_issues": "డిజిటల్ సమస్యలు",
+    "facility_maintenance": "సౌకర్యాల నిర్వహణ",
+    "franchisee_service": "ఫ్రాంచైజీ సేవ",
+    "infrastructure_issues": "మౌలిక సదుపాయాల సమస్యలు",
+    "access_authorization": "యాక్సెస్ & అధికారీకరణ",
+    "pos_system": "POS సిస్టమ్ సమస్యలు",
+    "erp_system": "ERP సిస్టమ్ సమస్యలు",
+    "pricing": "ధరల సమస్యలు",
+    "image_mismatch": "చిత్రం సరిపోలలేదు",
+    "product": "ఉత్పత్తి సమస్యలు",
+    "data_not_reflecting": "డేటా ప్రతిబింబించడం లేదు",
+    "inventory": "ఇన్వెంటరీ సమస్యలు",
+    "drp_order": "DRP ఆర్డర్ సంబంధిత సమస్యలు",
+    "order": "ఆర్డర్ సంబంధిత సమస్యలు",
+    "other": "ఇతర"
+  },
+  "home": {
+    "greeting": "స్వాగతం, {{name}}"
+  },
+  "ticketList": {
+    "title": "నా టిక్కెట్లు",
+    "empty": "ఇంకా టిక్కెట్లు లేవు",
+    "emptySubtitle": "కొత్త సమస్యను నమోదు చేయడానికి + నొక్కండి"
+  },
+  "createTicket": {
+    "video": "వీడియో"
+  },
+  "ticketDetail": {
+    "noAttachments": "అటాచ్‌మెంట్లు లేవు"
+  },
+  "comments": {
+    "you": "మీరు",
+    "unknownAuthor": "తెలియని వ్యక్తి",
+    "internalNote": "అంతర్గత గమనిక (సిబ్బంది మాత్రమే)",
+    "addComment": "వ్యాఖ్యను జోడించండి…"
+  },
+  "chat": {
+    "group": "స్టోర్ చాట్",
+    "ritaBot": "RITA బాట్",
+    "typeMessage": "సందేశాన్ని టైప్ చేయండి…",
+    "presetTitle": "త్వరిత దృశ్యాలు"
+  },
+  "tabs": {
+    "home": "హోమ్",
+    "myTickets": "నా టిక్కెట్లు",
+    "allTickets": "అన్ని టిక్కెట్లు",
+    "alerts": "హెచ్చరికలు",
+    "chat": "చాట్",
+    "sla": "SLA కన్సోల్",
+    "accounts": "ఖాతాలు",
+    "analytics": "విశ్లేషణలు",
+    "profile": "ప్రొఫైల్"
+  },
+  "profile": {
+    "title": "నా ప్రొఫైల్",
+    "phone": "ఫోన్",
+    "email": "ఇమెయిల్",
+    "store": "స్టోర్",
+    "designation": "హోదా",
+    "language": "భాష",
+    "selectLanguage": "భాషను ఎంచుకోండి",
+    "badge": {
+      "approved": "ఆమోదించబడింది",
+      "pending": "ఆమోదం పెండింగ్‌లో"
+    }
+  },
+  "goldRate": {
+    "title": "బంగారం ధర",
+    "updated": "{{time}} నవీకరించబడింది",
+    "unavailable": "బంగారం ధర అందుబాటులో లేదు. దయచేసి తర్వాత మళ్లీ ప్రయత్నించండి.",
+    "trendTitle": "{{purity}} · 7-రోజుల ధోరణి",
+    "noTrend": "మరిన్ని రోజుల ధరలు సేకరించబడినప్పుడు ధోరణి కనిపిస్తుంది.",
+    "downloadPoster": "ధర పోస్టర్‌ను డౌన్‌లోడ్ చేయి"
+  },
+  "approvals": {
+    "title": "పెండింగ్ ఆమోదాలు",
+    "emptyTitle": "పెండింగ్ ఆమోదాలు లేవు",
+    "emptySubtitle": "అన్ని టెక్నీషియన్ అభ్యర్థనలు సమీక్షించబడ్డాయి",
+    "approvedToast": "టెక్నీషియన్ ఆమోదించబడ్డారు",
+    "approveFailed": "ఆమోదించడంలో విఫలమైంది",
+    "rejectedToast": "టెక్నీషియన్ తిరస్కరించబడ్డారు",
+    "rejectFailed": "తిరస్కరించడంలో విఫలమైంది"
+  },
+  "approvalCard": {
+    "technicianAccount": "టెక్నీషియన్ ఖాతా",
+    "registered": "{{time}} నమోదు చేయబడింది",
+    "reject": "తిరస్కరించు",
+    "approve": "ఆమోదించు"
+  },
+  "broadcasts": {
+    "title": "ప్రకటనను ప్రచురించు",
+    "pastBroadcasts": "గత ప్రకటనలు",
+    "emptyTitle": "ఇంకా ప్రకటనలు లేవు",
+    "specificStore": "నిర్దిష్ట స్టోర్",
+    "sentToast": "ప్రకటన పంపబడింది!",
+    "sendFailed": "ప్రకటన పంపడంలో విఫలమైంది",
+    "form": {
+      "sendBroadcast": "ప్రకటన పంపు",
+      "titlePlaceholder": "శీర్షిక",
+      "messagePlaceholder": "సందేశం",
+      "storePickerLabel": "వీరికి పంపు (స్టోర్లను ఎంచుకోండి, లేదా అందరికీ ఖాళీగా వదిలేయండి)",
+      "sendToAll": "అన్ని స్టోర్లకు పంపు",
+      "sendToStore": "{{store}} కు పంపు",
+      "sendToStores": "{{n}} స్టోర్లకు పంపు",
+      "selectedStoreFallback": "ఎంచుకున్న స్టోర్"
+    }
+  },
+  "storePicker": {
+    "allStores": "అన్ని స్టోర్లు",
+    "selectedStore": "ఎంచుకున్న స్టోర్",
+    "storesSelected": "{{n}} స్టోర్లు ఎంచుకోబడ్డాయి",
+    "selectStoresTitle": "స్టోర్లను ఎంచుకోండి",
+    "selectStoreTitle": "స్టోర్‌ను ఎంచుకోండి",
+    "searchPlaceholder": "పేరు, కోడ్ లేదా నగరం ద్వారా వెతకండి...",
+    "storeCount_one": "{{count}} స్టోర్",
+    "storeCount_other": "{{count}} స్టోర్లు",
+    "sendToEveryone": "అందరికీ పంపు",
+    "noMatch": "\"{{query}}\" తో ఏ స్టోర్ సరిపోలలేదు",
+    "confirmAll": "నిర్ధారించు (అన్ని స్టోర్లు)",
+    "confirmCount_one": "నిర్ధారించు ({{count}} స్టోర్)",
+    "confirmCount_other": "నిర్ధారించు ({{count}} స్టోర్లు)"
+  },
+  "announcements": {
+    "title": "ప్రకటనలు",
+    "emptyTitle": "ప్రకటనలు లేవు",
+    "emptySubtitle": "అడ్మిన్ ప్రకటనలు ఇక్కడ కనిపిస్తాయి",
+    "yourStore": "మీ స్టోర్",
+    "allStores": "అన్ని స్టోర్లు"
+  },
+  "forgotPassword": {
+    "title": "పాస్‌వర్డ్ మర్చిపోయారు",
+    "subtitle": "మీ ఇమెయిల్ చిరునామాను నమోదు చేయండి, పాస్‌వర్డ్‌ను రీసెట్ చేయడానికి మేము మీకు లింక్ పంపుతాము.",
+    "emailLabel": "ఇమెయిల్",
+    "sendResetLink": "రీసెట్ లింక్ పంపు",
+    "checkEmailTitle": "మీ ఇమెయిల్‌ను తనిఖీ చేయండి",
+    "checkEmailBody": "{{email}} కు పాస్‌వర్డ్ రీసెట్ లింక్‌ను పంపాము"
+  },
+  "notify": {
+    "ticketResolvedTitle": "టిక్కెట్ పరిష్కరించబడింది",
+    "ticketResolvedBody": "మీ టిక్కెట్ {{number}} పరిష్కరించబడింది",
+    "ticketUpdatedTitle": "టిక్కెట్ నవీకరించబడింది",
+    "ticketUpdatedBody": "మీ టిక్కెట్ {{number}} స్థితి {{status}} కు మారింది",
+    "accountApprovedTitle": "ఖాతా ఆమోదించబడింది",
+    "accountApprovedBody": "మీ టెక్నీషియన్ ఖాతా ఆమోదించబడింది. ఇప్పుడు మీరు లాగిన్ అయి టిక్కెట్లు తీసుకోవడం ప్రారంభించవచ్చు!",
+    "accountRejectedTitle": "ఖాతా తిరస్కరించబడింది",
+    "accountRejectedBody": "మీ టెక్నీషియన్ ఖాతా దరఖాస్తు ఆమోదించబడలేదు"
+  },
+  "integrations": {
+    "title": "ఇంటిగ్రేషన్లు",
+    "goldTitle": "బంగారం ధర API",
+    "goldSubtitle": "లైవ్ బంగారం ధరల కోసం Dynamics 365 ఆధారాలు",
+    "ssoTitle": "Microsoft SSO",
+    "ssoSubtitle": "Microsoft తో సైన్ ఇన్ కోసం Azure AD ఆధారాలు",
+    "clientId": "Client ID",
+    "clientSecret": "Client Secret",
+    "tenantId": "Tenant ID",
+    "resourceUrl": "Resource URL",
+    "warehouse": "గిడ్డంగి",
+    "tenantUrl": "Azure Tenant URL",
+    "ssoEnabled": "Microsoft సైన్-ఇన్‌ను ప్రారంభించు",
+    "secretStored": "•••••••• (నిల్వ చేయబడింది — ఉంచడానికి ఖాళీగా వదిలేయండి)",
+    "secretEmpty": "సెట్ చేయబడలేదు",
+    "save": "సేవ్ చేయి",
+    "saveApply": "సేవ్ చేసి వర్తింపజేయి",
+    "goldSaved": "బంగారం ధర ఆధారాలు సేవ్ చేయబడ్డాయి",
+    "ssoApplied": "Microsoft SSO కాన్ఫిగరేషన్ వర్తింపజేయబడింది",
+    "ssoSavedNotApplied": "సేవ్ చేయబడింది. మేనేజ్‌మెంట్ టోకెన్ సెట్ చేయబడిన తర్వాత ఇది వర్తిస్తుంది.",
+    "goldHint": "ధరలు ప్రతి కొన్ని నిమిషాలకు స్వయంచాలకంగా సింక్ అవుతాయి. కొత్త ఆధారాలు తదుపరి సింక్‌లో అమలులోకి వస్తాయి.",
+    "ssoHint": "వర్తింపజేయడం వల్ల ఈ విలువలు Supabase Auth కు పంపబడతాయి. apply-sso-config ఫంక్షన్‌లో SUPABASE_MANAGEMENT_TOKEN సెట్ చేయాలి."
+  }
+}

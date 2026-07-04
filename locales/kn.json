@@ -1,0 +1,253 @@
+{
+  "common": {
+    "signOut": "ಸೈನ್ ಔಟ್",
+    "cancel": "ರದ್ದುಮಾಡಿ",
+    "save": "ಉಳಿಸಿ",
+    "retry": "ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ",
+    "loading": "ಲೋಡ್ ಆಗುತ್ತಿದೆ...",
+    "all": "ಎಲ್ಲಾ",
+    "submit": "ಸಲ್ಲಿಸಿ",
+    "send": "ಕಳುಹಿಸಿ",
+    "clearAll": "ಎಲ್ಲವನ್ನೂ ತೆರವುಗೊಳಿಸಿ"
+  },
+  "auth": {
+    "subtitle": "ರಿಟೇಲ್ ಇಶ್ಯೂ ಟ್ರ್ಯಾಕಿಂಗ್ AI · Indriya",
+    "emailLabel": "ಇಮೇಲ್",
+    "passwordLabel": "ಪಾಸ್‌ವರ್ಡ್",
+    "otpLabel": "OTP ಕೋಡ್",
+    "signIn": "ಸೈನ್ ಇನ್",
+    "signInMicrosoft": "Microsoft ನೊಂದಿಗೆ ಸೈನ್ ಇನ್",
+    "or": "ಅಥವಾ",
+    "signInWithPassword": "ಪಾಸ್‌ವರ್ಡ್‌ನೊಂದಿಗೆ ಸೈನ್ ಇನ್",
+    "signInWithOtp": "OTP ನೊಂದಿಗೆ ಸೈನ್ ಇನ್",
+    "sendOtp": "OTP ಕಳುಹಿಸಿ",
+    "verifyOtp": "ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಸೈನ್ ಇನ್ ಮಾಡಿ",
+    "forgotPasswordLink": "ಪಾಸ್‌ವರ್ಡ್ ಮರೆತಿರಾ?",
+    "register": "ಖಾತೆ ರಚಿಸಿ",
+    "invalidEmail": "ಮಾನ್ಯವಾದ ಇಮೇಲ್ ವಿಳಾಸವನ್ನು ನಮೂದಿಸಿ",
+    "passwordRequired": "ಪಾಸ್‌ವರ್ಡ್ ಅಗತ್ಯವಿದೆ",
+    "otpRequired": "ನಾವು ಕಳುಹಿಸಿದ ಕೋಡ್ ಅನ್ನು ನಮೂದಿಸಿ"
+  },
+  "onboarding": {
+    "greeting": "ಸ್ವಾಗತ, {{name}}",
+    "selectStorePrompt": "ಮುಂದುವರೆಯಲು ನಿಮ್ಮ ಸ್ಟೋರ್ ಆಯ್ಕೆಮಾಡಿ",
+    "searchPlaceholder": "ಸ್ಟೋರ್ ಹೆಸರು, ಕೋಡ್ ಅಥವಾ ನಗರದ ಮೂಲಕ ಹುಡುಕಿ",
+    "noStores": "ಯಾವುದೇ ಸ್ಟೋರ್‌ಗಳು ಕಂಡುಬಂದಿಲ್ಲ",
+    "continue": "ಮುಂದುವರೆಯಿರಿ",
+    "technicianPrompt": "ನೀವು IT ಬೆಂಬಲ ಸಿಬ್ಬಂದಿಯೇ?",
+    "registerTechnician": "ತಂತ್ರಜ್ಞರಾಗಿ ನೋಂದಾಯಿಸಿ",
+    "confirmTitle": "ತಂತ್ರಜ್ಞರಾಗಿ ನೋಂದಾಯಿಸುವುದೇ?",
+    "confirmBody": "ನಿಮ್ಮ ಖಾತೆಯನ್ನು ಅನುಮೋದನೆಗಾಗಿ ಅಡ್ಮಿನ್‌ಗೆ ಕಳುಹಿಸಲಾಗುತ್ತದೆ. ಅಡ್ಮಿನ್ ಅನುಮೋದಿಸುವವರೆಗೆ ನೀವು ಆ್ಯಪ್ ಬಳಸಲಾಗುವುದಿಲ್ಲ.",
+    "confirmCta": "ಅನುಮೋದನೆಗಾಗಿ ಸಲ್ಲಿಸಿ",
+    "cancel": "ರದ್ದುಮಾಡಿ"
+  },
+  "register": {
+    "title": "ನಿಮ್ಮ RITA ಖಾತೆಯನ್ನು ರಚಿಸಿ",
+    "firstName": "ಮೊದಲ ಹೆಸರು",
+    "lastName": "ಕೊನೆಯ ಹೆಸರು",
+    "mobile": "ಮೊಬೈಲ್ ಫೋನ್",
+    "storeId": "ಸ್ಟೋರ್ ID (ಉದಾ. ST-5501)",
+    "storeName": "ಸ್ಟೋರ್ ಹೆಸರು",
+    "storeLocation": "ಸ್ಟೋರ್ ಸ್ಥಳ",
+    "email": "ಇಮೇಲ್",
+    "password": "ಪಾಸ್‌ವರ್ಡ್",
+    "submit": "ನೋಂದಾಯಿಸಿ"
+  },
+  "pendingApproval": {
+    "title": "ಅನುಮೋದನೆ ಬಾಕಿ ಇದೆ",
+    "body": "ನಿಮ್ಮ ತಂತ್ರಜ್ಞ ಖಾತೆ ಅಡ್ಮಿನ್ ಅನುಮೋದನೆಗಾಗಿ ಕಾಯುತ್ತಿದೆ. ಪರಿಶೀಲಿಸಿದ ಕೂಡಲೇ ನಿಮಗೆ ಪ್ರವೇಶ ಸಿಗುತ್ತದೆ."
+  },
+  "time": {
+    "secondsAgo": "{{n}} ಸೆಕೆಂಡುಗಳ ಹಿಂದೆ",
+    "minutesAgo": "{{n}} ನಿಮಿಷಗಳ ಹಿಂದೆ",
+    "hoursAgo": "{{n}} ಗಂಟೆಗಳ ಹಿಂದೆ",
+    "daysAgo": "{{n}} ದಿನಗಳ ಹಿಂದೆ"
+  },
+  "status": {
+    "open": "ತೆರೆದಿದೆ",
+    "in_progress": "ಪ್ರಗತಿಯಲ್ಲಿದೆ",
+    "resolved": "ಪರಿಹರಿಸಲಾಗಿದೆ"
+  },
+  "lifecycle": {
+    "open": "ತೆರೆದಿದೆ",
+    "being_worked_on": "ಕೆಲಸ ನಡೆಯುತ್ತಿದೆ",
+    "pending_your_action": "ನಿಮ್ಮ ಕ್ರಮ ಬಾಕಿ ಇದೆ",
+    "escalated": "ಎಸ್ಕಲೇಟ್ ಮಾಡಲಾಗಿದೆ",
+    "resolved": "ಪರಿಹರಿಸಲಾಗಿದೆ",
+    "closed": "ಮುಚ್ಚಲಾಗಿದೆ"
+  },
+  "category": {
+    "application_issues": "ಅಪ್ಲಿಕೇಶನ್ ಸಮಸ್ಯೆಗಳು",
+    "data_and_reporting": "ಡೇಟಾ ಮತ್ತು ವರದಿ",
+    "data_sync_issue": "ಡೇಟಾ ಸಿಂಕ್ ಸಮಸ್ಯೆ",
+    "digital_issues": "ಡಿಜಿಟಲ್ ಸಮಸ್ಯೆಗಳು",
+    "facility_maintenance": "ಸೌಲಭ್ಯ ನಿರ್ವಹಣೆ",
+    "franchisee_service": "ಫ್ರಾಂಚೈಸಿ ಸೇವೆ",
+    "infrastructure_issues": "ಮೂಲಸೌಕರ್ಯ ಸಮಸ್ಯೆಗಳು",
+    "access_authorization": "ಪ್ರವೇಶ ಮತ್ತು ಅಧಿಕಾರ",
+    "pos_system": "POS ಸಿಸ್ಟಮ್ ಸಮಸ್ಯೆಗಳು",
+    "erp_system": "ERP ಸಿಸ್ಟಮ್ ಸಮಸ್ಯೆಗಳು",
+    "pricing": "ಬೆಲೆ ಸಮಸ್ಯೆಗಳು",
+    "image_mismatch": "ಚಿತ್ರ ಹೊಂದಿಕೆಯಾಗಿಲ್ಲ",
+    "product": "ಉತ್ಪನ್ನ ಸಮಸ್ಯೆಗಳು",
+    "data_not_reflecting": "ಡೇಟಾ ಪ್ರತಿಫಲಿಸುತ್ತಿಲ್ಲ",
+    "inventory": "ಇನ್ವೆಂಟರಿ ಸಮಸ್ಯೆಗಳು",
+    "drp_order": "DRP ಆರ್ಡರ್ ಸಂಬಂಧಿತ ಸಮಸ್ಯೆಗಳು",
+    "order": "ಆರ್ಡರ್ ಸಂಬಂಧಿತ ಸಮಸ್ಯೆಗಳು",
+    "other": "ಇತರೆ"
+  },
+  "home": {
+    "greeting": "ಸ್ವಾಗತ, {{name}}"
+  },
+  "ticketList": {
+    "title": "ನನ್ನ ಟಿಕೆಟ್‌ಗಳು",
+    "empty": "ಇನ್ನೂ ಟಿಕೆಟ್‌ಗಳಿಲ್ಲ",
+    "emptySubtitle": "ಹೊಸ ಸಮಸ್ಯೆಯನ್ನು ದಾಖಲಿಸಲು + ಟ್ಯಾಪ್ ಮಾಡಿ"
+  },
+  "createTicket": {
+    "video": "ವೀಡಿಯೊ"
+  },
+  "ticketDetail": {
+    "noAttachments": "ಯಾವುದೇ ಲಗತ್ತುಗಳಿಲ್ಲ"
+  },
+  "comments": {
+    "you": "ನೀವು",
+    "unknownAuthor": "ಅಜ್ಞಾತ",
+    "internalNote": "ಆಂತರಿಕ ಟಿಪ್ಪಣಿ (ಸಿಬ್ಬಂದಿ ಮಾತ್ರ)",
+    "addComment": "ಒಂದು ಕಾಮೆಂಟ್ ಸೇರಿಸಿ…"
+  },
+  "chat": {
+    "group": "ಸ್ಟೋರ್ ಚಾಟ್",
+    "ritaBot": "RITA ಬಾಟ್",
+    "typeMessage": "ಸಂದೇಶ ಟೈಪ್ ಮಾಡಿ…",
+    "presetTitle": "ತ್ವರಿತ ಸನ್ನಿವೇಶಗಳು"
+  },
+  "tabs": {
+    "home": "ಮುಖಪುಟ",
+    "myTickets": "ನನ್ನ ಟಿಕೆಟ್‌ಗಳು",
+    "allTickets": "ಎಲ್ಲಾ ಟಿಕೆಟ್‌ಗಳು",
+    "alerts": "ಎಚ್ಚರಿಕೆಗಳು",
+    "chat": "ಚಾಟ್",
+    "sla": "SLA ಕನ್ಸೋಲ್",
+    "accounts": "ಖಾತೆಗಳು",
+    "analytics": "ವಿಶ್ಲೇಷಣೆ",
+    "profile": "ಪ್ರೊಫೈಲ್"
+  },
+  "profile": {
+    "title": "ನನ್ನ ಪ್ರೊಫೈಲ್",
+    "phone": "ಫೋನ್",
+    "email": "ಇಮೇಲ್",
+    "store": "ಸ್ಟೋರ್",
+    "designation": "ಹುದ್ದೆ",
+    "language": "ಭಾಷೆ",
+    "selectLanguage": "ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+    "badge": {
+      "approved": "ಅನುಮೋದಿಸಲಾಗಿದೆ",
+      "pending": "ಅನುಮೋದನೆ ಬಾಕಿ ಇದೆ"
+    }
+  },
+  "goldRate": {
+    "title": "ಚಿನ್ನದ ದರ",
+    "updated": "{{time}} ನವೀಕರಿಸಲಾಗಿದೆ",
+    "unavailable": "ಚಿನ್ನದ ದರ ಲಭ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+    "trendTitle": "{{purity}} · 7-ದಿನಗಳ ಪ್ರವೃತ್ತಿ",
+    "noTrend": "ಹೆಚ್ಚಿನ ದಿನಗಳ ದರಗಳು ಸಂಗ್ರಹವಾದಾಗ ಪ್ರವೃತ್ತಿ ಕಾಣಿಸುತ್ತದೆ.",
+    "downloadPoster": "ದರ ಪೋಸ್ಟರ್ ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ"
+  },
+  "approvals": {
+    "title": "ಬಾಕಿ ಇರುವ ಅನುಮೋದನೆಗಳು",
+    "emptyTitle": "ಬಾಕಿ ಇರುವ ಅನುಮೋದನೆಗಳಿಲ್ಲ",
+    "emptySubtitle": "ಎಲ್ಲಾ ತಂತ್ರಜ್ಞ ವಿನಂತಿಗಳನ್ನು ಪರಿಶೀಲಿಸಲಾಗಿದೆ",
+    "approvedToast": "ತಂತ್ರಜ್ಞ ಅನುಮೋದಿಸಲಾಗಿದೆ",
+    "approveFailed": "ಅನುಮೋದಿಸಲು ವಿಫಲವಾಗಿದೆ",
+    "rejectedToast": "ತಂತ್ರಜ್ಞ ತಿರಸ್ಕರಿಸಲಾಗಿದೆ",
+    "rejectFailed": "ತಿರಸ್ಕರಿಸಲು ವಿಫಲವಾಗಿದೆ"
+  },
+  "approvalCard": {
+    "technicianAccount": "ತಂತ್ರಜ್ಞ ಖಾತೆ",
+    "registered": "{{time}} ನೋಂದಾಯಿಸಲಾಗಿದೆ",
+    "reject": "ತಿರಸ್ಕರಿಸಿ",
+    "approve": "ಅನುಮೋದಿಸಿ"
+  },
+  "broadcasts": {
+    "title": "ಪ್ರಕಟಣೆಯನ್ನು ಪ್ರಕಟಿಸಿ",
+    "pastBroadcasts": "ಹಿಂದಿನ ಪ್ರಕಟಣೆಗಳು",
+    "emptyTitle": "ಇನ್ನೂ ಪ್ರಕಟಣೆಗಳಿಲ್ಲ",
+    "specificStore": "ನಿರ್ದಿಷ್ಟ ಸ್ಟೋರ್",
+    "sentToast": "ಪ್ರಕಟಣೆ ಕಳುಹಿಸಲಾಗಿದೆ!",
+    "sendFailed": "ಪ್ರಕಟಣೆ ಕಳುಹಿಸಲು ವಿಫಲವಾಗಿದೆ",
+    "form": {
+      "sendBroadcast": "ಪ್ರಕಟಣೆ ಕಳುಹಿಸಿ",
+      "titlePlaceholder": "ಶೀರ್ಷಿಕೆ",
+      "messagePlaceholder": "ಸಂದೇಶ",
+      "storePickerLabel": "ಇವರಿಗೆ ಕಳುಹಿಸಿ (ಸ್ಟೋರ್‌ಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ, ಅಥವಾ ಎಲ್ಲರಿಗೂ ಖಾಲಿ ಬಿಡಿ)",
+      "sendToAll": "ಎಲ್ಲಾ ಸ್ಟೋರ್‌ಗಳಿಗೆ ಕಳುಹಿಸಿ",
+      "sendToStore": "{{store}} ಗೆ ಕಳುಹಿಸಿ",
+      "sendToStores": "{{n}} ಸ್ಟೋರ್‌ಗಳಿಗೆ ಕಳುಹಿಸಿ",
+      "selectedStoreFallback": "ಆಯ್ಕೆಮಾಡಿದ ಸ್ಟೋರ್"
+    }
+  },
+  "storePicker": {
+    "allStores": "ಎಲ್ಲಾ ಸ್ಟೋರ್‌ಗಳು",
+    "selectedStore": "ಆಯ್ಕೆಮಾಡಿದ ಸ್ಟೋರ್",
+    "storesSelected": "{{n}} ಸ್ಟೋರ್‌ಗಳು ಆಯ್ಕೆಯಾಗಿವೆ",
+    "selectStoresTitle": "ಸ್ಟೋರ್‌ಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+    "selectStoreTitle": "ಸ್ಟೋರ್ ಆಯ್ಕೆಮಾಡಿ",
+    "searchPlaceholder": "ಹೆಸರು, ಕೋಡ್ ಅಥವಾ ನಗರದ ಮೂಲಕ ಹುಡುಕಿ...",
+    "storeCount_one": "{{count}} ಸ್ಟೋರ್",
+    "storeCount_other": "{{count}} ಸ್ಟೋರ್‌ಗಳು",
+    "sendToEveryone": "ಎಲ್ಲರಿಗೂ ಕಳುಹಿಸಿ",
+    "noMatch": "\"{{query}}\" ಗೆ ಯಾವುದೇ ಸ್ಟೋರ್ ಹೊಂದಿಕೆಯಾಗಿಲ್ಲ",
+    "confirmAll": "ದೃಢೀಕರಿಸಿ (ಎಲ್ಲಾ ಸ್ಟೋರ್‌ಗಳು)",
+    "confirmCount_one": "ದೃಢೀಕರಿಸಿ ({{count}} ಸ್ಟೋರ್)",
+    "confirmCount_other": "ದೃಢೀಕರಿಸಿ ({{count}} ಸ್ಟೋರ್‌ಗಳು)"
+  },
+  "announcements": {
+    "title": "ಪ್ರಕಟಣೆಗಳು",
+    "emptyTitle": "ಪ್ರಕಟಣೆಗಳಿಲ್ಲ",
+    "emptySubtitle": "ಅಡ್ಮಿನ್ ಪ್ರಕಟಣೆಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ",
+    "yourStore": "ನಿಮ್ಮ ಸ್ಟೋರ್",
+    "allStores": "ಎಲ್ಲಾ ಸ್ಟೋರ್‌ಗಳು"
+  },
+  "forgotPassword": {
+    "title": "ಪಾಸ್‌ವರ್ಡ್ ಮರೆತಿದ್ದೀರಾ",
+    "subtitle": "ನಿಮ್ಮ ಇಮೇಲ್ ವಿಳಾಸವನ್ನು ನಮೂದಿಸಿ, ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಲು ನಾವು ನಿಮಗೆ ಲಿಂಕ್ ಕಳುಹಿಸುತ್ತೇವೆ.",
+    "emailLabel": "ಇಮೇಲ್",
+    "sendResetLink": "ಮರುಹೊಂದಿಸುವ ಲಿಂಕ್ ಕಳುಹಿಸಿ",
+    "checkEmailTitle": "ನಿಮ್ಮ ಇಮೇಲ್ ಪರಿಶೀಲಿಸಿ",
+    "checkEmailBody": "{{email}} ಗೆ ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸುವ ಲಿಂಕ್ ಕಳುಹಿಸಿದ್ದೇವೆ"
+  },
+  "notify": {
+    "ticketResolvedTitle": "ಟಿಕೆಟ್ ಪರಿಹರಿಸಲಾಗಿದೆ",
+    "ticketResolvedBody": "ನಿಮ್ಮ ಟಿಕೆಟ್ {{number}} ಪರಿಹರಿಸಲಾಗಿದೆ",
+    "ticketUpdatedTitle": "ಟಿಕೆಟ್ ನವೀಕರಿಸಲಾಗಿದೆ",
+    "ticketUpdatedBody": "ನಿಮ್ಮ ಟಿಕೆಟ್ {{number}} ಸ್ಥಿತಿ {{status}} ಗೆ ಬದಲಾಗಿದೆ",
+    "accountApprovedTitle": "ಖಾತೆ ಅನುಮೋದಿಸಲಾಗಿದೆ",
+    "accountApprovedBody": "ನಿಮ್ಮ ತಂತ್ರಜ್ಞ ಖಾತೆ ಅನುಮೋದಿಸಲಾಗಿದೆ. ಈಗ ನೀವು ಲಾಗಿನ್ ಆಗಿ ಟಿಕೆಟ್‌ಗಳನ್ನು ತೆಗೆದುಕೊಳ್ಳಲು ಪ್ರಾರಂಭಿಸಬಹುದು!",
+    "accountRejectedTitle": "ಖಾತೆ ತಿರಸ್ಕರಿಸಲಾಗಿದೆ",
+    "accountRejectedBody": "ನಿಮ್ಮ ತಂತ್ರಜ್ಞ ಖಾತೆ ಅರ್ಜಿ ಅನುಮೋದಿಸಲಾಗಿಲ್ಲ"
+  },
+  "integrations": {
+    "title": "ಇಂಟಿಗ್ರೇಶನ್‌ಗಳು",
+    "goldTitle": "ಚಿನ್ನದ ದರ API",
+    "goldSubtitle": "ಲೈವ್ ಚಿನ್ನದ ದರಗಳಿಗಾಗಿ Dynamics 365 ರುಜುವಾತುಗಳು",
+    "ssoTitle": "Microsoft SSO",
+    "ssoSubtitle": "Microsoft ನೊಂದಿಗೆ ಸೈನ್ ಇನ್‌ಗಾಗಿ Azure AD ರುಜುವಾತುಗಳು",
+    "clientId": "Client ID",
+    "clientSecret": "Client Secret",
+    "tenantId": "Tenant ID",
+    "resourceUrl": "Resource URL",
+    "warehouse": "ಗೋದಾಮು",
+    "tenantUrl": "Azure Tenant URL",
+    "ssoEnabled": "Microsoft ಸೈನ್-ಇನ್ ಸಕ್ರಿಯಗೊಳಿಸಿ",
+    "secretStored": "•••••••• (ಸಂಗ್ರಹಿಸಲಾಗಿದೆ — ಉಳಿಸಿಕೊಳ್ಳಲು ಖಾಲಿ ಬಿಡಿ)",
+    "secretEmpty": "ಹೊಂದಿಸಲಾಗಿಲ್ಲ",
+    "save": "ಉಳಿಸಿ",
+    "saveApply": "ಉಳಿಸಿ ಮತ್ತು ಅನ್ವಯಿಸಿ",
+    "goldSaved": "ಚಿನ್ನದ ದರ ರುಜುವಾತುಗಳು ಉಳಿಸಲಾಗಿದೆ",
+    "ssoApplied": "Microsoft SSO ಕಾನ್ಫಿಗರೇಶನ್ ಅನ್ವಯಿಸಲಾಗಿದೆ",
+    "ssoSavedNotApplied": "ಉಳಿಸಲಾಗಿದೆ. ಮ್ಯಾನೇಜ್‌ಮೆಂಟ್ ಟೋಕನ್ ಹೊಂದಿಸಿದ ನಂತರ ಇದು ಅನ್ವಯಿಸುತ್ತದೆ.",
+    "goldHint": "ದರಗಳು ಪ್ರತಿ ಕೆಲವು ನಿಮಿಷಗಳಿಗೊಮ್ಮೆ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಸಿಂಕ್ ಆಗುತ್ತವೆ. ಹೊಸ ರುಜುವಾತುಗಳು ಮುಂದಿನ ಸಿಂಕ್‌ನಲ್ಲಿ ಜಾರಿಗೆ ಬರುತ್ತವೆ.",
+    "ssoHint": "ಅನ್ವಯಿಸುವುದರಿಂದ ಈ ಮೌಲ್ಯಗಳನ್ನು Supabase Auth ಗೆ ಕಳುಹಿಸಲಾಗುತ್ತದೆ. apply-sso-config ಫಂಕ್ಷನ್‌ನಲ್ಲಿ SUPABASE_MANAGEMENT_TOKEN ಹೊಂದಿಸಬೇಕು."
+  }
+}
