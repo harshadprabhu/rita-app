@@ -29,18 +29,11 @@ export async function getOrCreateBotChannel(profileId: string): Promise<DbChatCh
     .maybeSingle();
   if (participantRow?.channel) return participantRow.channel as unknown as DbChatChannel;
 
-  const { data: channel, error } = await supabase
-    .from('chat_channels')
-    .insert({ type: 'bot', store_id: null })
-    .select()
-    .single();
+  // Create via a security-definer RPC: inserting a bot channel and reading it
+  // back under RLS fails (no participant row exists yet), so do it server-side.
+  const { data, error } = await supabase.rpc('create_bot_channel');
   if (error) throw error;
-
-  await supabase.from('chat_participants').insert([
-    { channel_id: channel.id, profile_id: profileId },
-  ]);
-
-  return channel as DbChatChannel;
+  return data as DbChatChannel;
 }
 
 export async function getChannel(channelId: string): Promise<DbChatChannel> {
