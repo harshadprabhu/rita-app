@@ -32,7 +32,6 @@ export default function AdminLayout() {
       />
       <Tabs.Screen name="accounts" options={{ href: null }} />
       <Tabs.Screen name="analytics" options={{ href: null }} />
-      <Tabs.Screen name="chat" options={{ href: null }} />
       <Tabs.Screen name="broadcasts" options={{ href: null }} />
       <Tabs.Screen name="approvals" options={{ href: null }} />
       <Tabs.Screen name="integrations" options={{ href: null }} />
