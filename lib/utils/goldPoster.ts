@@ -22,7 +22,13 @@ let _templateUri: string | undefined | null = null; // null = not resolved yet
 function getTemplateUri(): string | undefined {
   if (_templateUri === null) {
     try {
-      _templateUri = RNImage.resolveAssetSource(require('../../assets/gold-rate-template.png'))?.uri;
+      // On Expo web `require` of an image returns the URL string; on native it
+      // returns an asset object/number that resolveAssetSource turns into a uri.
+      const asset = require('../../assets/gold-rate-template.png') as unknown;
+      _templateUri =
+        typeof asset === 'string'
+          ? asset
+          : (asset as { uri?: string })?.uri ?? RNImage.resolveAssetSource(asset as number)?.uri;
     } catch {
       _templateUri = undefined;
     }

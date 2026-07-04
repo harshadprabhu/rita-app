@@ -7,7 +7,8 @@
     "loading": "Loading...",
     "all": "All",
     "submit": "Submit",
-    "send": "Send"
+    "send": "Send",
+    "clearAll": "Clear All"
   },
   "auth": {
     "subtitle": "Retail Issue Tracking AI · Indriya",
@@ -150,7 +151,8 @@
     "updated": "Updated {{time}}",
     "unavailable": "Gold rate unavailable. Please try again later.",
     "trendTitle": "{{purity}} · 7-Day Trend",
-    "noTrend": "No trend data available."
+    "noTrend": "Trend will appear as more days of rates are collected.",
+    "downloadPoster": "Download Rate Poster"
   },
   "approvals": {
     "title": "Pending Approvals",

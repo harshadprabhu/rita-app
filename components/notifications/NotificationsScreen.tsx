@@ -1,6 +1,8 @@
 import React, { useEffect } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View, TouchableOpacity, Text } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Screen } from '../common/Screen';
 import { AppHeader } from '../common/AppHeader';
 import { ProfileIconButton } from '../common/ProfileIconButton';
@@ -9,12 +11,15 @@ import { LoadingOverlay } from '../common/LoadingOverlay';
 import { UnifiedNotificationItem } from './UnifiedNotificationItem';
 import { useUnifiedNotifications } from '../../hooks/useUnifiedNotifications';
 import { useMarkRead } from '../../hooks/useNotifications';
+import { deleteAllNotifications } from '../../lib/api/notifications';
+import { QUERY_KEYS } from '../../constants/queryKeys';
 import { useAuthStore } from '../../stores/authStore';
 import { theme } from '../../constants/theme';
 
 export function NotificationsScreen() {
   const { t } = useTranslation();
   const profile = useAuthStore((s) => s.profile);
+  const qc = useQueryClient();
   const userId = profile?.id ?? '';
   const {
     feed, isLoading, isRefetching, refetch,
@@ -30,9 +35,39 @@ export function NotificationsScreen() {
     if (unreadAnnouncementCount > 0) markAllBroadcastsRead();
   }, [userId, unreadTicketCount, unreadAnnouncementCount]);
 
+  const clearAll = useMutation({
+    mutationFn: async () => {
+      await deleteAllNotifications(userId);
+      await markAllBroadcastsRead();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.notifications(userId) });
+      refetch();
+    },
+  });
+
+  const hasItems = feed.length > 0;
+
   return (
     <Screen edges={['top', 'left', 'right']}>
-      <AppHeader title={t('tabs.alerts')} right={profile ? <ProfileIconButton profile={profile} /> : null} />
+      <AppHeader
+        title={t('tabs.alerts')}
+        right={
+          <View style={styles.headerRight}>
+            {hasItems && (
+              <TouchableOpacity
+                style={styles.clearBtn}
+                onPress={() => clearAll.mutate()}
+                disabled={clearAll.isPending}
+              >
+                <Ionicons name="trash-outline" size={13} color="#fff" />
+                <Text style={styles.clearBtnText}>{t('common.clearAll')}</Text>
+              </TouchableOpacity>
+            )}
+            {profile ? <ProfileIconButton profile={profile} /> : null}
+          </View>
+        }
+      />
       {isLoading ? (
         <LoadingOverlay />
       ) : (
@@ -56,4 +91,11 @@ export function NotificationsScreen() {
 const styles = StyleSheet.create({
   list: { padding: theme.spacing.lg, flexGrow: 1 },
   itemWrap: { marginBottom: theme.spacing.md },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
+  clearBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: theme.radius.full,
+    paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs,
+  },
+  clearBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
 });

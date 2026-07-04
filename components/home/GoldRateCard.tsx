@@ -48,8 +48,13 @@ export function GoldRateCard() {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const { data, isLoading, refetch, isRefetching } = useGoldRate();
-  // Only fetch the trend once the card is expanded — keeps the collapsed view cheap.
-  const { data: trend } = useGoldRateTrend(expanded);
+  const { data: trend } = useGoldRateTrend(true);
+
+  const handleDownload = () => {
+    if (!data) return;
+    const posterRates = ratesFromGold(data.rates);
+    if (posterRates) downloadGoldRatePoster(posterRates, new Date(data.updated_at));
+  };
 
   // Build the list of columns that actually have a rate value
   const columns = data
@@ -81,19 +86,6 @@ export function GoldRateCard() {
           <Text style={styles.cardTitle}>{t('goldRate.title')}</Text>
         </View>
         <View style={styles.headerRight}>
-          {isPosterSupported() && data && (
-            <TouchableOpacity
-              onPress={() => {
-                const posterRates = ratesFromGold(data.rates);
-                if (posterRates) downloadGoldRatePoster(posterRates, new Date(data.updated_at));
-              }}
-              style={styles.refreshBtn}
-              hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-              accessibilityLabel="Download gold rate poster"
-            >
-              <Ionicons name="download-outline" size={18} color={theme.colors.accent} />
-            </TouchableOpacity>
-          )}
           <TouchableOpacity
             onPress={() => refetch()}
             disabled={isRefetching}
@@ -125,7 +117,24 @@ export function GoldRateCard() {
               <RateTile key={col.purity} karat={col.label} rate={col.rate} />
             ))}
           </View>
-          {expanded && <GoldRateTrendChart points={trend ?? []} />}
+
+          {/* Prominent download button */}
+          {isPosterSupported() && (
+            <TouchableOpacity style={styles.downloadBtn} onPress={handleDownload} activeOpacity={0.85}>
+              <Ionicons name="download-outline" size={16} color={theme.colors.brand} />
+              <Text style={styles.downloadBtnText}>{t('goldRate.downloadPoster')}</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Trend (expand to view); shows a message until enough days are collected */}
+          {expanded && (
+            trend && trend.length >= 2 ? (
+              <GoldRateTrendChart points={trend} />
+            ) : (
+              <Text style={styles.trendEmpty}>{t('goldRate.noTrend')}</Text>
+            )
+          )}
+
           <View style={styles.footer}>
             <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.35)" />
             <Text style={styles.updatedText}>
@@ -209,6 +218,28 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
     marginBottom: theme.spacing.md,
+  },
+  downloadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.accent,
+    borderRadius: theme.radius.sm,
+    paddingVertical: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  downloadBtnText: {
+    color: theme.colors.brand,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  trendEmpty: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 12,
+    textAlign: 'center',
+    paddingVertical: theme.spacing.md,
   },
   rateTile: {
     flexBasis: '47%',

@@ -30,6 +30,15 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Remove all of a user's ticket notifications from their inbox. */
+export async function deleteAllNotifications(userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('notifications')
+    .delete()
+    .eq('recipient_id', userId);
+  if (error) throw error;
+}
+
 export async function createNotification(payload: {
   recipient_id: string;
   ticket_id?: string;
