@@ -18,9 +18,11 @@ function json(body: unknown, status = 200) {
  * the Management API. Called by the admin app right after it saves the SSO
  * form, so the change takes effect without touching the Supabase dashboard.
  *
- * Requires a Management API token as the `SUPABASE_MANAGEMENT_TOKEN` function
- * secret. If it's not set, the settings are still saved (by the caller) — this
- * just reports that the apply step was skipped so the UI can tell the admin.
+ * Requires a Management API token as the `MGMT_ACCESS_TOKEN` function secret
+ * (named without the `SUPABASE_` prefix — Supabase rejects secrets with that
+ * prefix as reserved for its own injected env vars). If it's not set, the
+ * settings are still saved (by the caller) — this just reports that the
+ * apply step was skipped so the UI can tell the admin.
  */
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
@@ -59,12 +61,12 @@ Deno.serve(async (req) => {
   const c = (cfg ?? {}) as Record<string, string | boolean | null>;
 
   // 3. Apply to Supabase Auth via the Management API.
-  const mgmtToken = Deno.env.get('SUPABASE_MANAGEMENT_TOKEN');
+  const mgmtToken = Deno.env.get('MGMT_ACCESS_TOKEN');
   if (!mgmtToken) {
     return json({
       applied: false,
       reason: 'management_token_missing',
-      message: 'Saved. Set SUPABASE_MANAGEMENT_TOKEN to auto-apply to Supabase Auth.',
+      message: 'Saved. Set MGMT_ACCESS_TOKEN to auto-apply to Supabase Auth.',
     });
   }
 
