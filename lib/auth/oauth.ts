@@ -23,10 +23,25 @@ const redirectTo = Platform.OS === 'web'
   ? webRedirectTo()
   : makeRedirectUri({ scheme: 'rita', path: 'auth/callback' });
 
-/** Pull the PKCE auth code out of the redirect URL Supabase sends us back to. */
-function extractCode(url: string): string | null {
-  const params = new URL(url).searchParams;
-  return params.get('code');
+/**
+ * Pull the PKCE auth code out of the redirect URL Supabase sends us back to.
+ * Supabase reports failures (bad redirect URL, provider misconfig, etc.) as
+ * `?error=...&error_description=...` on this same URL — sometimes as a query
+ * param, sometimes in the hash fragment — so surface that instead of masking
+ * every non-code outcome behind one generic message.
+ */
+function extractCode(url: string): string {
+  const parsed = new URL(url);
+  const hashParams = new URLSearchParams(parsed.hash.replace(/^#/, ''));
+  const code = parsed.searchParams.get('code') ?? hashParams.get('code');
+  if (code) return code;
+
+  const errorDesc =
+    parsed.searchParams.get('error_description') ?? hashParams.get('error_description');
+  const error = parsed.searchParams.get('error') ?? hashParams.get('error');
+  if (error) throw new Error(errorDesc ? decodeURIComponent(errorDesc) : error);
+
+  throw new Error(`Microsoft sign-in did not return an authorization code: ${url}`);
 }
 
 /**
@@ -74,7 +89,5 @@ export async function signInWithMicrosoft(): Promise<void> {
   }
 
   const code = extractCode(result.url);
-  if (!code) throw new Error('Microsoft sign-in did not return an authorization code');
-
   await completeSessionFromCode(code);
 }
