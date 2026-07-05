@@ -12,6 +12,7 @@ import Constants from 'expo-constants';
 import { useTranslation } from 'react-i18next';
 import { loadSavedLanguage } from '../lib/i18n';
 import { queryClient } from '../lib/queryClient';
+import { useUiStore } from '../stores/uiStore';
 import { useAuth } from '../hooks/useAuth';
 import { useUnifiedNotifications } from '../hooks/useUnifiedNotifications';
 import { useAuthStore } from '../stores/authStore';
@@ -139,6 +140,24 @@ export default function RootLayout() {
 
   useEffect(() => {
     loadSavedLanguage().finally(() => setLangReady(true));
+  }, []);
+
+  // Web: Supabase reports OAuth sign-in failures by redirecting back with
+  // ?error_description=… (query or hash) — and when the redirect URL isn't
+  // recoverable it falls back to the Site URL *root*, so the error can land on
+  // any page, not just /auth/callback. Sweep it up at boot wherever it lands,
+  // stash it for the login screen's banner, and clean the URL.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const url = new URL(window.location.href);
+    const hash = new URLSearchParams(url.hash.replace(/^#/, ''));
+    const message =
+      url.searchParams.get('error_description') ?? hash.get('error_description') ??
+      url.searchParams.get('error') ?? hash.get('error');
+    if (!message) return;
+    useUiStore.getState().setSsoError(message);
+    for (const key of ['error', 'error_description', 'error_code']) url.searchParams.delete(key);
+    window.history.replaceState(null, '', url.pathname + url.search);
   }, []);
 
   if (!langReady) return <LoadingOverlay message="Loading..." />;

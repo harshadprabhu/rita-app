@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Image,
@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { Screen } from '../../components/common/Screen';
 import { signInWithPassword, requestOtp, verifyOtp } from '../../lib/auth/session';
 import { signInWithMicrosoft } from '../../lib/auth/oauth';
+import { useUiStore } from '../../stores/uiStore';
 import { isValidEmail } from '../../lib/utils/validation';
 import { extractErrorMessage } from '../../lib/utils/error';
 import { theme, webNoOutline } from '../../constants/theme';
@@ -27,6 +28,15 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [msLoading, setMsLoading] = useState(false);
   const [focused, setFocused] = useState<FieldName | null>(null);
+
+  // Surface an OAuth failure swept from the redirect URL at boot (see
+  // app/_layout.tsx) in this screen's error banner, wherever it landed.
+  const ssoError = useUiStore((s) => s.ssoError);
+  useEffect(() => {
+    if (!ssoError) return;
+    setError(ssoError);
+    useUiStore.getState().setSsoError(null);
+  }, [ssoError]);
 
   const handleMicrosoftLogin = async () => {
     setError('');
