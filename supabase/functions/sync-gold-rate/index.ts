@@ -8,6 +8,13 @@ const CORS = {
 const D365_DEFAULT_BASE = 'https://novel.operations.dynamics.com';
 const D365_DEFAULT_WAREHOUSE = 'NS0001';
 
+// Real gold rates run in the thousands of INR per gram. The getMetalRate
+// custom service sometimes wraps its response as { ReturnValue: "1", ... } —
+// a bare success/count flag, not the rate — and parseRate's key-scan can
+// mistake it for the value. Reject anything implausibly low so a bad D365
+// response can never overwrite good data with e.g. rate = 1.
+const MIN_PLAUSIBLE_GOLD_RATE = 1000;
+
 interface D365Config {
   clientId: string;
   clientSecret: string;
@@ -127,6 +134,11 @@ async function fetchD365Rate(
   const rate = parseRate(data);
   if (rate == null) {
     console.warn(`[sync-gold-rate] getMetalRate(${purity}) unparseable response: ${text.slice(0, 250)}`);
+    return null;
+  }
+  if (rate < MIN_PLAUSIBLE_GOLD_RATE) {
+    console.warn(`[sync-gold-rate] getMetalRate(${purity}) implausible rate ${rate}, discarding: ${text.slice(0, 250)}`);
+    return null;
   }
   return rate;
 }
@@ -166,7 +178,7 @@ async function fetchD365Rates(
       const rows = (value ?? []) as Array<{ Metal: string; Purity: string; Rate: number; Warehouse?: string; EntryTime?: number }>;
       const latest = new Map<string, { rate: number; t: number }>();
       for (const r of rows) {
-        if (r.Metal !== 'Gold' || !(r.Rate > 0)) continue;
+        if (r.Metal !== 'Gold' || !(r.Rate >= MIN_PLAUSIBLE_GOLD_RATE)) continue;
         if (cfg.warehouse && r.Warehouse && r.Warehouse !== cfg.warehouse) continue;
         const t = r.EntryTime ?? 0;
         const ex = latest.get(r.Purity);
@@ -257,7 +269,7 @@ Deno.serve(async (req) => {
     const token = await getD365Token(cfg);
     const items = await fetchD365Rates(token, cfg, todayIST, dateApi);
     const targetSet = new Set(TARGET_PURITIES);
-    const filteredItems = items.filter((i) => targetSet.has(i.Purity) && i.Rate > 0);
+    const filteredItems = items.filter((i) => targetSet.has(i.Purity) && i.Rate >= MIN_PLAUSIBLE_GOLD_RATE);
 
     if (!filteredItems.length) {
       throw new Error('D365 returned no valid rates for target purities');
