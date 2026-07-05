@@ -1,3 +1,12 @@
+// Microsoft (Entra ID) sign-in via Supabase's Azure OAuth provider.
+//
+// Web:    full-page redirect. signInWithOAuth navigates this tab to Microsoft;
+//         the redirect returns to /auth/callback?code=… and supabase-js
+//         completes the exchange automatically during client init
+//         (detectSessionInUrl in lib/supabase.ts). No manual exchange here.
+// Native: in-app auth browser. signInWithOAuth hands back the authorize URL,
+//         expo-web-browser drives the session, and we exchange the returned
+//         PKCE code explicitly.
 import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
@@ -6,52 +15,32 @@ import { supabase } from '../supabase';
 // Dismisses any leftover auth browser session when the app regains focus.
 WebBrowser.maybeCompleteAuthSession();
 
-// On web, makeRedirectUri only knows window.location.origin — it has no idea
-// this app is served under the /rita-app GitHub Pages subpath, so it built
-// https://host/auth/callback instead of https://host/rita-app/auth/callback
-// (a path that 404s on Pages). Derive the base path from the current URL
-// instead of hardcoding it, so local/dev at the root still works too.
-function webRedirectTo(): string {
-  const { origin, pathname } = window.location;
-  const base = pathname.startsWith('/rita-app') ? '/rita-app' : '';
-  return `${origin}${base}/auth/callback`;
-}
-
-// Deep link the Microsoft OAuth flow returns to. Must also be registered in the
-// Supabase dashboard under Authentication → URL Configuration → Redirect URLs.
-const redirectTo = Platform.OS === 'web'
-  ? webRedirectTo()
-  : makeRedirectUri({ scheme: 'rita', path: 'auth/callback' });
-
 /**
- * Pull the PKCE auth code out of the redirect URL Supabase sends us back to.
- * Supabase reports failures (bad redirect URL, provider misconfig, etc.) as
- * `?error=...&error_description=...` on this same URL — sometimes as a query
- * param, sometimes in the hash fragment — so surface that instead of masking
- * every non-code outcome behind one generic message.
- */
-function extractCode(url: string): string {
-  const parsed = new URL(url);
-  const hashParams = new URLSearchParams(parsed.hash.replace(/^#/, ''));
-  const code = parsed.searchParams.get('code') ?? hashParams.get('code');
-  if (code) return code;
-
-  const errorDesc =
-    parsed.searchParams.get('error_description') ?? hashParams.get('error_description');
-  const error = parsed.searchParams.get('error') ?? hashParams.get('error');
-  if (error) throw new Error(errorDesc ? decodeURIComponent(errorDesc) : error);
-
-  throw new Error(`Microsoft sign-in did not return an authorization code: ${url}`);
-}
-
-/**
- * Exchange a PKCE auth code for a Supabase session — race-safe.
+ * Where Microsoft/Supabase sends the user back to.
  *
- * On Android the redirect both resolves openAuthSessionAsync AND leaks a deep
- * link into the app (app/auth/callback.tsx), so this can be called twice with
- * the same single-use code. We short-circuit if a session already exists, and
- * if the exchange fails we only re-throw when there's still no session (i.e. the
- * other caller didn't already consume the code).
+ * Web: derived from the current URL because the app is served under the
+ * /rita-app subpath on GitHub Pages — makeRedirectUri only knows the origin
+ * and would build a path that 404s there. Local dev at the root still works.
+ * Native: the rita:// deep link. Both forms must be registered in the
+ * Supabase dashboard under Authentication → URL Configuration → Redirect URLs.
+ */
+function getRedirectTo(): string {
+  if (Platform.OS === 'web') {
+    const { origin, pathname } = window.location;
+    const base = pathname.startsWith('/rita-app') ? '/rita-app' : '';
+    return `${origin}${base}/auth/callback`;
+  }
+  return makeRedirectUri({ scheme: 'rita', path: 'auth/callback' });
+}
+
+/**
+ * Exchange a PKCE auth code for a Supabase session — idempotent.
+ *
+ * Only used by the native flow (web is handled by detectSessionInUrl). On
+ * Android the redirect both resolves openAuthSessionAsync AND leaks a deep
+ * link into app/auth/callback.tsx, so this can run twice with the same
+ * single-use code: short-circuit when a session already exists, and only
+ * re-throw an exchange failure if there's still no session afterwards.
  */
 export async function completeSessionFromCode(code: string): Promise<void> {
   const { data: { session } } = await supabase.auth.getSession();
@@ -64,24 +53,28 @@ export async function completeSessionFromCode(code: string): Promise<void> {
   }
 }
 
+/** Pull the auth code (or the provider's error) out of the native redirect URL. */
+function extractCode(url: string): string {
+  const parsed = new URL(url);
+  const code = parsed.searchParams.get('code');
+  if (code) return code;
+
+  const errorDesc = parsed.searchParams.get('error_description') ?? parsed.searchParams.get('error');
+  throw new Error(
+    errorDesc ? decodeURIComponent(errorDesc) : 'Microsoft sign-in did not return an authorization code',
+  );
+}
+
 /**
- * Drive the Microsoft (Entra ID) sign-in via Supabase's Azure provider.
- *
- * Web uses a full-page redirect — the most reliable browser flow. The popup
- * approach failed three different ways in the field (blocked when opened
- * after an await, postMessage dropped on same-tick close, opener link severed
- * by COOP on some Microsoft pages), and a redirect has none of those failure
- * modes: the tab navigates to Microsoft, comes back on /auth/callback?code=…,
- * the app reboots, and app/auth/callback.tsx exchanges the code inline. The
- * PKCE code_verifier survives the round trip in localStorage.
- *
- * Native keeps the in-app browser flow: open the system auth browser, then
- * exchange the returned code here. onAuthStateChange (hooks/useAuth.ts) picks
- * the session up and the AuthGate routes the user.
+ * Start the Microsoft sign-in. Once a session exists, onAuthStateChange
+ * (hooks/useAuth.ts) picks it up and AuthGate routes the user by role.
+ * Throws on failure so the login screen can surface the error.
  */
 export async function signInWithMicrosoft(): Promise<void> {
+  const redirectTo = getRedirectTo();
+
   if (Platform.OS === 'web') {
-    // No skipBrowserRedirect: supabase-js navigates this tab to Microsoft itself.
+    // No skipBrowserRedirect: supabase-js navigates this tab to Microsoft.
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'azure',
       options: { redirectTo, scopes: 'openid profile email' },
@@ -92,19 +85,13 @@ export async function signInWithMicrosoft(): Promise<void> {
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'azure',
-    options: {
-      redirectTo,
-      skipBrowserRedirect: true,
-      scopes: 'openid profile email',
-    },
+    options: { redirectTo, skipBrowserRedirect: true, scopes: 'openid profile email' },
   });
   if (error) throw error;
   if (!data?.url) throw new Error('Could not start Microsoft sign-in');
 
   const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-  if (result.type !== 'success') {
-    // User cancelled/dismissed — not an error worth surfacing.
-    return;
-  }
+  if (result.type !== 'success') return; // user cancelled/dismissed — not an error
+
   await completeSessionFromCode(extractCode(result.url));
 }

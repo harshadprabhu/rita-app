@@ -13,14 +13,23 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 // `navigator`, so that alone isn't a reliable check — `window` is.
 const isBrowserOrNative = typeof window !== 'undefined';
 
+// True only in a real web browser (not native, not Node SSR). On web we let
+// supabase-js auto-complete the OAuth redirect itself (detectSessionInUrl):
+// when the app boots on /auth/callback?code=…, the client exchanges the code
+// during initialization and cleans the URL — no manual exchange code to race
+// or break. Native can't use this (deep links never hit window.location), so
+// it exchanges the code explicitly in lib/auth/oauth.ts.
+const isWebBrowser = typeof document !== 'undefined';
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: isBrowserOrNative ? AsyncStorage : undefined,
     autoRefreshToken: isBrowserOrNative,
     persistSession: isBrowserOrNative,
-    detectSessionInUrl: false,
-    // PKCE is required for the native Microsoft OAuth flow: signInWithOAuth
-    // issues an auth code that we exchange for a session via exchangeCodeForSession.
+    detectSessionInUrl: isWebBrowser,
+    // PKCE for the Microsoft OAuth flow: signInWithOAuth issues an auth code
+    // that gets exchanged for a session (automatically on web, explicitly on
+    // native via exchangeCodeForSession).
     flowType: 'pkce',
   },
 });
