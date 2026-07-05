@@ -118,10 +118,10 @@ export function GoldRateCard() {
             ))}
           </View>
 
-          {/* Prominent download button */}
+          {/* Minimal download link */}
           {isPosterSupported() && (
-            <TouchableOpacity style={styles.downloadBtn} onPress={handleDownload} activeOpacity={0.85}>
-              <Ionicons name="download-outline" size={16} color={theme.colors.brand} />
+            <TouchableOpacity style={styles.downloadBtn} onPress={handleDownload} activeOpacity={0.6} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+              <Ionicons name="download-outline" size={13} color={theme.colors.accent} />
               <Text style={styles.downloadBtnText}>{t('goldRate.downloadPoster')}</Text>
             </TouchableOpacity>
           )}
@@ -158,19 +158,19 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: theme.colors.brand,
     borderRadius: theme.radius.md,
-    padding: theme.spacing.lg,
+    padding: theme.spacing.md,
     marginBottom: theme.spacing.lg,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs,
   },
   headerRight: {
     flexDirection: 'row',
@@ -195,45 +195,43 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   goldIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: 'rgba(201,168,76,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardTitle: {
     color: 'rgba(255,255,255,0.75)',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   refreshBtn: {
-    width: 32,
-    height: 32,
+    width: 26,
+    height: 26,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ratesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
+    gap: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
   },
   downloadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: theme.spacing.sm,
-    backgroundColor: theme.colors.accent,
-    borderRadius: theme.radius.sm,
-    paddingVertical: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+    alignSelf: 'flex-start',
+    gap: 5,
+    paddingVertical: theme.spacing.xs,
+    marginBottom: theme.spacing.xs,
   },
   downloadBtnText: {
-    color: theme.colors.brand,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
   trendEmpty: {
     color: 'rgba(255,255,255,0.5)',
@@ -246,19 +244,19 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: theme.radius.sm,
-    paddingVertical: theme.spacing.md,
-    paddingHorizontal: theme.spacing.md,
-    gap: theme.spacing.xs,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+    gap: 2,
   },
   karatLabel: {
     color: theme.colors.accent,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.3,
   },
   rateValue: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     letterSpacing: -0.3,
   },
@@ -268,7 +266,7 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.08)',
-    paddingTop: theme.spacing.md,
+    paddingTop: theme.spacing.sm,
   },
   updatedText: {
     color: 'rgba(255,255,255,0.35)',

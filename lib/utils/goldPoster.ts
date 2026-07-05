@@ -37,13 +37,15 @@ function getTemplateUri(): string | undefined {
 }
 
 // Centre of each empty ₹ value box (x is right of the printed ₹ glyph), and the
-// baseline point for the date on the "Date: ____" line.
-const DATE_POINT = { x: 596, y: 512 };
+// baseline point for the date on the "Date: ____" line. Measured directly off
+// the template PNG's gold border pixels (all 4 boxes share the same left/right
+// edges at x=560/919; the printed ₹ glyph spans x=597-623 inside each box).
+const DATE_POINT = { x: 594, y: 512 };
 const RATE_POINTS = [
-  { key: '24k_999', x: 792, y: 652 },
-  { key: '24k_995', x: 792, y: 806 },
-  { key: '22k_916', x: 792, y: 960 },
-  { key: '18k_750', x: 792, y: 1113 },
+  { key: '24k_999', x: 772, y: 639 },
+  { key: '24k_995', x: 772, y: 790 },
+  { key: '22k_916', x: 772, y: 940 },
+  { key: '18k_750', x: 772, y: 1086 },
 ] as const;
 
 function ordinal(day: number): string {

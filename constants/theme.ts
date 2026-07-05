@@ -44,27 +44,29 @@ const shadowLg: ViewStyle = {
 // Subtle brand-tinted glow for primary CTAs — a soft halo instead of a flat
 // black drop shadow reads as more premium on a saturated navy button.
 const shadowBrand: ViewStyle = {
-  shadowColor: '#1E3A5F',
+  shadowColor: '#132C4D',
   shadowOffset: { width: 0, height: 8 },
-  shadowOpacity: 0.28,
-  shadowRadius: 16,
+  shadowOpacity: 0.3,
+  shadowRadius: 18,
   elevation: 6,
 };
 
 export const theme = {
   colors: {
-    brand: '#1E3A5F',
-    brandMid: '#2D5282',
-    accent: '#C9A84C',
-    accentLight: '#FDF6E3',
-    bg: '#F4F6F9',
+    // Indriya-inspired luxury palette: deep midnight navy + refined warm gold,
+    // set on soft ivory backgrounds for a premium jewellery-brand feel.
+    brand: '#132C4D',
+    brandMid: '#28517F',
+    accent: '#C6A14C',
+    accentLight: '#FAF2DD',
+    bg: '#F5F2EB',
     surface: '#FFFFFF',
-    surface2: '#F8F9FB',
-    textPrimary: '#0F1C2E',
-    textSecondary: '#5A6A7E',
-    textTertiary: '#9AAABB',
-    border: '#E8ECF2',
-    borderStrong: '#D1D9E6',
+    surface2: '#F2EDE3',
+    textPrimary: '#132236',
+    textSecondary: '#5C6B7E',
+    textTertiary: '#98A4B2',
+    border: '#E9E2D4',
+    borderStrong: '#D7CEBD',
     error: '#EF4444',
     errorBg: '#FEE2E2',
     errorLight: '#FEF2F2',
