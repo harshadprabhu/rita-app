@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import { makeRedirectUri } from 'expo-auth-session';
 import { supabase } from '../supabase';
@@ -5,9 +6,22 @@ import { supabase } from '../supabase';
 // Dismisses any leftover auth browser session when the app regains focus.
 WebBrowser.maybeCompleteAuthSession();
 
+// On web, makeRedirectUri only knows window.location.origin — it has no idea
+// this app is served under the /rita-app GitHub Pages subpath, so it built
+// https://host/auth/callback instead of https://host/rita-app/auth/callback
+// (a path that 404s on Pages). Derive the base path from the current URL
+// instead of hardcoding it, so local/dev at the root still works too.
+function webRedirectTo(): string {
+  const { origin, pathname } = window.location;
+  const base = pathname.startsWith('/rita-app') ? '/rita-app' : '';
+  return `${origin}${base}/auth/callback`;
+}
+
 // Deep link the Microsoft OAuth flow returns to. Must also be registered in the
 // Supabase dashboard under Authentication → URL Configuration → Redirect URLs.
-const redirectTo = makeRedirectUri({ scheme: 'rita', path: 'auth/callback' });
+const redirectTo = Platform.OS === 'web'
+  ? webRedirectTo()
+  : makeRedirectUri({ scheme: 'rita', path: 'auth/callback' });
 
 /** Pull the PKCE auth code out of the redirect URL Supabase sends us back to. */
 function extractCode(url: string): string | null {
