@@ -2,7 +2,7 @@ import '../global.css';
 import '../lib/i18n';
 import React, { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack, router, usePathname } from 'expo-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { PaperProvider, MD3LightTheme } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -41,6 +41,7 @@ const theme = {
 function AuthGate() {
   const { t } = useTranslation();
   useAuth();
+  const pathname = usePathname();
   const session = useAuthStore((s) => s.session);
   const profile = useAuthStore((s) => s.profile);
   const isLoading = useAuthStore((s) => s.isLoading);
@@ -81,6 +82,10 @@ function AuthGate() {
     if (isLoading) return;
 
     if (!session) {
+      // The OAuth callback route is mid-exchange (code → session) when the app
+      // boots there after the Microsoft redirect — yanking it to /login here
+      // would abort the sign-in. It redirects itself when it's done or fails.
+      if (pathname?.startsWith('/auth/callback')) return;
       if (lastNav.current !== 'login') {
         lastNav.current = 'login';
         router.replace('/(auth)/login');
@@ -123,7 +128,7 @@ function AuthGate() {
     else if (dest === 'admin') router.replace('/(admin)/home');
     else if (dest === 'pending') router.replace('/pending-approval');
     else router.replace('/(auth)/login');
-  }, [isLoading, session, profile]);
+  }, [isLoading, session, profile, pathname]);
 
   if (isLoading) return <LoadingOverlay message={t('common.loading')} />;
   return null;
@@ -152,7 +157,6 @@ export default function RootLayout() {
             <Stack.Screen name="(admin)" />
             <Stack.Screen name="tickets/[id]" options={{ presentation: 'card' }} />
             <Stack.Screen name="create-ticket" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="chat/[id]" options={{ presentation: 'card' }} />
             <Stack.Screen name="pending-approval" />
             <Stack.Screen name="onboarding-store" />
             <Stack.Screen name="auth/callback" />

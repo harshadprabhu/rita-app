@@ -1,26 +1,22 @@
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { completeSessionFromCode } from '../../lib/auth/oauth';
+import { useUiStore } from '../../stores/uiStore';
 import { LoadingOverlay } from '../../components/common/LoadingOverlay';
 
 /**
- * Lands the OAuth redirect deep link (rita://auth/callback?code=…). On Android
- * the Microsoft sign-in redirect leaks a deep link into the app even though the
- * helper already exchanges the code; without this route expo-router would show
- * its "Unmatched Route" screen. We idempotently finish the session, then bounce
- * to '/' where AuthGate routes by role.
+ * Lands the OAuth redirect — both the native deep link (rita://auth/callback)
+ * and, on web, the full-page redirect back from Microsoft/Supabase
+ * (https://…/auth/callback?code=…). The web sign-in deliberately uses a
+ * full-page redirect instead of a popup (popups failed three different ways:
+ * blockers, dropped postMessage, COOP-severed openers), so this route is the
+ * single place the web session gets completed.
  *
- * On web this route also loads inside the popup lib/auth/oauth.ts opens (the
- * whole app boots fresh there). If it tried to complete the session itself,
- * it would race the opener's own completion attempt over the same single-use
- * PKCE code — whichever lost failed silently. So when running as a popup, just
- * hand the result back via postMessage; only the opener ever exchanges the
- * code. We deliberately do NOT call window.close() here — browsers routinely
- * drop a postMessage when the sending window closes in the same tick, which
- * silently loses the code ("pops up and closes, nothing happens"). The opener
- * closes the popup once it has actually received the message.
+ * On Android the redirect also leaks a deep link into the app even though the
+ * sign-in helper already exchanges the code, so completion here must stay
+ * idempotent (completeSessionFromCode short-circuits when a session exists).
+ * Afterwards, bounce to '/' where AuthGate routes by role.
  */
 export default function AuthCallback() {
   const { t } = useTranslation();
@@ -29,25 +25,21 @@ export default function AuthCallback() {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    if (Platform.OS === 'web' && window.opener && window.opener !== window) {
-      const message = {
-        ritaOAuth: code ? { code } : { error: error ?? errorDescription ?? 'unknown_error' },
-      };
-      // Post now and again shortly after, in case the opener's listener wasn't
-      // attached yet. The opener closes this popup once it has the message.
-      window.opener.postMessage(message, window.location.origin);
-      const retry = setInterval(() => {
-        if (window.opener) window.opener.postMessage(message, window.location.origin);
-      }, 300);
-      return () => clearInterval(retry);
-    }
-
     (async () => {
       try {
-        if (code) await completeSessionFromCode(code);
-      } catch {
-        // The helper may have already completed the session; AuthGate will send
-        // the user back to login if there's genuinely no session.
+        if (code) {
+          await completeSessionFromCode(code);
+        } else if (error || errorDescription) {
+          throw new Error(decodeURIComponent(errorDescription ?? error ?? ''));
+        }
+      } catch (e) {
+        // Android double-fire is benign (completeSessionFromCode already
+        // swallows it when a session exists); a genuine failure must be shown,
+        // not hidden. A toast survives the redirect to login — URL params
+        // don't (AuthGate's replace() strips them).
+        const message = e instanceof Error ? e.message : String(e);
+        console.warn(`[auth/callback] sign-in completion failed: ${message}`);
+        useUiStore.getState().showToast(`Microsoft sign-in failed: ${message}`, 'error');
       } finally {
         setDone(true);
       }

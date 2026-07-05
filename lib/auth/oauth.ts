@@ -65,110 +65,46 @@ export async function completeSessionFromCode(code: string): Promise<void> {
 }
 
 /**
- * Open a blank popup synchronously — must be called with no `await` before it
- * in the click handler. expo-web-browser's own openAuthSessionAsync only opens
- * its popup once you call it, and we can't call it until Supabase hands back
- * the authorize URL, which needs an `await`. Browsers stop treating window.open
- * as a direct result of the click after that gap and silently block it (this
- * was the actual cause of "clicking sign in does nothing" — no error, no
- * popup). Opening blank first, then navigating it once the URL is ready, keeps
- * the open() call inside the synchronous click-gesture window.
- */
-function openWebAuthPopup(): Window {
-  const popup = window.open('', 'rita-sso', 'width=500,height=650');
-  if (!popup) {
-    throw new Error('Popup window was blocked. Please allow popups for this site and try again.');
-  }
-  return popup;
-}
-
-/**
- * Wait for the popup to hand back its OAuth result, via either of two channels
- * (whichever fires first) — belt and suspenders, because each has a failure mode:
- *
- *  1. postMessage from the popup's /auth/callback page. Fast, but can be dropped
- *     if the sender closes in the same tick (so the popup deliberately stays open).
- *  2. Directly polling popup.location once it lands back on our own origin
- *     (reading it throws cross-origin while still on Microsoft's pages). Covers
- *     the case where the message never arrives at all.
- *
- * Only the opener ever exchanges the single-use PKCE code — the popup never does
- * — so there's no race over consuming it.
- */
-function waitForPopupResult(popup: Window): Promise<{ code?: string; error?: string }> {
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const finish = (fn: () => void) => {
-      if (settled) return;
-      settled = true;
-      window.removeEventListener('message', onMessage);
-      clearInterval(poll);
-      fn();
-    };
-    const onMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      const payload = event.data?.ritaOAuth;
-      if (payload) finish(() => resolve(payload));
-    };
-    window.addEventListener('message', onMessage);
-
-    const poll = setInterval(() => {
-      if (popup.closed) {
-        finish(() => reject(new Error('Microsoft sign-in was cancelled.')));
-        return;
-      }
-      let href: string;
-      try {
-        href = popup.location.href; // throws while cross-origin on Microsoft's side
-      } catch {
-        return;
-      }
-      if (href.startsWith(redirectTo)) {
-        const url = new URL(href);
-        const code = url.searchParams.get('code');
-        const err = url.searchParams.get('error_description') ?? url.searchParams.get('error');
-        if (code) finish(() => resolve({ code }));
-        else if (err) finish(() => resolve({ error: decodeURIComponent(err) }));
-      }
-    }, 400);
-  });
-}
-
-/**
  * Drive the Microsoft (Entra ID) sign-in via Supabase's Azure provider.
- * Exchanges the returned PKCE code for a Supabase session. onAuthStateChange
- * (hooks/useAuth.ts) picks it up and the AuthGate routes the user. Throws on
- * failure so callers can surface the error.
+ *
+ * Web uses a full-page redirect — the most reliable browser flow. The popup
+ * approach failed three different ways in the field (blocked when opened
+ * after an await, postMessage dropped on same-tick close, opener link severed
+ * by COOP on some Microsoft pages), and a redirect has none of those failure
+ * modes: the tab navigates to Microsoft, comes back on /auth/callback?code=…,
+ * the app reboots, and app/auth/callback.tsx exchanges the code inline. The
+ * PKCE code_verifier survives the round trip in localStorage.
+ *
+ * Native keeps the in-app browser flow: open the system auth browser, then
+ * exchange the returned code here. onAuthStateChange (hooks/useAuth.ts) picks
+ * the session up and the AuthGate routes the user.
  */
 export async function signInWithMicrosoft(): Promise<void> {
-  const popup = Platform.OS === 'web' ? openWebAuthPopup() : null;
-  try {
-    const { data, error } = await supabase.auth.signInWithOAuth({
+  if (Platform.OS === 'web') {
+    // No skipBrowserRedirect: supabase-js navigates this tab to Microsoft itself.
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: 'azure',
-      options: {
-        redirectTo,
-        skipBrowserRedirect: true,
-        scopes: 'openid profile email',
-      },
+      options: { redirectTo, scopes: 'openid profile email' },
     });
     if (error) throw error;
-    if (!data?.url) throw new Error('Could not start Microsoft sign-in');
-
-    if (popup) {
-      popup.location.href = data.url;
-      const result = await waitForPopupResult(popup);
-      if (!result.code) throw new Error(result.error ?? 'Microsoft sign-in did not return an authorization code');
-      await completeSessionFromCode(result.code);
-      return;
-    }
-
-    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-    if (result.type !== 'success') {
-      // User cancelled/dismissed — not an error worth surfacing.
-      return;
-    }
-    await completeSessionFromCode(extractCode(result.url));
-  } finally {
-    if (popup && !popup.closed) popup.close();
+    return; // the browser is navigating away
   }
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'azure',
+    options: {
+      redirectTo,
+      skipBrowserRedirect: true,
+      scopes: 'openid profile email',
+    },
+  });
+  if (error) throw error;
+  if (!data?.url) throw new Error('Could not start Microsoft sign-in');
+
+  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+  if (result.type !== 'success') {
+    // User cancelled/dismissed — not an error worth surfacing.
+    return;
+  }
+  await completeSessionFromCode(extractCode(result.url));
 }
