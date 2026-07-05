@@ -15,9 +15,12 @@ import { LoadingOverlay } from '../../components/common/LoadingOverlay';
  * On web this route also loads inside the popup lib/auth/oauth.ts opens (the
  * whole app boots fresh there). If it tried to complete the session itself,
  * it would race the opener's own completion attempt over the same single-use
- * PKCE code — whichever lost failed silently ("pops up and closes, nothing
- * happens"). So when running as a popup, just hand the result back via
- * postMessage and close; only the opener ever exchanges the code.
+ * PKCE code — whichever lost failed silently. So when running as a popup, just
+ * hand the result back via postMessage; only the opener ever exchanges the
+ * code. We deliberately do NOT call window.close() here — browsers routinely
+ * drop a postMessage when the sending window closes in the same tick, which
+ * silently loses the code ("pops up and closes, nothing happens"). The opener
+ * closes the popup once it has actually received the message.
  */
 export default function AuthCallback() {
   const { t } = useTranslation();
@@ -27,12 +30,16 @@ export default function AuthCallback() {
 
   useEffect(() => {
     if (Platform.OS === 'web' && window.opener && window.opener !== window) {
-      window.opener.postMessage(
-        { ritaOAuth: code ? { code } : { error: error ?? errorDescription ?? 'unknown_error' } },
-        window.location.origin,
-      );
-      window.close();
-      return;
+      const message = {
+        ritaOAuth: code ? { code } : { error: error ?? errorDescription ?? 'unknown_error' },
+      };
+      // Post now and again shortly after, in case the opener's listener wasn't
+      // attached yet. The opener closes this popup once it has the message.
+      window.opener.postMessage(message, window.location.origin);
+      const retry = setInterval(() => {
+        if (window.opener) window.opener.postMessage(message, window.location.origin);
+      }, 300);
+      return () => clearInterval(retry);
     }
 
     (async () => {

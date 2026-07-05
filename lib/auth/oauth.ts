@@ -83,34 +83,52 @@ function openWebAuthPopup(): Window {
 }
 
 /**
- * Wait for the popup to hand back its result via postMessage.
+ * Wait for the popup to hand back its OAuth result, via either of two channels
+ * (whichever fires first) — belt and suspenders, because each has a failure mode:
  *
- * The popup lands on /auth/callback, which boots this same app fresh inside
- * it — so app/auth/callback.tsx detects it's running as a popup (window.opener
- * set) and, instead of exchanging the code itself, posts it back here and
- * closes itself. That handoff is what makes this safe: if both the popup
- * and this poller tried to exchange the same single-use PKCE code, whichever
- * lost the race would fail with no clear feedback (this was the actual cause
- * of "it pops up and closes, nothing happens").
+ *  1. postMessage from the popup's /auth/callback page. Fast, but can be dropped
+ *     if the sender closes in the same tick (so the popup deliberately stays open).
+ *  2. Directly polling popup.location once it lands back on our own origin
+ *     (reading it throws cross-origin while still on Microsoft's pages). Covers
+ *     the case where the message never arrives at all.
+ *
+ * Only the opener ever exchanges the single-use PKCE code — the popup never does
+ * — so there's no race over consuming it.
  */
-function waitForPopupMessage(popup: Window): Promise<{ code?: string; error?: string }> {
+function waitForPopupResult(popup: Window): Promise<{ code?: string; error?: string }> {
   return new Promise((resolve, reject) => {
-    const cleanup = () => {
+    let settled = false;
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
       window.removeEventListener('message', onMessage);
-      clearInterval(closedCheck);
+      clearInterval(poll);
+      fn();
     };
     const onMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin || event.source !== popup) return;
+      if (event.origin !== window.location.origin) return;
       const payload = event.data?.ritaOAuth;
-      if (!payload) return;
-      cleanup();
-      resolve(payload);
+      if (payload) finish(() => resolve(payload));
     };
     window.addEventListener('message', onMessage);
-    const closedCheck = setInterval(() => {
+
+    const poll = setInterval(() => {
       if (popup.closed) {
-        cleanup();
-        reject(new Error('Microsoft sign-in was cancelled.'));
+        finish(() => reject(new Error('Microsoft sign-in was cancelled.')));
+        return;
+      }
+      let href: string;
+      try {
+        href = popup.location.href; // throws while cross-origin on Microsoft's side
+      } catch {
+        return;
+      }
+      if (href.startsWith(redirectTo)) {
+        const url = new URL(href);
+        const code = url.searchParams.get('code');
+        const err = url.searchParams.get('error_description') ?? url.searchParams.get('error');
+        if (code) finish(() => resolve({ code }));
+        else if (err) finish(() => resolve({ error: decodeURIComponent(err) }));
       }
     }, 400);
   });
@@ -138,7 +156,7 @@ export async function signInWithMicrosoft(): Promise<void> {
 
     if (popup) {
       popup.location.href = data.url;
-      const result = await waitForPopupMessage(popup);
+      const result = await waitForPopupResult(popup);
       if (!result.code) throw new Error(result.error ?? 'Microsoft sign-in did not return an authorization code');
       await completeSessionFromCode(result.code);
       return;
