@@ -142,14 +142,13 @@ export default function AdminIntegrations() {
   };
 
   // Accepts a bare tenant ID (GUID) or a full tenant URL and always saves the
-  // full `https://login.microsoftonline.com/<tenant-id>/v2.0` form Supabase's
-  // Azure provider expects — this field previously held a bare GUID from
-  // manual entry, which the Management API accepts without erroring but
-  // Azure AD then rejects.
+  // `https://login.microsoftonline.com/<tenant-id>` form Supabase's Azure
+  // provider expects — it appends `/oauth2/v2.0/authorize` itself, so a
+  // trailing `/v2.0` here produces a broken double-`v2.0` authorize URL.
   const normalizeTenantUrl = (raw: string): string => {
-    const v = raw.trim();
+    const v = raw.trim().replace(/\/v2\.0\/?$/i, '');
     if (!v || /^https?:\/\//i.test(v)) return v;
-    return `https://login.microsoftonline.com/${v}/v2.0`;
+    return `https://login.microsoftonline.com/${v}`;
   };
 
   const saveSso = async () => {
@@ -222,7 +221,7 @@ export default function AdminIntegrations() {
           </View>
           <Field label={t('integrations.clientId')} value={azureClientId} onChangeText={setAzureClientId} placeholder="00000000-0000-0000-0000-000000000000" />
           <Field label={t('integrations.clientSecret')} value={azureSecret} onChangeText={setAzureSecret} placeholder={secretPlaceholder(!!data?.azure_client_secret_set)} secure />
-          <Field label={t('integrations.tenantUrl')} value={azureTenantUrl} onChangeText={setAzureTenantUrl} placeholder="https://login.microsoftonline.com/<tenant-id>/v2.0" />
+          <Field label={t('integrations.tenantUrl')} value={azureTenantUrl} onChangeText={setAzureTenantUrl} placeholder="https://login.microsoftonline.com/<tenant-id>" />
           <TouchableOpacity onPress={saveSso} disabled={savingSso} style={[styles.saveBtn, theme.shadows.brand]} activeOpacity={0.85}>
             {savingSso ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>{t('integrations.saveApply')}</Text>}
           </TouchableOpacity>
