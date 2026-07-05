@@ -141,12 +141,23 @@ export default function AdminIntegrations() {
     }
   };
 
+  // Accepts a bare tenant ID (GUID) or a full tenant URL and always saves the
+  // full `https://login.microsoftonline.com/<tenant-id>/v2.0` form Supabase's
+  // Azure provider expects — this field previously held a bare GUID from
+  // manual entry, which the Management API accepts without erroring but
+  // Azure AD then rejects.
+  const normalizeTenantUrl = (raw: string): string => {
+    const v = raw.trim();
+    if (!v || /^https?:\/\//i.test(v)) return v;
+    return `https://login.microsoftonline.com/${v}/v2.0`;
+  };
+
   const saveSso = async () => {
     setSavingSso(true);
     try {
       const payload: IntegrationSettingsInput = {
         azure_client_id: azureClientId.trim(),
-        azure_tenant_url: azureTenantUrl.trim(),
+        azure_tenant_url: normalizeTenantUrl(azureTenantUrl),
         azure_enabled: azureEnabled,
       };
       if (azureSecret.trim()) payload.azure_client_secret = azureSecret.trim();
