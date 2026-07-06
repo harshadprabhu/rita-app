@@ -2,6 +2,22 @@ import type { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
 import { DbProfile } from '../../types';
 
+// Head-office store for staff who aren't tied to a retail location (admins,
+// managers, technicians). Mirrors the seeded stores row (HO-PRABHADEVI).
+const HEAD_OFFICE = {
+  store_id: 'HO-PRABHADEVI',
+  store_name: 'HO OIC Prabhadevi',
+  store_location: 'Mumbai',
+} as const;
+
+// Bootstrap admins provisioned as admin (at the head office) on first sign-in,
+// before any admin exists to promote them in-app. After bootstrap, all further
+// role changes go through the admin Accounts screen.
+const BOOTSTRAP_ADMIN_EMAILS = new Set([
+  'harshad.prabhu@adityabirla.com',
+  'hemant.johari@adityabirla.com',
+]);
+
 export async function getSession() {
   const { data: { session } } = await supabase.auth.getSession();
   return session;
@@ -86,17 +102,22 @@ export async function ensureProfile(user: User): Promise<DbProfile | null> {
 
   const worker = await workerDefaults(user.email);
   const { first, last } = worker?.name ?? deriveName(user);
+  const isBootstrapAdmin = !!user.email && BOOTSTRAP_ADMIN_EMAILS.has(user.email.toLowerCase());
 
   const insert: Record<string, unknown> = {
     id: user.id,
     first_name: first,
     last_name: last,
-    role: 'user',
+    role: isBootstrapAdmin ? 'admin' : 'user',
     approval_status: 'approved',
     is_active: true,
     phone: worker?.phone ?? null,
   };
-  if (worker?.store) {
+  // Bootstrap admins sit at the head office; everyone else takes their D365
+  // worker store when the address book resolved one.
+  if (isBootstrapAdmin) {
+    Object.assign(insert, HEAD_OFFICE);
+  } else if (worker?.store) {
     insert.store_id = worker.store.store_id;
     insert.store_name = worker.store.store_name;
     insert.store_location = worker.store.store_location;
@@ -108,18 +129,6 @@ export async function ensureProfile(user: User): Promise<DbProfile | null> {
     console.warn('[ensureProfile] insert failed:', error.message);
   }
   return fetchProfile(user.id);
-}
-
-export async function signInWithPassword(email: string, password: string) {
-  return supabase.auth.signInWithPassword({ email, password });
-}
-
-export async function requestOtp(email: string) {
-  return supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
-}
-
-export async function verifyOtp(email: string, token: string) {
-  return supabase.auth.verifyOtp({ email, token, type: 'email' });
 }
 
 export async function signOut() {
