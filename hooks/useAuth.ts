@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { fetchProfile } from '../lib/auth/session';
+import { ensureProfile } from '../lib/auth/session';
 import { useAuthStore } from '../stores/authStore';
 
 export function useAuth() {
@@ -14,7 +14,7 @@ export function useAuth() {
       .then(({ data: { session } }) => {
         setSession(session);
         if (session?.user) {
-          fetchProfile(session.user.id)
+          ensureProfile(session.user)
             .then((profile) => setProfile(profile))
             .catch(() => setProfile(null)) // a rejected fetch must not strand isLoading
             .finally(() => setLoading(false));
@@ -29,7 +29,7 @@ export function useAuth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session?.user) {
-        fetchProfile(session.user.id)
+        ensureProfile(session.user)
           .then((profile) => setProfile(profile))
           .catch(() => setProfile(null))
           .finally(() => setLoading(false));
