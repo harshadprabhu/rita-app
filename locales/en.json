@@ -39,7 +39,9 @@
     "confirmTitle": "Register as technician?",
     "confirmBody": "Your account will be submitted to an admin for approval. You won't be able to use the app until an admin approves it.",
     "confirmCta": "Submit for approval",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "mobilePlaceholder": "Mobile number (optional)",
+    "invalidMobile": "Enter a valid mobile number"
   },
   "register": {
     "title": "Create your RITA account",

@@ -15,9 +15,11 @@ import { DbStore } from '../types';
 import { theme } from '../constants/theme';
 
 /**
- * First-login store selection for SSO users. Microsoft provides identity but not
- * the user's store, so a freshly-provisioned 'user' profile with no store_id
- * lands here. Once the store is saved, AuthGate re-routes to home.
+ * First-login onboarding for SSO users. Microsoft provides identity (name,
+ * email) but not where the person works, so a freshly-provisioned 'user'
+ * profile with no store_id lands here to pick their store (which carries the
+ * store code and location) and optionally add a mobile number. Once saved,
+ * the profile is complete — no further registration — and AuthGate routes home.
  */
 export default function OnboardingStore() {
   const insets = useSafeAreaInsets();
@@ -28,6 +30,7 @@ export default function OnboardingStore() {
 
   const [search, setSearch] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mobile, setMobile] = useState('');
   const [saving, setSaving] = useState(false);
   const [registering, setRegistering] = useState(false);
   const [error, setError] = useState('');
@@ -54,12 +57,21 @@ export default function OnboardingStore() {
     const userId = session?.user?.id;
     if (!selectedId || !userId || !selectedStore) return;
     setError('');
+
+    // Mobile is optional, but if provided it must look like a phone number.
+    const trimmedMobile = mobile.replace(/[\s-]/g, '');
+    if (trimmedMobile && !/^\+?\d{7,15}$/.test(trimmedMobile)) {
+      setError(t('onboarding.invalidMobile'));
+      return;
+    }
+
     setSaving(true);
     try {
       const updated = await updateProfile(userId, {
         store_id: selectedId,
         store_name: selectedStore.name,
         store_location: selectedStore.city,
+        phone: trimmedMobile || null,
       });
       setProfile(updated); // triggers AuthGate to route to user home
     } catch (e) {
@@ -164,6 +176,20 @@ export default function OnboardingStore() {
       </View>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + theme.spacing.md }]}>
+        <View style={styles.mobileWrap}>
+          <Ionicons name="call-outline" size={18} color={theme.colors.textTertiary} />
+          <TextInput
+            style={styles.mobileInput}
+            value={mobile}
+            onChangeText={setMobile}
+            placeholder={t('onboarding.mobilePlaceholder')}
+            placeholderTextColor={theme.colors.textTertiary}
+            keyboardType="phone-pad"
+            autoCorrect={false}
+            maxLength={16}
+          />
+        </View>
+
         <TouchableOpacity
           style={[styles.submitBtn, theme.shadows.md, (!selectedId || saving || registering) && styles.submitBtnDisabled]}
           onPress={handleSave}
@@ -286,6 +312,24 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
     backgroundColor: theme.colors.bg,
+  },
+  mobileWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+  },
+  mobileInput: {
+    flex: 1,
+    color: theme.colors.textPrimary,
+    fontSize: 15,
+    padding: 0,
   },
   submitBtn: {
     backgroundColor: theme.colors.brand,
