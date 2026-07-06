@@ -33,6 +33,7 @@ interface StoreRow {
   name: string;
   city: string | null;
   region: string | null;
+  retail_channel_id: string | null;
   is_active: boolean;
 }
 
@@ -107,6 +108,9 @@ function mapStore(row: Record<string, unknown>): StoreRow | null {
     name,
     city: city || null,
     region: pick(row, ['AddressState', 'State', 'AddressCountryRegionId', 'Region']) || null,
+    // The channel/warehouse code (NS####) — the key worker address books use to
+    // point at a store, distinct from the OMOperatingUnitNumber used as `code`.
+    retail_channel_id: pick(row, ['RetailChannelId', 'InventLocationId', 'OMOperatingUnitId']) || null,
     is_active: true,
   };
 }
@@ -178,13 +182,16 @@ Deno.serve(async (req) => {
     const { error } = await supabase.from('stores').upsert(stores, { onConflict: 'id' });
     if (error) throw error;
 
-    // Deactivate stores no longer present in the feed (only safe because we got
-    // a healthy, non-empty pull above). Reactivation happens via the upsert.
+    // Deactivate D365 stores no longer present in the feed (only safe because we
+    // got a healthy, non-empty pull above). Reactivation happens via the upsert.
+    // Guarded to purely-numeric codes so manually-seeded non-retail entries like
+    // the head office (HO-PRABHADEVI) are never touched by the sync.
     const activeIds = stores.map((s) => s.id);
     await supabase
       .from('stores')
       .update({ is_active: false })
       .eq('is_active', true)
+      .filter('code', 'match', '^[0-9]+$')
       .not('id', 'in', `(${activeIds.map((id) => `"${id}"`).join(',')})`);
 
     return new Response(

@@ -98,16 +98,38 @@ export async function setAccountActive(id: string, isActive: boolean, actorId: s
   });
 }
 
+// Head-office store that admins, managers, and technicians default to — they
+// aren't tied to a retail location like store staff are. Kept in sync with the
+// manually-seeded stores row (supabase/store-sync-cron.sql notes).
+const HEAD_OFFICE = {
+  store_id: 'HO-PRABHADEVI',
+  store_name: 'HO OIC Prabhadevi',
+  store_location: 'Mumbai',
+} as const;
+
+const ELEVATED_ROLES: UserRole[] = ['admin', 'manager', 'technician'];
+
 /**
  * Admin-only role assignment. Promoting a user to technician/manager/admin also
  * approves them (self-registration was removed; the admin's action *is* the
- * approval), so they can use the app immediately. Relies on the "profiles:
- * admin manage" RLS policy that grants admins ALL on profiles.
+ * approval) and, if they have no store, defaults them to the head office —
+ * elevated roles aren't tied to a retail store. Relies on the "profiles: admin
+ * manage" RLS policy that grants admins ALL on profiles.
  */
 export async function setAccountRole(id: string, role: UserRole, actorId: string): Promise<void> {
+  const updates: Partial<DbProfile> = { role, approval_status: 'approved' satisfies ApprovalStatus };
+
+  // Give elevated roles a head-office store if they don't already have one.
+  if (ELEVATED_ROLES.includes(role)) {
+    const { data: current } = await supabase.from('profiles').select('store_id').eq('id', id).single();
+    if (!(current as { store_id?: string } | null)?.store_id) {
+      Object.assign(updates, HEAD_OFFICE);
+    }
+  }
+
   const { data, error } = await supabase
     .from('profiles')
-    .update({ role, approval_status: 'approved' satisfies ApprovalStatus })
+    .update(updates)
     .eq('id', id)
     .select('id');
   if (error) throw error;
