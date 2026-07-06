@@ -98,6 +98,29 @@ export async function setAccountActive(id: string, isActive: boolean, actorId: s
   });
 }
 
+/**
+ * Admin-only role assignment. Promoting a user to technician/manager/admin also
+ * approves them (self-registration was removed; the admin's action *is* the
+ * approval), so they can use the app immediately. Relies on the "profiles:
+ * admin manage" RLS policy that grants admins ALL on profiles.
+ */
+export async function setAccountRole(id: string, role: UserRole, actorId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ role, approval_status: 'approved' satisfies ApprovalStatus })
+    .eq('id', id)
+    .select('id');
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('Update blocked — admin RLS policy on profiles may be missing');
+  }
+  await supabase.from('account_audit_log').insert({
+    actor_id: actorId,
+    target_profile_id: id,
+    action: 'updated', // account_action enum; role detail lives in the change itself
+  });
+}
+
 export async function getAccountAuditLog() {
   const { data, error } = await supabase
     .from('account_audit_log')

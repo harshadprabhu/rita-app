@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ActivityIndicator,
-  StyleSheet, FlatList, Alert,
+  StyleSheet, FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +32,6 @@ export default function OnboardingStore() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mobile, setMobile] = useState('');
   const [saving, setSaving] = useState(false);
-  const [registering, setRegistering] = useState(false);
   const [error, setError] = useState('');
 
   const { data: stores, isLoading } = useQuery({
@@ -78,37 +77,6 @@ export default function OnboardingStore() {
       setError(extractErrorMessage(e));
       setSaving(false);
     }
-  };
-
-  // Self-register as a technician: flip this SSO user profile to a pending
-  // technician. AuthGate then routes to /pending-approval and the profile shows
-  // up in the admin approvals list until approved.
-  const submitTechnician = async () => {
-    const userId = session?.user?.id;
-    if (!userId) return;
-    setError('');
-    setRegistering(true);
-    try {
-      const updated = await updateProfile(userId, {
-        role: 'technician',
-        approval_status: 'pending',
-      });
-      setProfile(updated); // triggers AuthGate to route to pending-approval
-    } catch (e) {
-      setError(extractErrorMessage(e));
-      setRegistering(false);
-    }
-  };
-
-  const handleRegisterTechnician = () => {
-    Alert.alert(
-      t('onboarding.confirmTitle'),
-      t('onboarding.confirmBody'),
-      [
-        { text: t('onboarding.cancel'), style: 'cancel' },
-        { text: t('onboarding.confirmCta'), onPress: submitTechnician },
-      ],
-    );
   };
 
   const renderItem = ({ item }: { item: DbStore }) => {
@@ -191,31 +159,15 @@ export default function OnboardingStore() {
         </View>
 
         <TouchableOpacity
-          style={[styles.submitBtn, theme.shadows.md, (!selectedId || saving || registering) && styles.submitBtnDisabled]}
+          style={[styles.submitBtn, theme.shadows.md, (!selectedId || saving) && styles.submitBtnDisabled]}
           onPress={handleSave}
-          disabled={!selectedId || saving || registering}
+          disabled={!selectedId || saving}
           activeOpacity={0.85}
         >
           {saving
             ? <ActivityIndicator color="#fff" />
             : <Text style={styles.submitBtnText}>{t('onboarding.continue')}</Text>
           }
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.techLink}
-          onPress={handleRegisterTechnician}
-          disabled={saving || registering}
-          activeOpacity={0.7}
-        >
-          {registering ? (
-            <ActivityIndicator color={theme.colors.brand} />
-          ) : (
-            <Text style={styles.techLinkText}>
-              {t('onboarding.technicianPrompt')}{' '}
-              <Text style={styles.techLinkAction}>{t('onboarding.registerTechnician')}</Text>
-            </Text>
-          )}
         </TouchableOpacity>
       </View>
     </View>
@@ -345,19 +297,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 15,
-  },
-  techLink: {
-    marginTop: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  techLinkText: {
-    color: theme.colors.textTertiary,
-    fontSize: 14,
-  },
-  techLinkAction: {
-    color: theme.colors.brand,
-    fontWeight: '700',
   },
 });
