@@ -14,10 +14,10 @@ export function useAuth() {
       .then(({ data: { session } }) => {
         setSession(session);
         if (session?.user) {
-          fetchProfile(session.user.id).then((profile) => {
-            setProfile(profile);
-            setLoading(false);
-          });
+          fetchProfile(session.user.id)
+            .then((profile) => setProfile(profile))
+            .catch(() => setProfile(null)) // a rejected fetch must not strand isLoading
+            .finally(() => setLoading(false));
         } else {
           setLoading(false);
         }
@@ -29,10 +29,10 @@ export function useAuth() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session?.user) {
-        fetchProfile(session.user.id).then((profile) => {
-          setProfile(profile);
-          setLoading(false);
-        });
+        fetchProfile(session.user.id)
+          .then((profile) => setProfile(profile))
+          .catch(() => setProfile(null))
+          .finally(() => setLoading(false));
       } else {
         reset();
       }

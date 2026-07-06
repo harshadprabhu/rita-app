@@ -12,6 +12,7 @@ import Constants from 'expo-constants';
 import { useTranslation } from 'react-i18next';
 import { loadSavedLanguage } from '../lib/i18n';
 import { queryClient } from '../lib/queryClient';
+import { supabase } from '../lib/supabase';
 import { useUiStore } from '../stores/uiStore';
 import { useAuth } from '../hooks/useAuth';
 import { useUnifiedNotifications } from '../hooks/useUnifiedNotifications';
@@ -94,7 +95,21 @@ function AuthGate() {
       return;
     }
 
-    if (!profile) return;
+    if (!profile) {
+      // isLoading is false, so the profile fetch has finished — a session with
+      // no profile row means provisioning failed (e.g. the SSO new-user trigger
+      // isn't installed). Without this, the app sits on "Starting RITA..."
+      // forever. Sign out and say why instead.
+      if (lastNav.current !== 'no-profile') {
+        lastNav.current = 'no-profile';
+        useUiStore.getState().showToast(
+          'Signed in, but no account profile exists yet. Contact your administrator.',
+          'error',
+        );
+        supabase.auth.signOut().finally(() => router.replace('/(auth)/login'));
+      }
+      return;
+    }
 
     let dest: string;
     if (!profile.is_active) {
