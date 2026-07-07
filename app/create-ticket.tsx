@@ -9,6 +9,7 @@ import { Screen } from '../components/common/Screen';
 import { AppHeader } from '../components/common/AppHeader';
 import { createTicket, uploadAttachment } from '../lib/api/tickets';
 import { parseCategory, parsePriority } from '../lib/utils/chatTicketParser';
+import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useAuthStore } from '../stores/authStore';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { ALL_PRIORITIES } from '../constants/ticket';
@@ -27,6 +28,11 @@ export default function CreateTicket() {
   // `priorityOverride` takes over and auto-sync stops.
   const [priorityOverride, setPriorityOverride] = useState<TicketPriority | null>(null);
   const [images, setImages] = useState<{ uri: string; name: string }[]>([]);
+
+  // Voice-to-text: append each recognised phrase to the description.
+  const speech = useSpeechToText((text) => {
+    setDescription((prev) => (prev ? `${prev.trim()} ${text}` : text));
+  });
 
   const autoCategory = useMemo(() => parseCategory(description), [description]);
   const autoPriority = useMemo(() => parsePriority(description), [description]);
@@ -68,7 +74,25 @@ export default function CreateTicket() {
     <Screen>
       <AppHeader title="Report an Issue" showBack />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="always">
-        <Text style={styles.label}>Describe the issue</Text>
+        <View style={styles.labelRow}>
+          <Text style={styles.label}>Describe the issue</Text>
+          {speech.supported && (
+            <TouchableOpacity
+              style={[styles.micBtn, speech.listening && styles.micBtnActive]}
+              onPress={() => (speech.listening ? speech.stop() : speech.start())}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={speech.listening ? 'stop' : 'mic'}
+                size={14}
+                color={speech.listening ? '#fff' : theme.colors.brand}
+              />
+              <Text style={[styles.micBtnText, speech.listening && styles.micBtnTextActive]}>
+                {speech.listening ? 'Listening… tap to stop' : 'Speak'}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
         <TextInput
           style={styles.textArea}
           value={description}
@@ -78,6 +102,7 @@ export default function CreateTicket() {
           multiline
           numberOfLines={5}
         />
+        {speech.error ? <Text style={styles.micError}>{speech.error}</Text> : null}
 
         <Text style={[styles.label, styles.spaced]}>Category (auto-detected)</Text>
         <View style={styles.categoryChip}>
@@ -129,6 +154,17 @@ export default function CreateTicket() {
 const styles = StyleSheet.create({
   body: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xxl * 2 },
   label: { fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary, letterSpacing: 0.8, marginBottom: theme.spacing.xs },
+  labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  micBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: theme.colors.brand + '14', borderWidth: 1, borderColor: theme.colors.brand + '33',
+    borderRadius: theme.radius.full, paddingHorizontal: theme.spacing.sm + 2, paddingVertical: 5,
+    marginBottom: theme.spacing.xs,
+  },
+  micBtnActive: { backgroundColor: theme.colors.error, borderColor: theme.colors.error },
+  micBtnText: { fontSize: 12, fontWeight: '700', color: theme.colors.brand },
+  micBtnTextActive: { color: '#fff' },
+  micError: { fontSize: 12, color: theme.colors.error, marginTop: theme.spacing.xs },
   spaced: { marginTop: theme.spacing.lg },
   textArea: {
     backgroundColor: theme.colors.surface2, borderWidth: 1.5, borderColor: theme.colors.border,

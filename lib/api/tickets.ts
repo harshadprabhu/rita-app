@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { supabase } from '../supabase';
@@ -179,6 +180,14 @@ function getMimeType(fileName: string, fileType: 'image' | 'video' | 'document')
 }
 
 async function readFileAsBytes(uri: string): Promise<Uint8Array> {
+  // On web the picker yields a blob:/data: URL that expo-file-system can't
+  // read — fetch it straight into bytes instead. This is why photo upload
+  // silently failed in the browser.
+  if (Platform.OS === 'web') {
+    const res = await fetch(uri);
+    return new Uint8Array(await res.arrayBuffer());
+  }
+
   let fileUri = uri;
   if (!uri.startsWith('file://')) {
     const dest = FileSystem.cacheDirectory + `upload_${Date.now()}`;
