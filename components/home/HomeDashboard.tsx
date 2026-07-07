@@ -35,12 +35,23 @@ export function HomeDashboard({ stats, showCreateButton, showGoldRate }: Props) 
     <Screen edges={['top', 'left', 'right']}>
       <AppHeader title="RITA" right={profile ? <ProfileIconButton profile={profile} /> : null} />
       <ScrollView contentContainerStyle={styles.body}>
-        {profile && (
-          <>
-            <Text style={styles.greeting}>{t('home.greeting', { name: profile.display_name.split(' ')[0] })}</Text>
-            <Text style={styles.greetingSubtitle}>Here's what's happening today</Text>
-          </>
-        )}
+        {/* Greeting row — minimal "Report an issue" action sits at the top-right. */}
+        <View style={styles.topRow}>
+          <View style={{ flex: 1 }}>
+            {profile && (
+              <>
+                <Text style={styles.greeting}>{t('home.greeting', { name: profile.display_name.split(' ')[0] })}</Text>
+                <Text style={styles.greetingSubtitle}>Here's what's happening today</Text>
+              </>
+            )}
+          </View>
+          {showCreateButton && (
+            <TouchableOpacity style={styles.createBtn} onPress={() => router.push('/create-ticket')} activeOpacity={0.85}>
+              <Ionicons name="add" size={16} color="#fff" />
+              <Text style={styles.createBtnText}>Report</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         {showGoldRate && <GoldRateCard />}
 
@@ -49,13 +60,6 @@ export function HomeDashboard({ stats, showCreateButton, showGoldRate }: Props) 
             <StatCard key={stat.label} {...stat} />
           ))}
         </View>
-
-        {showCreateButton && (
-          <TouchableOpacity style={[styles.createBtn, theme.shadows.brand]} onPress={() => router.push('/create-ticket')} activeOpacity={0.85}>
-            <Ionicons name="add-circle-outline" size={22} color="#fff" />
-            <Text style={styles.createBtnText}>Report an issue</Text>
-          </TouchableOpacity>
-        )}
       </ScrollView>
     </Screen>
   );
@@ -66,32 +70,38 @@ function StatCard({ label, filters, color, icon }: StatDef) {
   return (
     <View style={[styles.statCard, theme.shadows.xs]}>
       <View style={[styles.statIconRing, { backgroundColor: color + '1F' }]}>
-        <Ionicons name={icon} size={17} color={color} />
+        <Ionicons name={icon} size={15} color={color} />
       </View>
-      <Text style={styles.statValue}>{data?.length ?? '–'}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <View style={styles.statText}>
+        <Text style={styles.statValue}>{data?.length ?? '–'}</Text>
+        <Text style={styles.statLabel} numberOfLines={1}>{label}</Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   body: { padding: theme.spacing.lg },
+  topRow: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm, marginBottom: theme.spacing.lg },
   greeting: { fontSize: 22, fontWeight: '800', color: theme.colors.textPrimary, letterSpacing: 0.2 },
-  greetingSubtitle: { fontSize: 13, color: theme.colors.textTertiary, marginTop: 2, marginBottom: theme.spacing.lg, fontWeight: '500' },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md },
+  greetingSubtitle: { fontSize: 13, color: theme.colors.textTertiary, marginTop: 2, fontWeight: '500' },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
   statCard: {
-    flexBasis: '47%', backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg,
-    borderWidth: 1, borderColor: theme.colors.border, padding: theme.spacing.md + 2, gap: 6,
+    flexBasis: '47%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
+    backgroundColor: theme.colors.surface, borderRadius: theme.radius.md,
+    borderWidth: 1, borderColor: theme.colors.border, paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.md,
   },
   statIconRing: {
-    width: 34, height: 34, borderRadius: theme.radius.md,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 2,
+    width: 30, height: 30, borderRadius: theme.radius.sm,
+    alignItems: 'center', justifyContent: 'center',
   },
-  statValue: { fontSize: 24, fontWeight: '800', color: theme.colors.textPrimary, letterSpacing: 0.2 },
-  statLabel: { fontSize: 12, color: theme.colors.textSecondary, fontWeight: '600' },
+  statText: { flex: 1 },
+  statValue: { fontSize: 18, fontWeight: '800', color: theme.colors.textPrimary, letterSpacing: 0.2 },
+  statLabel: { fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' },
   createBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm,
-    backgroundColor: theme.colors.brand, borderRadius: theme.radius.lg, height: 54, marginTop: theme.spacing.xl,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: theme.colors.brand, borderRadius: theme.radius.full,
+    paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.md,
   },
-  createBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  createBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 });
