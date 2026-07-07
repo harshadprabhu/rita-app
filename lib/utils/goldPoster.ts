@@ -76,22 +76,36 @@ function anchorDownload(blob: Blob, fileName: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
-/** Deliver the poster: share sheet on mobile (saves to Photos on iOS), download on desktop. */
+// iOS Safari (incl. iPadOS, which reports as MacIntel + touch) is the one place
+// an <a download> is silently ignored, so it's the only place we fall back to
+// the share sheet. Everywhere else — desktop Edge/Chrome/Firefox, Android — a
+// direct download is what the user expects, even though those browsers may also
+// expose the Web Share API.
+function isIOS(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const iPadOS = navigator.platform === 'MacIntel' && (navigator.maxTouchPoints ?? 0) > 1;
+  return /iPad|iPhone|iPod/.test(ua) || iPadOS;
+}
+
+/** Deliver the poster: plain download everywhere; share sheet only on iOS. */
 function deliverPoster(canvas: HTMLCanvasElement, fileName: string): void {
-  const dataUrl = canvas.toDataURL('image/png');
-  const blob = dataUrlToBlob(dataUrl);
-  const nav = navigator as Navigator & {
-    canShare?: (d: unknown) => boolean;
-    share?: (d: unknown) => Promise<void>;
-  };
-  try {
-    const file = new File([blob], fileName, { type: 'image/png' });
-    if (nav.canShare && nav.share && nav.canShare({ files: [file] })) {
-      nav.share({ files: [file], title: "Today's Gold Rates" }).catch(() => anchorDownload(blob, fileName));
-      return;
+  const blob = dataUrlToBlob(canvas.toDataURL('image/png'));
+
+  if (isIOS()) {
+    const nav = navigator as Navigator & {
+      canShare?: (d: unknown) => boolean;
+      share?: (d: unknown) => Promise<void>;
+    };
+    try {
+      const file = new File([blob], fileName, { type: 'image/png' });
+      if (nav.canShare && nav.share && nav.canShare({ files: [file] })) {
+        nav.share({ files: [file], title: "Today's Gold Rates" }).catch(() => anchorDownload(blob, fileName));
+        return;
+      }
+    } catch {
+      // Fall through to download.
     }
-  } catch {
-    // File/canShare unsupported — fall through to download.
   }
   anchorDownload(blob, fileName);
 }
