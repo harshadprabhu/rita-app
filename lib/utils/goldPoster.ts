@@ -36,6 +36,66 @@ function getTemplateUri(): string | undefined {
   return _templateUri ?? undefined;
 }
 
+// Preload the template into an <img> at module load so that, by the time the
+// user taps download, drawing can happen synchronously inside the tap gesture.
+// This matters on iOS Safari: the Web Share sheet (the only way to save an
+// image to Photos there) must be invoked from within a user gesture, and an
+// async image load would break that chain.
+let _templateImg: HTMLImageElement | null = null;
+function getTemplateImage(): HTMLImageElement | null {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return null;
+  if (!_templateImg) {
+    const uri = getTemplateUri();
+    if (!uri) return null;
+    _templateImg = new window.Image();
+    _templateImg.crossOrigin = 'anonymous';
+    _templateImg.src = uri;
+  }
+  return _templateImg;
+}
+if (typeof window !== 'undefined') getTemplateImage();
+
+/** Synchronously turn a data URL into a Blob (no async fetch — keeps the gesture). */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [meta, b64] = dataUrl.split(',');
+  const mime = /:(.*?);/.exec(meta)?.[1] ?? 'image/png';
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+function anchorDownload(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = fileName;
+  link.href = url;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+/** Deliver the poster: share sheet on mobile (saves to Photos on iOS), download on desktop. */
+function deliverPoster(canvas: HTMLCanvasElement, fileName: string): void {
+  const dataUrl = canvas.toDataURL('image/png');
+  const blob = dataUrlToBlob(dataUrl);
+  const nav = navigator as Navigator & {
+    canShare?: (d: unknown) => boolean;
+    share?: (d: unknown) => Promise<void>;
+  };
+  try {
+    const file = new File([blob], fileName, { type: 'image/png' });
+    if (nav.canShare && nav.share && nav.canShare({ files: [file] })) {
+      nav.share({ files: [file], title: "Today's Gold Rates" }).catch(() => anchorDownload(blob, fileName));
+      return;
+    }
+  } catch {
+    // File/canShare unsupported — fall through to download.
+  }
+  anchorDownload(blob, fileName);
+}
+
 // Centre of each empty ₹ value box (x is right of the printed ₹ glyph), and the
 // baseline point for the date on the "Date: ____" line. Measured directly off
 // the template PNG's gold border pixels (all 4 boxes share the same left/right
@@ -79,59 +139,63 @@ export function isPosterSupported(): boolean {
   return typeof document !== 'undefined' && typeof document.createElement === 'function' && !!getTemplateUri();
 }
 
+/** Draw the poster (template + overlaid date & rates) onto a fresh canvas. */
+function renderPosterCanvas(img: HTMLImageElement, rates: PosterRates, date: Date, scale: number): HTMLCanvasElement | null {
+  const canvas = document.createElement('canvas');
+  canvas.width = TPL_W * scale;
+  canvas.height = TPL_H * scale;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+
+  // 1. Draw the exact template as the background.
+  ctx.drawImage(img, 0, 0, TPL_W * scale, TPL_H * scale);
+  ctx.fillStyle = GOLD;
+
+  // 2. Date on the "Date:" line.
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = `600 ${Math.round(30 * scale)}px Georgia, "Playfair Display", serif`;
+  ctx.fillText(formatPosterDate(date), DATE_POINT.x * scale, DATE_POINT.y * scale);
+  ctx.restore();
+
+  // 3. Each rate value, centred in its ₹ box (whole rupees).
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `700 ${Math.round(46 * scale)}px "Outfit", "Poppins", Arial, sans-serif`;
+  for (const pt of RATE_POINTS) {
+    const value = rates[pt.key as keyof PosterRates];
+    if (!(value > 0)) continue;
+    ctx.fillText(Math.round(value).toLocaleString('en-IN'), pt.x * scale, pt.y * scale);
+  }
+  ctx.restore();
+  return canvas;
+}
+
 /**
- * Render the poster (exact template + overlaid date & rates) and download a PNG.
+ * Generate the poster and hand it to the user — the share sheet on mobile
+ * (which saves to Photos on iOS, where an <a download> is ignored) or a file
+ * download on desktop.
  * @param scale render multiplier (1 = native 1054x1492; 2 = higher-res print).
  */
 export function downloadGoldRatePoster(rates: PosterRates, date = new Date(), scale = 2): void {
-  const templateUri = getTemplateUri();
-  if (!isPosterSupported() || !templateUri) return;
+  if (!isPosterSupported()) return;
+  const img = getTemplateImage();
+  if (!img) return;
 
-  const img = new window.Image();
-  img.crossOrigin = 'anonymous';
-  img.onload = () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = TPL_W * scale;
-    canvas.height = TPL_H * scale;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // 1. Draw the exact template as the background.
-    ctx.drawImage(img, 0, 0, TPL_W * scale, TPL_H * scale);
-
-    ctx.fillStyle = GOLD;
-
-    // 2. Date on the "Date:" line.
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'alphabetic';
-    ctx.font = `600 ${Math.round(30 * scale)}px Georgia, "Playfair Display", serif`;
-    ctx.fillText(formatPosterDate(date), DATE_POINT.x * scale, DATE_POINT.y * scale);
-    ctx.restore();
-
-    // 3. Each rate value, centred in its ₹ box (whole rupees).
-    ctx.save();
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.font = `700 ${Math.round(46 * scale)}px "Outfit", "Poppins", Arial, sans-serif`;
-    for (const pt of RATE_POINTS) {
-      const value = rates[pt.key as keyof PosterRates];
-      if (!(value > 0)) continue;
-      ctx.fillText(Math.round(value).toLocaleString('en-IN'), pt.x * scale, pt.y * scale);
-    }
-    ctx.restore();
-
-    // 4. Download.
+  const fileName = `indriya_gold_rates_${date.toISOString().slice(0, 10)}.png`;
+  const run = () => {
     try {
-      const link = document.createElement('a');
-      link.download = `indriya_gold_rates_${date.toISOString().slice(0, 10)}.png`;
-      link.href = canvas.toDataURL('image/png');
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const canvas = renderPosterCanvas(img, rates, date, scale);
+      if (canvas) deliverPoster(canvas, fileName);
     } catch {
-      // Defensive: same-origin asset shouldn't taint the canvas.
+      // Same-origin asset shouldn't taint the canvas; ignore if it somehow does.
     }
   };
-  img.src = templateUri;
+
+  // Loaded (preloaded at module init) → run synchronously so the share sheet
+  // stays inside the tap gesture on iOS. Otherwise wait for load (desktop path).
+  if (img.complete && img.naturalWidth > 0) run();
+  else img.addEventListener('load', run, { once: true });
 }

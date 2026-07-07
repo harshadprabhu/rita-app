@@ -18,6 +18,8 @@ interface StatDef {
   filters: Parameters<typeof getTickets>[0];
   color: string;
   icon: keyof typeof Ionicons.glyphMap;
+  /** Where tapping the tile navigates (a filtered ticket list). */
+  href?: Parameters<typeof router.push>[0];
 }
 
 interface Props {
@@ -65,10 +67,10 @@ export function HomeDashboard({ stats, showCreateButton, showGoldRate }: Props) 
   );
 }
 
-function StatCard({ label, filters, color, icon }: StatDef) {
+function StatCard({ label, filters, color, icon, href }: StatDef) {
   const { data } = useQuery({ queryKey: QUERY_KEYS.tickets(filters), queryFn: () => getTickets(filters) });
-  return (
-    <View style={[styles.statCard, theme.shadows.xs]}>
+  const inner = (
+    <>
       <View style={[styles.statIconRing, { backgroundColor: color + '1F' }]}>
         <Ionicons name={icon} size={15} color={color} />
       </View>
@@ -76,7 +78,13 @@ function StatCard({ label, filters, color, icon }: StatDef) {
         <Text style={styles.statValue}>{data?.length ?? '–'}</Text>
         <Text style={styles.statLabel} numberOfLines={1}>{label}</Text>
       </View>
-    </View>
+    </>
+  );
+  if (!href) return <View style={[styles.statCard, theme.shadows.xs]}>{inner}</View>;
+  return (
+    <TouchableOpacity style={[styles.statCard, theme.shadows.xs]} onPress={() => router.push(href)} activeOpacity={0.7}>
+      {inner}
+    </TouchableOpacity>
   );
 }
 

@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { FlatList, RefreshControl, View, StyleSheet, TextInput, ScrollView, Text } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
@@ -32,6 +32,8 @@ const STATUSES = ['open', 'in_progress', 'resolved'] as const;
 export function TicketListScreen({ title, filters, showCreateButton, enableFilters }: Props) {
   const { t } = useTranslation();
   const profile = useAuthStore((s) => s.profile);
+  // A home stat tile can deep-link here pre-filtered, e.g. ?status=open or ?sla=1.
+  const params = useLocalSearchParams<{ status?: string; sla?: string }>();
   const { data: tickets, isLoading, refetch, isRefetching } = useQuery({
     queryKey: QUERY_KEYS.tickets(filters),
     queryFn: () => getTickets(filters),
@@ -40,9 +42,19 @@ export function TicketListScreen({ title, filters, showCreateButton, enableFilte
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | (typeof STATUSES)[number]>('all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | TicketPriority>('all');
+  const slaOnly = params.sla === '1';
+
+  // Apply an incoming ?status= param to the status filter (drives the chip when
+  // shown; otherwise still filters the list client-side).
+  useEffect(() => {
+    if (params.status && (STATUSES as readonly string[]).includes(params.status)) {
+      setStatusFilter(params.status as (typeof STATUSES)[number]);
+    }
+  }, [params.status]);
 
   const filteredTickets = useMemo(() => {
     let list = tickets ?? [];
+    if (slaOnly) list = list.filter((tk) => tk.sla_breached);
     if (statusFilter !== 'all') list = list.filter((t) => t.status === statusFilter);
     if (priorityFilter !== 'all') list = list.filter((t) => t.priority === priorityFilter);
     const q = search.trim().toLowerCase();
@@ -63,7 +75,7 @@ export function TicketListScreen({ title, filters, showCreateButton, enableFilte
       );
     }
     return list;
-  }, [tickets, search, statusFilter, priorityFilter]);
+  }, [tickets, search, statusFilter, priorityFilter, slaOnly]);
 
   const renderFilters = () => (
     <View style={styles.filterWrap}>
