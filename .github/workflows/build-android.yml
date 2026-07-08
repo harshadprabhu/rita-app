@@ -1,0 +1,47 @@
+name: Build Android APK
+
+# Free, fast Android build on GitHub's Linux runners — no local Gradle/corporate
+# loopback issues. Produces an installable, standalone APK (JS bundle embedded,
+# debug-keystore signed) downloadable from the run's Artifacts.
+# Trigger manually: Actions tab → "Build Android APK" → Run workflow.
+on:
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    env:
+      # Public, client-exposed (RLS-protected) — needed when the JS bundle is built.
+      EXPO_PUBLIC_SUPABASE_URL: https://ftzczoiucqrirkcpzdyl.supabase.co
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ0emN6b2l1Y3FyaXJrY3B6ZHlsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4ODEyNjgsImV4cCI6MjA5ODQ1NzI2OH0.Ajf9VNR7lUjWZYdwvgk7bNcVBrlOUIEi0jWgKfmZJlI
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build release APK
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew assembleRelease --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: rita-android-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
