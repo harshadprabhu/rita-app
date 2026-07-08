@@ -136,8 +136,18 @@ Deno.serve(async (req) => {
     // are richer for our purposes anyway). Paginate recent requests, collect
     // distinct categories + subcategories, and aggregate subject keywords per
     // category for parser tuning. `?analyze=1` returns the keyword report.
-    const analyze = new URL(req.url).searchParams.get('analyze') === '1';
-    const maxPages = Number(new URL(req.url).searchParams.get('pages') ?? '20'); // 20 * 100 = 2000
+    const qp = new URL(req.url).searchParams;
+    const analyze = qp.get('analyze') === '1';
+    const maxPages = Number(qp.get('pages') ?? '20'); // 20 * 100 = 2000
+    // Optional created_time window (epoch millis) — e.g. a financial year.
+    const from = qp.get('from');
+    const to = qp.get('to');
+    const dateCriteria = (from || to)
+      ? [
+          ...(from ? [{ field: 'created_time', condition: 'greater than', values: [from], logical_operator: 'and' }] : []),
+          ...(to ? [{ field: 'created_time', condition: 'lesser than', values: [to] }] : []),
+        ]
+      : undefined;
     const STOP = new Set('the a an of to for in on at is are be not no and or with without your you it its this that from into request please issue problem unable able cannot can get getting got need needs error not working help kindly regarding as we are our i am has have had will shall'.split(' '));
 
     const catMap = new Map<string, string>();          // id → name
@@ -152,6 +162,7 @@ Deno.serve(async (req) => {
         sort_field: 'created_time',
         sort_order: 'desc',
         fields_required: ['subject', 'category', 'subcategory'],
+        ...(dateCriteria ? { search_criteria: dateCriteria } : {}),
       });
       const list = (res.requests ?? []) as Record<string, any>[];
       for (const r of list) {

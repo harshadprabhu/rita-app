@@ -1,20 +1,21 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, ActivityIndicator, Modal, Pressable, FlatList } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../components/common/Screen';
 import { AppHeader } from '../components/common/AppHeader';
 import { createTicket, uploadAttachment } from '../lib/api/tickets';
+import { getTicketCategories } from '../lib/api/categories';
 import { parseCategory, parsePriority } from '../lib/utils/chatTicketParser';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useAuthStore } from '../stores/authStore';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { ALL_PRIORITIES } from '../constants/ticket';
 import { TicketPriority } from '../types';
-import { theme } from '../constants/theme';
+import { webNoOutline, theme } from '../constants/theme';
 
 const MAX_ATTACHMENTS = 5;
 
@@ -29,6 +30,16 @@ export default function CreateTicket() {
   const [priorityOverride, setPriorityOverride] = useState<TicketPriority | null>(null);
   const [images, setImages] = useState<{ uri: string; name: string }[]>([]);
 
+  // Category is auto-detected but fully overridable; subcategory is chosen from
+  // the picker. Both are Sampark taxonomy values (from ticket_categories).
+  const [categoryOverride, setCategoryOverride] = useState<string | null>(null);
+  const [subcategory, setSubcategory] = useState<string | null>(null);
+  const [picker, setPicker] = useState<null | 'category' | 'subcategory'>(null);
+  const [pickerSearch, setPickerSearch] = useState('');
+
+  const { data: allCategories } = useQuery({ queryKey: ['ticketCategories'], queryFn: getTicketCategories });
+  const categories = useMemo(() => (allCategories ?? []).filter((c) => !c.is_subcategory), [allCategories]);
+
   // Voice-to-text: append each recognised phrase to the description.
   const speech = useSpeechToText((text) => {
     setDescription((prev) => (prev ? `${prev.trim()} ${text}` : text));
@@ -37,6 +48,29 @@ export default function CreateTicket() {
   const autoCategory = useMemo(() => parseCategory(description), [description]);
   const autoPriority = useMemo(() => parsePriority(description), [description]);
   const priority = priorityOverride ?? autoPriority;
+  const category = categoryOverride ?? autoCategory;
+
+  // Subcategories belonging to the currently-selected category.
+  const subcategories = useMemo(() => {
+    const parent = categories.find((c) => c.name === category);
+    if (!parent) return [];
+    return (allCategories ?? []).filter((c) => c.is_subcategory && c.parent_id === parent.id);
+  }, [allCategories, categories, category]);
+
+  // The list shown in the picker modal, filtered by the search box.
+  const pickerItems = useMemo(() => {
+    const source = picker === 'category' ? categories : subcategories;
+    const q = pickerSearch.trim().toLowerCase();
+    const names = source.map((c) => c.name);
+    return q ? names.filter((n) => n.toLowerCase().includes(q)) : names;
+  }, [picker, categories, subcategories, pickerSearch]);
+
+  const openPicker = (mode: 'category' | 'subcategory') => { setPickerSearch(''); setPicker(mode); };
+  const selectPicked = (name: string) => {
+    if (picker === 'category') { setCategoryOverride(name); setSubcategory(null); }
+    else setSubcategory(name);
+    setPicker(null);
+  };
 
   const submit = useMutation({
     mutationFn: async () => {
@@ -46,8 +80,8 @@ export default function CreateTicket() {
         store_id: profile.store_id,
         description,
         priority,
-        category: parseCategory(description),
-        subcategory: null,
+        category,
+        subcategory,
         source: 'form',
       });
       for (const img of images) {
@@ -104,11 +138,29 @@ export default function CreateTicket() {
         />
         {speech.error ? <Text style={styles.micError}>{speech.error}</Text> : null}
 
-        <Text style={[styles.label, styles.spaced]}>Category (auto-detected)</Text>
-        <View style={styles.categoryChip}>
-          <Ionicons name="pricetag-outline" size={14} color={theme.colors.brand} />
-          <Text style={styles.categoryChipText}>{autoCategory}</Text>
-        </View>
+        <Text style={[styles.label, styles.spaced]}>
+          Category {categoryOverride ? '' : '(auto-detected)'}
+        </Text>
+        <TouchableOpacity style={styles.selectRow} onPress={() => openPicker('category')} activeOpacity={0.7}>
+          <Ionicons name="pricetag-outline" size={16} color={theme.colors.brand} />
+          <Text style={styles.selectValue}>{category}</Text>
+          <Text style={styles.selectChange}>Change</Text>
+          <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
+        </TouchableOpacity>
+
+        <Text style={[styles.label, styles.spaced]}>Subcategory (optional)</Text>
+        <TouchableOpacity
+          style={styles.selectRow}
+          onPress={() => openPicker('subcategory')}
+          activeOpacity={0.7}
+          disabled={subcategories.length === 0}
+        >
+          <Ionicons name="git-branch-outline" size={16} color={subcategories.length ? theme.colors.brand : theme.colors.textTertiary} />
+          <Text style={[styles.selectValue, !subcategory && styles.selectPlaceholder]}>
+            {subcategory ?? (subcategories.length ? 'Select subcategory' : 'None available')}
+          </Text>
+          {subcategories.length > 0 && <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />}
+        </TouchableOpacity>
 
         <Text style={[styles.label, styles.spaced]}>Priority</Text>
         <View style={styles.pillRow}>
@@ -147,6 +199,50 @@ export default function CreateTicket() {
         </TouchableOpacity>
         {submit.isError && <Text style={styles.error}>{String(submit.error)}</Text>}
       </ScrollView>
+
+      {/* Searchable category / subcategory picker */}
+      <Modal visible={picker !== null} transparent animationType="slide" onRequestClose={() => setPicker(null)}>
+        <Pressable style={styles.pickerBackdrop} onPress={() => setPicker(null)}>
+          <Pressable style={styles.pickerSheet} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>
+                {picker === 'category' ? 'Select category' : 'Select subcategory'}
+              </Text>
+              <TouchableOpacity onPress={() => setPicker(null)} hitSlop={8}>
+                <Ionicons name="close" size={22} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.pickerSearchBox}>
+              <Ionicons name="search" size={16} color={theme.colors.textTertiary} />
+              <TextInput
+                style={[styles.pickerSearchInput, webNoOutline]}
+                value={pickerSearch}
+                onChangeText={setPickerSearch}
+                placeholder="Search…"
+                placeholderTextColor={theme.colors.textTertiary}
+                autoFocus
+                autoCorrect={false}
+              />
+            </View>
+            <FlatList
+              data={pickerItems}
+              keyExtractor={(name) => name}
+              keyboardShouldPersistTaps="handled"
+              style={{ maxHeight: 360 }}
+              renderItem={({ item }) => {
+                const selected = (picker === 'category' ? category : subcategory) === item;
+                return (
+                  <TouchableOpacity style={styles.pickerRow} onPress={() => selectPicked(item)} activeOpacity={0.7}>
+                    <Text style={[styles.pickerRowText, selected && styles.pickerRowTextSel]}>{item}</Text>
+                    {selected && <Ionicons name="checkmark" size={18} color={theme.colors.brand} />}
+                  </TouchableOpacity>
+                );
+              }}
+              ListEmptyComponent={<Text style={styles.pickerEmpty}>No matches</Text>}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }
@@ -177,13 +273,36 @@ const styles = StyleSheet.create({
     borderWidth: 1.5, backgroundColor: theme.colors.surface2, borderColor: theme.colors.border,
   },
   pillText: { fontSize: 12, fontWeight: '700', color: theme.colors.textTertiary, textTransform: 'capitalize' },
-  categoryChip: {
-    flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs, alignSelf: 'flex-start',
-    backgroundColor: theme.colors.brand + '14', borderWidth: 1, borderColor: theme.colors.brand + '33',
-    borderRadius: theme.radius.full, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs + 1,
+  selectRow: {
+    flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
+    backgroundColor: theme.colors.surface2, borderWidth: 1.5, borderColor: theme.colors.border,
+    borderRadius: theme.radius.md, paddingHorizontal: theme.spacing.md, height: 48,
   },
-  categoryChipText: { fontSize: 13, fontWeight: '700', color: theme.colors.brand },
+  selectValue: { flex: 1, fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary },
+  selectPlaceholder: { color: theme.colors.textTertiary, fontWeight: '500' },
+  selectChange: { fontSize: 12, fontWeight: '700', color: theme.colors.brand },
   hint: { fontSize: 11, color: theme.colors.textTertiary, marginTop: theme.spacing.xs },
+  pickerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  pickerSheet: {
+    backgroundColor: theme.colors.surface,
+    borderTopLeftRadius: theme.radius.xl, borderTopRightRadius: theme.radius.xl,
+    padding: theme.spacing.lg, paddingBottom: theme.spacing.xxl,
+  },
+  pickerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.md },
+  pickerTitle: { fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary },
+  pickerSearchBox: {
+    flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
+    backgroundColor: theme.colors.surface2, borderWidth: 1.5, borderColor: theme.colors.border,
+    borderRadius: theme.radius.md, paddingHorizontal: theme.spacing.md, height: 44, marginBottom: theme.spacing.sm,
+  },
+  pickerSearchInput: { flex: 1, fontSize: 14, color: theme.colors.textPrimary, padding: 0 },
+  pickerRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border,
+  },
+  pickerRowText: { fontSize: 15, color: theme.colors.textPrimary, flex: 1 },
+  pickerRowTextSel: { color: theme.colors.brand, fontWeight: '700' },
+  pickerEmpty: { textAlign: 'center', color: theme.colors.textTertiary, paddingVertical: theme.spacing.xl },
   imagesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
   thumb: { width: 72, height: 72, borderRadius: theme.radius.sm, borderWidth: 1, borderColor: theme.colors.border },
   addThumb: {
