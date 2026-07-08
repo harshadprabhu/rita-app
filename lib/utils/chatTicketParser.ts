@@ -98,30 +98,35 @@ export function parsePriority(message: string): TicketPriority {
 
 // ── PART 2: category ─────────────────────────────────────────────────────────
 
-// Ordered — first category with any matching marker wins. Keys are stored on the
-// ticket; display labels live in locales under `category.<key>`.
+// Keys are the EXACT ManageEngine (Sampark) category names, so a parsed category
+// maps straight onto the Sampark request when it's created. Markers were derived
+// from a keyword analysis of ~2000 real Sampark incidents (top terms per
+// category). Ordered — first category with any matching marker wins, so the
+// more distinctive categories come first and the generic app/ERP ones last.
+// Unmatched messages fall back to 'Other Issue' (also a real Sampark category).
 const CATEGORY_RULES: { key: string; markers: string[] }[] = [
-  { key: 'access_authorization', markers: ['access', 'permission', 'rights', 'approval', 'approved', 'approve', 'unauthorized', 'lease', 'deposit'] },
-  { key: 'pos_system', markers: ['pos', 'cogep', 'co gep', 'set item'] },
-  { key: 'erp_system', markers: ['erp', 'f&o', 'f & o', 'workflow', 'logic', 'integration', 'uploading', 'popup'] },
-  { key: 'pricing', markers: ['price', 'pricing', 'cost', 'billing', 'invoice', 'charge', 'refund', 'ledger', 'tax', 'rate', 'calculation', 'cn', 'discripancy', 'discrepancy'] },
-  { key: 'image_mismatch', markers: ['image', 'photo', 'picture', 'mismatch'] },
-  { key: 'product', markers: ['product', 'wrong item', 'incorrect item', 'attribute', 'sku', 'serial number', 'denomination', 'enquiry', 'bom', 'attachment', 'set creation', 'break details'] },
-  { key: 'data_not_reflecting', markers: ['not reflecting', 'showing', 'sync', 'missing', 'show', 'other gold'] },
-  { key: 'inventory', markers: ['inventory', 'stock', 'out of', 'grn', 'fg', 'fgid', 'asn', 'inwarding'] },
-  { key: 'drp_order', markers: ['drp', 'delivery note', 'distributor'] },
-  { key: 'order', markers: ['order', 'shipped', 'purchased', 'requisition', 'pr', 'prs', 'irn', 'foco', 'so-', 'net weight', 'tag', 'transfer order'] },
+  { key: 'Email ID Issue', markers: ['password', 'reset', 'mfa', 'otp', 'outlook', 'mailbox', 'email id', 'emailid', 'account locked', 'login id', 'email login'] },
+  { key: 'Power BI Issue', markers: ['power bi', 'powerbi', 'power-bi', 'cube', 'dashboard'] },
+  { key: 'Network Issue', markers: ['network', 'wifi', 'wi-fi', 'connectivity', 'internet', 'connecting', 'zscaler', 'vpn', 'lan'] },
+  { key: 'Hardware Issue', markers: ['printer', 'scanner', 'laptop', 'desktop', 'tablet', 'keyboard', 'mouse', 'monitor', 'ink', 'cartridge', 'hardware', 'barcode'] },
+  { key: 'POS Issue', markers: ['pos', 'coupon', 'scheme', 'discount', 'coin', 'tender', 'mto', 'set break', 'gold rate', 'making charge', 'movement', 'billing'] },
+  { key: 'ERP SCM', markers: ['grn', 'foco', 'coco', 'transfer order', 'asn', 'inwarding', 'consignment'] },
+  { key: 'ERP Service', markers: ['erp', 'batch', 'posting', 'vendor', 'ledger', 'f&o', 'f & o', 'sap', 'melting'] },
+  { key: 'Sparkle', markers: ['sparkle', 'best deal'] },
+  { key: 'Saksham', markers: ['saksham'] },
+  { key: 'Bulk_Uniform Request', markers: ['uniform', 'unform', 'unifrom'] },
+  { key: 'Software Issue', markers: ['mpos', 'application', 'install', 'installation', 'update', 'software', 'excel', 'python', 'dynamic'] },
 ];
 
 const CATEGORY_RES = CATEGORY_RULES.map((r) => ({ key: r.key, re: boundaryRegex(r.markers) }));
 
-/** Classify a message into one of the 11 categories (falls back to `other`). */
+/** Classify a message into a Sampark category (falls back to 'Other Issue'). */
 export function parseCategory(message: string): string {
   const text = message.toLowerCase();
   for (const { key, re } of CATEGORY_RES) {
     if (re.test(text)) return key;
   }
-  return 'other';
+  return 'Other Issue';
 }
 
 // ── Combined helper ──────────────────────────────────────────────────────────

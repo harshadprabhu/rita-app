@@ -107,7 +107,7 @@ export default function CreateTicket() {
         <Text style={[styles.label, styles.spaced]}>Category (auto-detected)</Text>
         <View style={styles.categoryChip}>
           <Ionicons name="pricetag-outline" size={14} color={theme.colors.brand} />
-          <Text style={styles.categoryChipText}>{t(`category.${autoCategory}`)}</Text>
+          <Text style={styles.categoryChipText}>{autoCategory}</Text>
         </View>
 
         <Text style={[styles.label, styles.spaced]}>Priority</Text>
