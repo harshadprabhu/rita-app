@@ -96,12 +96,13 @@ async function storeFromAdId(email: string | undefined) {
   if (!email) return null;
   const local = email.split('@')[0].toLowerCase();
 
-  // Candidate tokens: NS/NF channel codes (own stores / franchise) and bare
-  // digit runs (3–8 digits).
-  const channelTokens = (local.match(/n[sf]\d{3,4}/gi) ?? []).map((t) => t.toUpperCase());
-  const digitTokens = local.match(/\d{3,8}/g) ?? [];
-  // A bare store number may be zero-padded to the 8-char code (e.g. 55 → 00000055).
-  const codeTokens = digitTokens.flatMap((d) => [d, d.padStart(8, '0')]);
+  // Store channel codes are a 2-letter N-prefix + 4 digits (NS/NF/NE/NI####).
+  // Match those anywhere in the login id.
+  const channelTokens = (local.match(/n[a-z]\d{4}/gi) ?? []).map((t) => t.toUpperCase());
+  // Only treat a *purely numeric* username as an operating-unit code — avoids
+  // false matches on digit runs buried inside a person's name. A short number
+  // may be zero-padded to the 8-char code (e.g. 218 → 00000218).
+  const codeTokens = /^\d{3,8}$/.test(local) ? [local, local.padStart(8, '0')] : [];
 
   if (!channelTokens.length && !codeTokens.length) return null;
 
