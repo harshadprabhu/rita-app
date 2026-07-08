@@ -83,7 +83,8 @@ export default function TicketDetail() {
 
   return (
     <Screen edges={['top', 'left', 'right']}>
-      <AppHeader title={ticket.ticket_number} showBack />
+      {/* Once mirrored to Sampark, the Sampark ticket no. is the shared id. */}
+      <AppHeader title={ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : ticket.ticket_number} showBack />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
         <ScrollView contentContainerStyle={styles.summary} keyboardShouldPersistTaps="always">
           <View style={styles.topRow}>

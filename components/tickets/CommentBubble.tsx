@@ -14,7 +14,9 @@ interface Props {
 export function CommentBubble({ comment, isOwnComment }: Props) {
   const { t } = useTranslation();
   const isInternal = comment.is_internal;
-  const initials = (comment.author?.display_name ?? '?')
+  // Sampark-synced notes have no RITA author; fall back to their external name.
+  const authorName = comment.author?.display_name ?? comment.external_author ?? t('comments.unknownAuthor');
+  const initials = authorName
     .split(' ')
     .map((w) => w[0])
     .join('')
@@ -34,7 +36,7 @@ export function CommentBubble({ comment, isOwnComment }: Props) {
         <View style={styles.authorRow}>
           {isInternal && <Ionicons name="lock-closed" size={11} color={isOwnComment ? 'rgba(255,255,255,0.6)' : '#8B5CF6'} />}
           <Text style={[styles.author, isOwnComment ? styles.authorOwn : styles.authorOther]}>
-            {isOwnComment ? t('comments.you') : (comment.author?.display_name ?? t('comments.unknownAuthor'))}
+            {isOwnComment ? t('comments.you') : authorName}
           </Text>
         </View>
         <Text style={[styles.body, isOwnComment && styles.bodyOwn]}>{comment.body}</Text>

@@ -80,6 +80,20 @@ export async function createTicket(payload: {
   return data as DbTicket;
 }
 
+/**
+ * Mirror a RITA ticket into Sampark (ManageEngine SDP) as an incident. Fire it
+ * after the ticket + its attachments are saved; it's idempotent (the edge
+ * function no-ops if the ticket already has a Sampark id) and non-fatal — a
+ * failure just leaves the ticket unsynced to retry later, never blocks the user.
+ */
+export async function pushTicketToSampark(ticketId: string): Promise<void> {
+  try {
+    await supabase.functions.invoke('sampark-push', { body: { ticket_id: ticketId } });
+  } catch (e) {
+    console.warn('[pushTicketToSampark] failed (will retry later):', e);
+  }
+}
+
 export async function updateTicket(
   id: string,
   updates: Partial<Pick<DbTicket, 'status' | 'lifecycle' | 'priority' | 'assignee_id' | 'resolution' | 'resolved_at' | 'category' | 'subcategory' | 'description' | 'long_description' | 'department_id'>>,

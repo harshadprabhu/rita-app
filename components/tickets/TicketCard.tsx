@@ -70,7 +70,7 @@ export function TicketCard({ ticket }: Props) {
           <View style={styles.topRow}>
             <View style={styles.left}>
               <PriorityBadge priority={ticket.priority} />
-              <Text style={styles.ticketNumber}>{ticket.ticket_number}</Text>
+              <Text style={styles.ticketNumber}>{ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : ticket.ticket_number}</Text>
             </View>
             <View style={styles.rightRow}>
               <LifecycleChip lifecycle={ticket.lifecycle} />

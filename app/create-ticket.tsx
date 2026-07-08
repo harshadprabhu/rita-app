@@ -7,7 +7,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../components/common/Screen';
 import { AppHeader } from '../components/common/AppHeader';
-import { createTicket, uploadAttachment } from '../lib/api/tickets';
+import { createTicket, uploadAttachment, pushTicketToSampark } from '../lib/api/tickets';
 import { getTicketCategories } from '../lib/api/categories';
 import { parseCategory, parsePriority } from '../lib/utils/chatTicketParser';
 import { useSpeechToText } from '../hooks/useSpeechToText';
@@ -87,6 +87,9 @@ export default function CreateTicket() {
       for (const img of images) {
         await uploadAttachment(ticket.id, img.uri, img.name, 'image');
       }
+      // Mirror into Sampark (creates the incident + pushes photos). Non-fatal:
+      // the ticket is already saved; a failed push retries later.
+      await pushTicketToSampark(ticket.id);
       return ticket;
     },
     onSuccess: (ticket) => {

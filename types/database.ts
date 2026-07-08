@@ -68,6 +68,10 @@ export interface DbTicket {
   source: TicketSource;
   sla_due_at: string | null;
   sla_breached: boolean;
+  // Sampark (ManageEngine SDP) linkage — populated once the ticket is mirrored.
+  sampark_request_id: string | null;
+  sampark_display_id: string | null;
+  sampark_synced_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -84,7 +88,9 @@ export interface DbTicketAttachment {
 export interface DbTicketComment {
   id: string;
   ticket_id: string;
-  author_id: string;
+  author_id: string | null;      // null for notes synced from Sampark
+  external_author: string | null; // display name for a synced (non-RITA) author
+  sampark_note_id: string | null; // dedup key for Sampark-originated notes
   body: string;
   is_internal: boolean;
   created_at: string;
