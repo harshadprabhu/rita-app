@@ -96,8 +96,9 @@ async function storeFromAdId(email: string | undefined) {
   if (!email) return null;
   const local = email.split('@')[0].toLowerCase();
 
-  // Candidate tokens: NS-style channel codes and bare digit runs (3–8 digits).
-  const channelTokens = (local.match(/ns\d{3,4}/g) ?? []).map((t) => t.toUpperCase());
+  // Candidate tokens: NS/NF channel codes (own stores / franchise) and bare
+  // digit runs (3–8 digits).
+  const channelTokens = (local.match(/n[sf]\d{3,4}/gi) ?? []).map((t) => t.toUpperCase());
   const digitTokens = local.match(/\d{3,8}/g) ?? [];
   // A bare store number may be zero-padded to the 8-char code (e.g. 55 → 00000055).
   const codeTokens = digitTokens.flatMap((d) => [d, d.padStart(8, '0')]);
