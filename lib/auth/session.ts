@@ -150,7 +150,13 @@ export async function ensureProfile(user: User): Promise<DbProfile | null> {
   // Store resolution order: bootstrap admins → head office; otherwise the D365
   // worker store (address book); otherwise the store encoded in the AD login id
   // (store-tablet accounts). Anything still unresolved falls to onboarding.
-  const store = worker?.store ?? (isBootstrapAdmin ? null : await storeFromAdId(user.email));
+  const adStore = (worker?.store || isBootstrapAdmin) ? null : await storeFromAdId(user.email);
+  const store = worker?.store ?? adStore;
+  // A store resolved from the AD id with no matching person record is a shared
+  // store-tablet/kiosk account — mark it so the app scopes it to store-wide
+  // ticket views instead of a single requester's tickets.
+  if (!worker && adStore) insert.designation = 'Store Tablet';
+
   if (isBootstrapAdmin) {
     Object.assign(insert, HEAD_OFFICE);
   } else if (store) {
