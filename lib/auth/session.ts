@@ -86,6 +86,40 @@ async function workerDefaults(email: string | undefined) {
 }
 
 /**
+ * Derive a store from the AD login ID itself — for store-tablet accounts whose
+ * username encodes the store (e.g. ns0055@…, store.ns0055@…, …0055@…). Scans the
+ * local-part for store tokens and matches them against the synced stores by
+ * retail_channel_id (NS####) or code (the 00000### operating-unit number).
+ * Fallback for when the D365 worker address book didn't resolve a store.
+ */
+async function storeFromAdId(email: string | undefined) {
+  if (!email) return null;
+  const local = email.split('@')[0].toLowerCase();
+
+  // Candidate tokens: NS-style channel codes and bare digit runs (3–8 digits).
+  const channelTokens = (local.match(/ns\d{3,4}/g) ?? []).map((t) => t.toUpperCase());
+  const digitTokens = local.match(/\d{3,8}/g) ?? [];
+  // A bare store number may be zero-padded to the 8-char code (e.g. 55 → 00000055).
+  const codeTokens = digitTokens.flatMap((d) => [d, d.padStart(8, '0')]);
+
+  if (!channelTokens.length && !codeTokens.length) return null;
+
+  const orParts: string[] = [];
+  if (channelTokens.length) orParts.push(`retail_channel_id.in.(${channelTokens.join(',')})`);
+  if (codeTokens.length) orParts.push(`code.in.(${codeTokens.join(',')})`);
+
+  const { data } = await supabase
+    .from('stores')
+    .select('id, name, city')
+    .eq('is_active', true)
+    .or(orParts.join(','))
+    .limit(1)
+    .maybeSingle();
+  const row = data as { id: string; name: string; city: string | null } | null;
+  return row ? { store_id: row.id, store_name: row.name, store_location: row.city } : null;
+}
+
+/**
  * Guarantee the signed-in user has a profile row, returning it.
  *
  * Microsoft SSO (and identity-linked accounts) create an auth user with no
@@ -113,14 +147,16 @@ export async function ensureProfile(user: User): Promise<DbProfile | null> {
     is_active: true,
     phone: worker?.phone ?? null,
   };
-  // Bootstrap admins sit at the head office; everyone else takes their D365
-  // worker store when the address book resolved one.
+  // Store resolution order: bootstrap admins → head office; otherwise the D365
+  // worker store (address book); otherwise the store encoded in the AD login id
+  // (store-tablet accounts). Anything still unresolved falls to onboarding.
+  const store = worker?.store ?? (isBootstrapAdmin ? null : await storeFromAdId(user.email));
   if (isBootstrapAdmin) {
     Object.assign(insert, HEAD_OFFICE);
-  } else if (worker?.store) {
-    insert.store_id = worker.store.store_id;
-    insert.store_name = worker.store.store_name;
-    insert.store_location = worker.store.store_location;
+  } else if (store) {
+    insert.store_id = store.store_id;
+    insert.store_name = store.store_name;
+    insert.store_location = store.store_location;
   }
 
   const { error } = await supabase.from('profiles').insert(insert);
