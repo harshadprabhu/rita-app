@@ -16,6 +16,10 @@ export default function ManagerProfile() {
           <Ionicons name="megaphone-outline" size={18} color={theme.colors.brand} />
           <Text style={styles.linkText}>{t('announcements.title')}</Text>
         </TouchableOpacity>
+        <TouchableOpacity style={styles.link} onPress={() => router.push('/(manager)/broadcasts')}>
+          <Ionicons name="send-outline" size={18} color={theme.colors.brand} />
+          <Text style={styles.linkText}>{t('broadcasts.title')}</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );

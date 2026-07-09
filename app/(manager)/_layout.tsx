@@ -30,6 +30,7 @@ export default function ManagerLayout() {
         }}
       />
       <Tabs.Screen name="announcements" options={{ href: null }} />
+      <Tabs.Screen name="broadcasts" options={{ href: null }} />
       <Tabs.Screen name="profile" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     </Tabs>
   );
