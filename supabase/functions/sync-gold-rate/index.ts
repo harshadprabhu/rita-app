@@ -304,6 +304,22 @@ Deno.serve(async (req) => {
 
     if (upsertError) throw upsertError;
 
+    // Rates changed → push a notification to all app users (best-effort).
+    try {
+      const anon = Deno.env.get('SUPABASE_ANON_KEY');
+      const k24 = filteredItems.find((i) => i.Purity === '24KT 999')?.Rate;
+      if (anon && k24 && k24 > 0) {
+        const inr = Math.round(k24).toLocaleString('en-IN');
+        await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${anon}` },
+          body: JSON.stringify({ title: 'Gold rate updated', body: `24K (999): ₹${inr}/g` }),
+        });
+      }
+    } catch (e) {
+      console.warn('[sync-gold-rate] push failed:', e);
+    }
+
     // Re-fetch to get DB-stamped updated_at
     const { data: updatedRows } = await supabase
       .from('gold_rates')
