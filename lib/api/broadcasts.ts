@@ -1,6 +1,5 @@
 import { supabase } from '../supabase';
 import { DbBroadcast } from '../../types';
-import { notifyBroadcast } from './notifications';
 
 export async function getBroadcasts(): Promise<DbBroadcast[]> {
   const { data, error } = await supabase
@@ -87,11 +86,10 @@ export async function createBroadcast(payload: CreateBroadcastPayload): Promise<
     .single();
   if (error) throw error;
 
-  // Send push notifications (fire and forget)
-  const effectiveStoreIds = storeIds.length > 0 ? storeIds : undefined;
-  notifyBroadcast(payload.title, payload.body, payload.target_store_id, effectiveStoreIds).catch(
-    () => null,
-  );
+  // Push notifications are sent server-side by the `broadcast_push` DB trigger
+  // (calls the send-push edge function with service-role token access). We
+  // deliberately do NOT push from the client here — doing so would double-send,
+  // and the client can't read other users' tokens under RLS anyway.
 
   return data as DbBroadcast;
 }
