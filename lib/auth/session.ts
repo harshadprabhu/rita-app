@@ -172,7 +172,15 @@ export async function ensureProfile(user: User): Promise<DbProfile | null> {
   if (error && error.code !== '23505') {
     console.warn('[ensureProfile] insert failed:', error.message);
   }
-  return fetchProfile(user.id);
+  // On first sign-in the DB trigger and this insert race; the row may not be
+  // visible on the immediate read. Retry a few times so we never hand back a
+  // null profile (which used to flash a "no profile" error and crash the app).
+  let profile = await fetchProfile(user.id);
+  for (let i = 0; i < 4 && !profile; i++) {
+    await new Promise((r) => setTimeout(r, 400));
+    profile = await fetchProfile(user.id);
+  }
+  return profile;
 }
 
 export async function signOut() {

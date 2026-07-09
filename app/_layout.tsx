@@ -96,18 +96,10 @@ function AuthGate() {
     }
 
     if (!profile) {
-      // isLoading is false, so the profile fetch has finished — a session with
-      // no profile row means provisioning failed (e.g. the SSO new-user trigger
-      // isn't installed). Without this, the app sits on "Starting RITA..."
-      // forever. Sign out and say why instead.
-      if (lastNav.current !== 'no-profile') {
-        lastNav.current = 'no-profile';
-        useUiStore.getState().showToast(
-          'Signed in, but no account profile exists yet. Contact your administrator.',
-          'error',
-        );
-        supabase.auth.signOut().finally(() => router.replace('/(auth)/login'));
-      }
+      // Session exists but the profile isn't loaded yet (first-login race —
+      // ensureProfile retries the read). Just keep showing the loading screen;
+      // do NOT sign out here — the old aggressive sign-out flashed an error and
+      // crashed the app on first login. The profile arrives moments later.
       return;
     }
 

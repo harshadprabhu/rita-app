@@ -33,7 +33,7 @@ export default function CreateTicket() {
   // Category is auto-detected but fully overridable; subcategory is chosen from
   // the picker. Both are Sampark taxonomy values (from ticket_categories).
   const [categoryOverride, setCategoryOverride] = useState<string | null>(null);
-  const [subcategory, setSubcategory] = useState<string | null>(null);
+  const [subcategoryOverride, setSubcategoryOverride] = useState<string | null>(null);
   const [picker, setPicker] = useState<null | 'category' | 'subcategory'>(null);
   const [pickerSearch, setPickerSearch] = useState('');
 
@@ -57,6 +57,26 @@ export default function CreateTicket() {
     return (allCategories ?? []).filter((c) => c.is_subcategory && c.parent_id === parent.id);
   }, [allCategories, categories, category]);
 
+  // Auto-parse the subcategory: pick the one whose name words best match the
+  // description (e.g. "coupon not showing" → "Coupon Creation"). Overridable.
+  const autoSubcategory = useMemo(() => {
+    const text = description.toLowerCase();
+    if (!text.trim() || !subcategories.length) return null;
+    let best: { name: string; hits: number } | null = null;
+    for (const sub of subcategories) {
+      const words = sub.name.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
+      const hits = words.filter((w) => text.includes(w)).length;
+      if (hits > 0 && (!best || hits > best.hits)) best = { name: sub.name, hits };
+    }
+    return best?.name ?? null;
+  }, [description, subcategories]);
+
+  const subcategory = subcategoryOverride ?? autoSubcategory;
+
+  // Can submit once there's a description and — when the category has
+  // subcategories — a subcategory is chosen (auto-parsed or picked).
+  const canSubmit = !!description.trim() && (subcategories.length === 0 || !!subcategory);
+
   // The list shown in the picker modal, filtered by the search box.
   const pickerItems = useMemo(() => {
     const source = picker === 'category' ? categories : subcategories;
@@ -67,8 +87,8 @@ export default function CreateTicket() {
 
   const openPicker = (mode: 'category' | 'subcategory') => { setPickerSearch(''); setPicker(mode); };
   const selectPicked = (name: string) => {
-    if (picker === 'category') { setCategoryOverride(name); setSubcategory(null); }
-    else setSubcategory(name);
+    if (picker === 'category') { setCategoryOverride(name); setSubcategoryOverride(null); }
+    else setSubcategoryOverride(name);
     setPicker(null);
   };
 
@@ -193,10 +213,14 @@ export default function CreateTicket() {
           )}
         </View>
 
+        {/* Subcategory is required whenever the chosen category has any. */}
+        {subcategories.length > 0 && !subcategory && (
+          <Text style={styles.requiredHint}>Please select a subcategory to continue.</Text>
+        )}
         <TouchableOpacity
-          style={[styles.submitBtn, theme.shadows.md, (!description.trim() || submit.isPending) && styles.submitBtnDisabled]}
+          style={[styles.submitBtn, theme.shadows.md, (!canSubmit || submit.isPending) && styles.submitBtnDisabled]}
           onPress={() => submit.mutate()}
-          disabled={!description.trim() || submit.isPending}
+          disabled={!canSubmit || submit.isPending}
         >
           {submit.isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Submit Ticket</Text>}
         </TouchableOpacity>
@@ -319,4 +343,5 @@ const styles = StyleSheet.create({
   submitBtnDisabled: { opacity: 0.5 },
   submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   error: { color: theme.colors.error, fontSize: 13, marginTop: theme.spacing.md, textAlign: 'center' },
+  requiredHint: { color: theme.colors.error, fontSize: 12, marginTop: theme.spacing.md, textAlign: 'center', fontWeight: '600' },
 });
