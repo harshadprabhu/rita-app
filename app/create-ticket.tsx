@@ -76,6 +76,7 @@ export default function CreateTicket() {
   // Can submit once there's a description and — when the category has
   // subcategories — a subcategory is chosen (auto-parsed or picked).
   const canSubmit = !!description.trim() && (subcategories.length === 0 || !!subcategory);
+  const subcategoryMissing = subcategories.length > 0 && !subcategory;
 
   // The list shown in the picker modal, filtered by the search box.
   const pickerItems = useMemo(() => {
@@ -171,19 +172,22 @@ export default function CreateTicket() {
           <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
         </TouchableOpacity>
 
-        <Text style={[styles.label, styles.spaced]}>Subcategory (optional)</Text>
+        <Text style={[styles.label, styles.spaced]}>
+          Subcategory {subcategories.length > 0 ? '(required)' : ''}
+        </Text>
         <TouchableOpacity
-          style={styles.selectRow}
+          style={[styles.selectRow, subcategoryMissing && styles.selectRowError]}
           onPress={() => openPicker('subcategory')}
           activeOpacity={0.7}
           disabled={subcategories.length === 0}
         >
           <Ionicons name="git-branch-outline" size={16} color={subcategories.length ? theme.colors.brand : theme.colors.textTertiary} />
           <Text style={[styles.selectValue, !subcategory && styles.selectPlaceholder]}>
-            {subcategory ?? (subcategories.length ? 'Select subcategory' : 'None available')}
+            {subcategory ?? (subcategories.length ? 'Select a subcategory' : 'None available')}
           </Text>
           {subcategories.length > 0 && <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />}
         </TouchableOpacity>
+        {subcategoryMissing && <Text style={styles.micError}>Please choose a subcategory.</Text>}
 
         <Text style={[styles.label, styles.spaced]}>Priority</Text>
         <View style={styles.pillRow}>
@@ -305,6 +309,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface2, borderWidth: 1.5, borderColor: theme.colors.border,
     borderRadius: theme.radius.md, paddingHorizontal: theme.spacing.md, height: 48,
   },
+  selectRowError: { borderColor: theme.colors.error },
   selectValue: { flex: 1, fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary },
   selectPlaceholder: { color: theme.colors.textTertiary, fontWeight: '500' },
   selectChange: { fontSize: 12, fontWeight: '700', color: theme.colors.brand },
