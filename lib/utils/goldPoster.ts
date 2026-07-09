@@ -2,7 +2,7 @@
 // Indriya template image (assets/gold-rate-template.png) and overlaying only the
 // dynamic bits — today's date on the "Date:" line and each rate inside its ₹ box.
 // Web-only (uses the DOM canvas + anchor download); guarded for native/SSR.
-import { Image as RNImage } from 'react-native';
+import { Image as RNImage, Platform } from 'react-native';
 
 export interface PosterRates {
   '24k_999': number;
@@ -150,6 +150,9 @@ export function ratesFromGold(rates: Record<string, number>): PosterRates | null
 }
 
 export function isPosterSupported(): boolean {
+  // Native renders + shares the poster via GoldRatePosterModal.native.tsx; web
+  // draws it on a DOM canvas here. Either way the button should be available.
+  if (Platform.OS !== 'web') return true;
   return typeof document !== 'undefined' && typeof document.createElement === 'function' && !!getTemplateUri();
 }
 

@@ -7,9 +7,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useGoldRate, useGoldRateTrend } from '../../hooks/useGoldRate';
 import { timeAgo } from '../../lib/utils/date';
-import { downloadGoldRatePoster, ratesFromGold, isPosterSupported } from '../../lib/utils/goldPoster';
+import { downloadGoldRatePoster, ratesFromGold, isPosterSupported, PosterRates } from '../../lib/utils/goldPoster';
 import { theme } from '../../constants/theme';
 import { GoldRateTrendChart } from './GoldRateTrendChart';
+import { GoldRatePosterModal } from './GoldRatePosterModal';
 
 // LayoutAnimation needs an explicit opt-in on Android for the expand/collapse to animate.
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -47,13 +48,17 @@ function RateTile({ karat, rate }: RateTileProps) {
 export function GoldRateCard() {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
+  const [posterRates, setPosterRates] = useState<PosterRates | null>(null); // native modal
   const { data, isLoading, refetch, isRefetching } = useGoldRate();
   const { data: trend } = useGoldRateTrend(true);
 
   const handleDownload = () => {
     if (!data) return;
-    const posterRates = ratesFromGold(data.rates);
-    if (posterRates) downloadGoldRatePoster(posterRates, new Date(data.updated_at));
+    const rates = ratesFromGold(data.rates);
+    if (!rates) return;
+    // Web draws + downloads on a DOM canvas; native shows a shareable poster.
+    if (Platform.OS === 'web') downloadGoldRatePoster(rates, new Date(data.updated_at));
+    else setPosterRates(rates);
   };
 
   // Build the list of columns that actually have a rate value
@@ -150,6 +155,14 @@ export function GoldRateCard() {
           </Text>
         </View>
       )}
+
+      {/* Native poster (no-op on web) — the template with rates overlaid, shareable. */}
+      <GoldRatePosterModal
+        visible={posterRates !== null}
+        onClose={() => setPosterRates(null)}
+        rates={posterRates}
+        date={data ? new Date(data.updated_at) : new Date()}
+      />
     </View>
   );
 }
