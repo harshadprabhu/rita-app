@@ -50,9 +50,8 @@ export default function Login() {
           {/* Layered translucent circles simulate depth/glow without a gradient dependency */}
           <View style={styles.heroGlowLg} pointerEvents="none" />
           <View style={styles.heroGlowSm} pointerEvents="none" />
-          <View style={[styles.logoCard, theme.shadows.lg]}>
-            <Image source={require('../../assets/logo.png')} style={styles.logoImage} resizeMode="contain" />
-          </View>
+          {/* Gold emblem sits directly on the navy hero (no card). */}
+          <Image source={require('../../assets/logo.png')} style={styles.logoImage} resizeMode="contain" />
           <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
         </View>
 
@@ -115,12 +114,7 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: -40, left: -30, width: 140, height: 140,
     borderRadius: 70, backgroundColor: theme.colors.accent + '1A',
   },
-  logoCard: {
-    backgroundColor: '#fff', borderRadius: theme.radius.xl,
-    paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md,
-    marginBottom: theme.spacing.md, alignItems: 'center', justifyContent: 'center',
-  },
-  logoImage: { width: 200, height: 120 },
+  logoImage: { width: 150, height: 150, marginBottom: theme.spacing.sm },
   subtitle: { color: 'rgba(255,255,255,0.75)', fontSize: 14, marginTop: theme.spacing.xs, fontWeight: '600' },
   card: {
     flex: 1, backgroundColor: theme.colors.surface,
