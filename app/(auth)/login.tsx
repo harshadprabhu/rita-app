@@ -51,7 +51,7 @@ export default function Login() {
           <View style={styles.heroGlowLg} pointerEvents="none" />
           <View style={styles.heroGlowSm} pointerEvents="none" />
           <View style={[styles.logoCard, theme.shadows.lg]}>
-            <Image source={require('../../assets/rita-logo.jpg')} style={styles.logoImage} resizeMode="contain" />
+            <Image source={require('../../assets/logo.png')} style={styles.logoImage} resizeMode="contain" />
           </View>
           <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
         </View>
