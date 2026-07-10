@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +14,7 @@ import { useMarkRead } from '../../hooks/useNotifications';
 import { deleteAllNotifications } from '../../lib/api/notifications';
 import { QUERY_KEYS } from '../../constants/queryKeys';
 import { useAuthStore } from '../../stores/authStore';
+import { useNotificationStore } from '../../stores/notificationStore';
 import { theme } from '../../constants/theme';
 
 export function NotificationsScreen() {
@@ -27,26 +28,36 @@ export function NotificationsScreen() {
   } = useUnifiedNotifications(userId, profile?.store_id ?? null);
   const { markOne, markAll } = useMarkRead(userId);
 
-  // Opening the Alerts inbox clears the unread badge: mark ticket alerts and
-  // announcements read once they've been surfaced here.
-  useEffect(() => {
-    if (!userId) return;
+  const clearedAt = useNotificationStore((s) => s.alertsClearedAt);
+  const setClearedAt = useNotificationStore((s) => s.setAlertsClearedAt);
+
+  // Hide anything the user has already "cleared" (announcements can't be deleted
+  // per-user, so we hide by timestamp instead). New items still come through.
+  const displayFeed = useMemo(
+    () => feed.filter((f) => new Date(f.created_at).getTime() > clearedAt),
+    [feed, clearedAt],
+  );
+
+  const anyUnread = unreadTicketCount > 0 || unreadAnnouncementCount > 0;
+
+  const markAllRead = () => {
     if (unreadTicketCount > 0) markAll.mutate();
     if (unreadAnnouncementCount > 0) markAllBroadcastsRead();
-  }, [userId, unreadTicketCount, unreadAnnouncementCount]);
+  };
 
   const clearAll = useMutation({
     mutationFn: async () => {
-      await deleteAllNotifications(userId);
+      await deleteAllNotifications(userId).catch(() => null);
       await markAllBroadcastsRead();
     },
     onSuccess: () => {
+      setClearedAt(Date.now());
       qc.invalidateQueries({ queryKey: QUERY_KEYS.notifications(userId) });
       refetch();
     },
   });
 
-  const hasItems = feed.length > 0;
+  const hasItems = displayFeed.length > 0;
 
   return (
     <Screen edges={['top', 'left', 'right']}>
@@ -54,14 +65,20 @@ export function NotificationsScreen() {
         title={t('tabs.alerts')}
         right={
           <View style={styles.headerRight}>
+            {anyUnread && (
+              <TouchableOpacity style={styles.markBtn} onPress={markAllRead} activeOpacity={0.85}>
+                <Ionicons name="checkmark-done" size={13} color={theme.colors.accent} />
+                <Text style={styles.markBtnText}>{t('common.markAllRead', { defaultValue: 'Mark all read' })}</Text>
+              </TouchableOpacity>
+            )}
             {hasItems && (
               <TouchableOpacity
                 style={styles.clearBtn}
                 onPress={() => clearAll.mutate()}
                 disabled={clearAll.isPending}
+                hitSlop={8}
               >
-                <Ionicons name="trash-outline" size={13} color="#fff" />
-                <Text style={styles.clearBtnText}>{t('common.clearAll')}</Text>
+                <Ionicons name="trash-outline" size={16} color="#fff" />
               </TouchableOpacity>
             )}
             {profile ? <ProfileIconButton profile={profile} /> : null}
@@ -72,7 +89,7 @@ export function NotificationsScreen() {
         <LoadingOverlay />
       ) : (
         <FlatList
-          data={feed}
+          data={displayFeed}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.itemWrap}>
@@ -92,10 +109,15 @@ const styles = StyleSheet.create({
   list: { padding: theme.spacing.lg, flexGrow: 1 },
   itemWrap: { marginBottom: theme.spacing.md },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm },
-  clearBtn: {
+  markBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: theme.radius.full,
-    paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs,
+    backgroundColor: 'rgba(200,150,62,0.16)', borderWidth: 1, borderColor: 'rgba(200,150,62,0.35)',
+    borderRadius: theme.radius.full, paddingHorizontal: theme.spacing.sm + 2, paddingVertical: theme.spacing.xs,
   },
-  clearBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  markBtnText: { color: theme.colors.accentBright, fontSize: 11, fontWeight: '800' },
+  clearBtn: {
+    width: 30, height: 30, borderRadius: theme.radius.full,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
 });

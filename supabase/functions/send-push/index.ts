@@ -11,10 +11,10 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-async function sendExpo(messages: { to: string; title: string; body: string }[]) {
+async function sendExpo(messages: { to: string; title: string; body: string; data?: Record<string, unknown> }[]) {
   // Expo accepts up to 100 messages per request.
   for (let i = 0; i < messages.length; i += 100) {
-    const chunk = messages.slice(i, i + 100).map((m) => ({ ...m, sound: 'default' }));
+    const chunk = messages.slice(i, i + 100).map((m) => ({ ...m, sound: 'default', priority: 'high', channelId: 'default' }));
     await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -29,15 +29,18 @@ Deno.serve(async (req) => {
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
   try {
-    const { title, body, store_ids } = await req.json().catch(() => ({})) as {
-      title?: string; body?: string; store_ids?: string[] | null;
+    const { title, body, store_ids, user_ids, data } = await req.json().catch(() => ({})) as {
+      title?: string; body?: string; store_ids?: string[] | null; user_ids?: string[] | null; data?: Record<string, unknown>;
     };
     if (!title || !body) {
       return new Response(JSON.stringify({ ok: false, error: 'title and body required' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
     let q = supabase.from('profiles').select('expo_push_token').not('expo_push_token', 'is', null).eq('is_active', true);
-    if (Array.isArray(store_ids) && store_ids.length) q = q.in('store_id', store_ids);
+    // user_ids targets specific recipients (per-notification); store_ids targets
+    // a store audience (broadcasts). Neither → everyone with a token.
+    if (Array.isArray(user_ids) && user_ids.length) q = q.in('id', user_ids);
+    else if (Array.isArray(store_ids) && store_ids.length) q = q.in('store_id', store_ids);
     const { data, error } = await q;
     if (error) throw error;
 
@@ -46,7 +49,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, sent: 0, reason: 'no_tokens' }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    await sendExpo(tokens.map((to) => ({ to, title, body })));
+    await sendExpo(tokens.map((to) => ({ to, title, body, data: data ?? {} })));
     return new Response(JSON.stringify({ ok: true, sent: tokens.length }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
   } catch (err) {
     console.error('[send-push]', err);

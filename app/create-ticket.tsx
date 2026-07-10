@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, ActivityIndicator, Modal, Pressable, FlatList } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, ActivityIndicator, Modal, Pressable, FlatList, Alert, Platform } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -30,6 +30,8 @@ export default function CreateTicket() {
   // `priorityOverride` takes over and auto-sync stops.
   const [priorityOverride, setPriorityOverride] = useState<TicketPriority | null>(null);
   const [images, setImages] = useState<{ uri: string; name: string }[]>([]);
+  // Validation warnings only appear once the user has tried to submit.
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   // Category is auto-detected but fully overridable; subcategory is chosen from
   // the picker. Both are Sampark taxonomy values (from ticket_categories).
@@ -120,13 +122,32 @@ export default function CreateTicket() {
     },
   });
 
-  const pickImage = async () => {
-    if (images.length >= MAX_ATTACHMENTS) return;
+  const addAsset = (asset: ImagePicker.ImagePickerAsset) => {
+    setImages((prev) => [...prev, { uri: asset.uri, name: asset.fileName ?? `photo_${Date.now()}.jpg` }]);
+  };
+
+  const openCamera = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) return;
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+    if (!result.canceled && result.assets[0]) addAsset(result.assets[0]);
+  };
+
+  const openGallery = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      setImages((prev) => [...prev, { uri: asset.uri, name: asset.fileName ?? `photo_${Date.now()}.jpg` }]);
-    }
+    if (!result.canceled && result.assets[0]) addAsset(result.assets[0]);
+  };
+
+  // Let the user choose the camera or the gallery. On web there's no camera
+  // picker, so go straight to file selection.
+  const pickImage = () => {
+    if (images.length >= MAX_ATTACHMENTS) return;
+    if (Platform.OS === 'web') { openGallery(); return; }
+    Alert.alert('Add photo', 'Take a new photo or choose from your gallery.', [
+      { text: 'Camera', onPress: openCamera },
+      { text: 'Gallery', onPress: openGallery },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   return (
@@ -177,7 +198,7 @@ export default function CreateTicket() {
           Subcategory {subcategories.length > 0 ? '(required)' : ''}
         </Text>
         <TouchableOpacity
-          style={[styles.selectRow, subcategoryMissing && styles.selectRowError]}
+          style={[styles.selectRow, submitAttempted && subcategoryMissing && styles.selectRowError]}
           onPress={() => openPicker('subcategory')}
           activeOpacity={0.7}
           disabled={subcategories.length === 0}
@@ -188,7 +209,7 @@ export default function CreateTicket() {
           </Text>
           {subcategories.length > 0 && <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />}
         </TouchableOpacity>
-        {subcategoryMissing && <Text style={styles.micError}>Please choose a subcategory.</Text>}
+        {submitAttempted && subcategoryMissing && <Text style={styles.micError}>Please choose a subcategory.</Text>}
 
         <Text style={[styles.label, styles.spaced]}>Priority</Text>
         <View style={styles.pillRow}>
@@ -218,14 +239,10 @@ export default function CreateTicket() {
           )}
         </View>
 
-        {/* Subcategory is required whenever the chosen category has any. */}
-        {subcategories.length > 0 && !subcategory && (
-          <Text style={styles.requiredHint}>Please select a subcategory to continue.</Text>
-        )}
         <TouchableOpacity
-          style={[styles.submitBtn, theme.shadows.md, (!canSubmit || submit.isPending) && styles.submitBtnDisabled]}
-          onPress={() => submit.mutate()}
-          disabled={!canSubmit || submit.isPending}
+          style={[styles.submitBtn, theme.shadows.md, submit.isPending && styles.submitBtnDisabled]}
+          onPress={() => { if (!canSubmit) { setSubmitAttempted(true); return; } submit.mutate(); }}
+          disabled={submit.isPending}
           activeOpacity={0.85}
         >
           <LinearGradient colors={theme.gradients.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.submitBtnInner}>

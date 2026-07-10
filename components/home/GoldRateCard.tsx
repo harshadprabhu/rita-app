@@ -34,8 +34,13 @@ export function GoldRateCard() {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [posterRates, setPosterRates] = useState<PosterRates | null>(null); // native modal
+  // Trend window: 1 week / 1 month / 3 months.
+  const [rangeDays, setRangeDays] = useState<7 | 30 | 90>(7);
   const { data, isLoading, refetch, isRefetching } = useGoldRate();
-  const { data: trend } = useGoldRateTrend(true);
+  const { data: trend } = useGoldRateTrend(true, rangeDays);
+  const RANGES: { days: 7 | 30 | 90; label: string }[] = [
+    { days: 7, label: '1W' }, { days: 30, label: '1M' }, { days: 90, label: '3M' },
+  ];
 
   const handleDownload = () => {
     if (!data) return;
@@ -131,7 +136,19 @@ export function GoldRateCard() {
           {/* Trend (expand to view) */}
           {expanded && (
             <View style={styles.trendWrap}>
-              <Text style={styles.trendLabel}>24 KT · 7-DAY TREND</Text>
+              <View style={styles.trendHead}>
+                <Text style={styles.trendLabel}>24 KT · TREND</Text>
+                <View style={styles.rangeRow}>
+                  {RANGES.map((r) => {
+                    const on = rangeDays === r.days;
+                    return (
+                      <TouchableOpacity key={r.days} onPress={() => setRangeDays(r.days)} style={[styles.rangePill, on && styles.rangePillOn]}>
+                        <Text style={[styles.rangeText, on && styles.rangeTextOn]}>{r.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
               {trend && trend.length >= 2 ? (
                 <GoldRateTrendChart points={trend} />
               ) : (
@@ -216,7 +233,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingTop: 8, paddingBottom: 6,
     backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
   },
-  trendLabel: { color: 'rgba(255,255,255,0.22)', fontSize: 7.5, fontWeight: '700', letterSpacing: 1.2, marginBottom: 6 },
+  trendHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 },
+  trendLabel: { color: 'rgba(255,255,255,0.22)', fontSize: 7.5, fontWeight: '700', letterSpacing: 1.2 },
+  rangeRow: { flexDirection: 'row', gap: 4 },
+  rangePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: theme.radius.full, backgroundColor: 'rgba(255,255,255,0.06)' },
+  rangePillOn: { backgroundColor: 'rgba(200,150,62,0.22)', borderWidth: 1, borderColor: 'rgba(200,150,62,0.4)' },
+  rangeText: { color: 'rgba(255,255,255,0.4)', fontSize: 8.5, fontWeight: '800' },
+  rangeTextOn: { color: theme.colors.accentBright },
   trendEmpty: { color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', paddingVertical: theme.spacing.md },
   footer: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

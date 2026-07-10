@@ -8,6 +8,11 @@ interface NotificationStore {
 
   unreadAnnouncementCount: number;
   setUnreadAnnouncementCount: (count: number) => void;
+
+  // Epoch ms of the last "Clear" in the Alerts inbox; items at/older than this
+  // are hidden from the feed (announcements can't be per-user deleted).
+  alertsClearedAt: number;
+  setAlertsClearedAt: (ts: number) => void;
 }
 
 export const useNotificationStore = create<NotificationStore>((set) => ({
@@ -18,4 +23,7 @@ export const useNotificationStore = create<NotificationStore>((set) => ({
 
   unreadAnnouncementCount: 0,
   setUnreadAnnouncementCount: (unreadAnnouncementCount) => set({ unreadAnnouncementCount }),
+
+  alertsClearedAt: 0,
+  setAlertsClearedAt: (alertsClearedAt) => set({ alertsClearedAt }),
 }));

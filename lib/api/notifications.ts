@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
 import { DbNotification, NotificationType } from '../../types';
-import { sendPushNotifications, sendPushToToken } from '../utils/pushNotifications';
+import { sendPushNotifications } from '../utils/pushNotifications';
 
 export async function getNotifications(userId: string): Promise<DbNotification[]> {
   const { data, error } = await supabase
@@ -46,31 +46,15 @@ export async function createNotification(payload: {
   body: string;
   type: NotificationType;
 }): Promise<void> {
-  // Write to DB  -- requires INSERT RLS to allow cross-user inserts (see SQL migration)
+  // Write to DB  -- requires INSERT RLS to allow cross-user inserts (see SQL migration).
+  // The OS push is fired server-side by the `notification_push` DB trigger
+  // (calls send-push with service-role token access) so it works regardless of
+  // who created the row / RLS on other users' push tokens.
   const { error } = await supabase.from('notifications').insert(payload);
   if (error) {
     console.error('[createNotification] DB insert failed:', error.message, error.code);
     throw error;
   }
-
-  // Fetch recipient push token and fire push (best-effort -- never throws)
-  void (async () => {
-    try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('expo_push_token')
-        .eq('id', payload.recipient_id)
-        .single();
-      if (data?.expo_push_token) {
-        await sendPushToToken(data.expo_push_token, payload.title, payload.body, {
-          ticketId: payload.ticket_id,
-          type: payload.type,
-        });
-      }
-    } catch (err: unknown) {
-      console.error('[createNotification] push failed:', err);
-    }
-  })();
 }
 
 export async function notifyTechnicians(
@@ -81,7 +65,7 @@ export async function notifyTechnicians(
 ): Promise<void> {
   const { data: techs, error: queryError } = await supabase
     .from('profiles')
-    .select('id, expo_push_token')
+    .select('id')
     .eq('role', 'technician')
     .eq('approval_status', 'approved');
 
@@ -91,7 +75,8 @@ export async function notifyTechnicians(
   }
   if (!techs?.length) return;
 
-  // Batch DB insert -- requires INSERT RLS to allow cross-user inserts
+  // Batch DB insert -- requires INSERT RLS to allow cross-user inserts. The OS
+  // push for each row is sent server-side by the `notification_push` trigger.
   const rows = techs.map((t) => ({
     recipient_id: t.id as string,
     ticket_id: ticketId,
@@ -109,20 +94,6 @@ export async function notifyTechnicians(
     );
     // Don't throw -- notifications failing must never break ticket creation
   }
-
-  // Send push to all techs that have a token (fire-and-forget)
-  const pushMessages = (techs as { id: string; expo_push_token: string | null }[])
-    .filter((t) => !!t.expo_push_token)
-    .map((t) => ({
-      to: t.expo_push_token as string,
-      title,
-      body,
-      sound: 'default' as const,
-      data: { ticketId, type },
-    }));
-  sendPushNotifications(pushMessages).catch((err) =>
-    console.error('[notifyTechnicians] push send failed:', err),
-  );
 }
 
 /**

@@ -12,11 +12,11 @@ export function useGoldRate() {
   });
 }
 
-/** 7-day trend for the headline 24K (999) purity. Only enable when the card is expanded. */
-export function useGoldRateTrend(enabled = true) {
+/** Trend for the headline 24K (999) purity over `days`. Enable when expanded. */
+export function useGoldRateTrend(enabled = true, days = 7) {
   return useQuery({
-    queryKey: QUERY_KEYS.goldRateTrend(),
-    queryFn: () => getGoldRateTrend('24KT 999'),
+    queryKey: [...QUERY_KEYS.goldRateTrend(), days],
+    queryFn: () => getGoldRateTrend('24KT 999', days),
     staleTime: 5 * 60 * 1000,
     retry: 1,
     enabled,

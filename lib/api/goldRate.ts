@@ -66,9 +66,9 @@ export interface GoldRateTrendPoint {
  * D365 sync skips some days), so callers must space points by `entry_date`
  * rather than assuming one point per calendar day.
  */
-export async function getGoldRateTrend(purity = '24KT 999'): Promise<GoldRateTrendPoint[]> {
+export async function getGoldRateTrend(purity = '24KT 999', days = 7): Promise<GoldRateTrendPoint[]> {
   const since = new Date();
-  since.setDate(since.getDate() - 7);
+  since.setDate(since.getDate() - days);
   const sinceDate = since.toISOString().slice(0, 10); // YYYY-MM-DD
 
   const { data, error } = await supabase

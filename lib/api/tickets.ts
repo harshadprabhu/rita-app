@@ -6,6 +6,7 @@ import { DbTicket, TicketStatus, TicketLifecycle, TicketPriority, DbTicketAttach
 import { TicketWithRelations } from '../../types/ticket';
 import { computeSlaDueAt } from '../../constants/sla';
 import { logTicketAction } from './auditLog';
+import { createNotification } from './notifications';
 
 interface TicketFilters {
   status?: TicketStatus;
@@ -116,6 +117,21 @@ export async function updateTicket(
       }
     }
   }
+
+  // Notify the requester whenever the status changes (surfaces in Alerts and
+  // pushes to their phone via createNotification). Skip self-changes.
+  if (updates.status && before && before.status !== data.status && data.requester_id && data.requester_id !== actorId) {
+    const resolved = data.status === 'resolved';
+    const readable = String(data.status).replace(/_/g, ' ');
+    await createNotification({
+      recipient_id: data.requester_id,
+      ticket_id: id,
+      title: resolved ? 'Ticket resolved' : 'Ticket status updated',
+      body: `${data.ticket_number}: ${resolved ? 'marked resolved' : `moved to ${readable}`}`,
+      type: resolved ? 'ticket_resolved' : 'ticket_updated',
+    }).catch(() => null);
+  }
+
   return data as DbTicket;
 }
 

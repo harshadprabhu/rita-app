@@ -57,6 +57,21 @@ function AuthGate() {
   // Alerts tab. React Query caches results, so the tab reuses them for free.
   useUnifiedNotifications(profile?.id ?? '', profile?.store_id ?? null);
 
+  // Tapping an OS push notification deep-links into the relevant screen. The
+  // push payload carries either a ticketId (→ ticket detail) or an explicit
+  // route (→ that screen, e.g. the Alerts tab for broadcasts/gold updates).
+  useEffect(() => {
+    const openFrom = (resp: Notifications.NotificationResponse | null) => {
+      const data = (resp?.notification?.request?.content?.data ?? {}) as { ticketId?: string; route?: string };
+      if (data.ticketId) router.push(`/tickets/${data.ticketId}`);
+      else if (typeof data.route === 'string' && data.route.startsWith('/')) router.push(data.route as never);
+    };
+    const sub = Notifications.addNotificationResponseReceivedListener(openFrom);
+    // Cold start: app was launched by tapping a notification.
+    Notifications.getLastNotificationResponseAsync().then(openFrom).catch(() => null);
+    return () => sub.remove();
+  }, []);
+
   useEffect(() => {
     if (!profile) return;
     (async () => {
