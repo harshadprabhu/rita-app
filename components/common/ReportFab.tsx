@@ -20,7 +20,7 @@ export function ReportFab() {
           end={{ x: 0.8, y: 1 }}
           style={styles.btn}
         >
-          <Ionicons name="add" size={26} color={theme.colors.textPrimary} />
+          <Ionicons name="add" size={32} color={theme.colors.textPrimary} />
         </LinearGradient>
       </TouchableOpacity>
     </View>
@@ -28,18 +28,18 @@ export function ReportFab() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: 'absolute', left: 0, right: 0, bottom: 42, alignItems: 'center', zIndex: 30 },
+  wrap: { position: 'absolute', left: 0, right: 0, bottom: 44, alignItems: 'center', zIndex: 30 },
   btnShadow: {
-    borderRadius: 30,
+    borderRadius: 34,
     shadowColor: theme.colors.accent,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 14,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0.55,
+    shadowRadius: 16,
+    elevation: 12,
   },
   btn: {
-    width: 56, height: 56, borderRadius: 28,
+    width: 66, height: 66, borderRadius: 33,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3, borderColor: theme.colors.bg,
+    borderWidth: 3.5, borderColor: theme.colors.bg,
   },
 });

@@ -153,7 +153,7 @@ export function GoldRateCard() {
                   style={styles.posterBtnInner}
                 >
                   <Ionicons name="download-outline" size={11} color={theme.colors.textPrimary} />
-                  <Text style={styles.posterBtnText}>{t('goldRate.downloadPoster')}</Text>
+                  <Text style={styles.posterBtnText}>Poster</Text>
                 </LinearGradient>
               </TouchableOpacity>
             )}
