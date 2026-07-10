@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { FlatList, RefreshControl, View, StyleSheet, TextInput, ScrollView, Text } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
@@ -29,7 +30,7 @@ interface Props {
 
 const STATUSES = ['open', 'in_progress', 'resolved'] as const;
 
-export function TicketListScreen({ title, filters, showCreateButton, enableFilters }: Props) {
+export function TicketListScreen({ title, filters, enableFilters }: Props) {
   const { t } = useTranslation();
   const profile = useAuthStore((s) => s.profile);
   // A home stat tile can deep-link here pre-filtered, e.g. ?status=open or ?sla=1.
@@ -77,7 +78,10 @@ export function TicketListScreen({ title, filters, showCreateButton, enableFilte
     return list;
   }, [tickets, search, statusFilter, priorityFilter, slaOnly]);
 
-  const renderFilters = () => (
+  // Status pill label: "in_progress" reads as "Active" in the mockup.
+  const statusLabel = (s: (typeof STATUSES)[number]) => (s === 'in_progress' ? 'Active' : t(`status.${s}`));
+
+  const renderTopFilters = () => (
     <View style={styles.filterWrap}>
       <View style={styles.searchBox}>
         <Ionicons name="search" size={16} color={theme.colors.textTertiary} />
@@ -85,7 +89,7 @@ export function TicketListScreen({ title, filters, showCreateButton, enableFilte
           style={[styles.searchInput, webNoOutline]}
           value={search}
           onChangeText={setSearch}
-          placeholder="Search tickets, requester, store…"
+          placeholder="Search tickets…"
           placeholderTextColor={theme.colors.textTertiary}
           autoCapitalize="none"
           autoCorrect={false}
@@ -98,16 +102,9 @@ export function TicketListScreen({ title, filters, showCreateButton, enableFilte
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-        <Chip label={t('common.all')} active={statusFilter === 'all'} onPress={() => setStatusFilter('all')} />
+        <StatusPill label={t('common.all')} active={statusFilter === 'all'} onPress={() => setStatusFilter('all')} />
         {STATUSES.map((s) => (
-          <Chip key={s} label={t(`status.${s}`)} active={statusFilter === s} onPress={() => setStatusFilter(s)} />
-        ))}
-      </ScrollView>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-        <Chip label={t('common.all')} active={priorityFilter === 'all'} onPress={() => setPriorityFilter('all')} />
-        {ALL_PRIORITIES.map((p) => (
-          <Chip key={p} label={p} active={priorityFilter === p} onPress={() => setPriorityFilter(p)} capitalize />
+          <StatusPill key={s} label={statusLabel(s)} active={statusFilter === s} onPress={() => setStatusFilter(s)} />
         ))}
       </ScrollView>
 
@@ -127,68 +124,109 @@ export function TicketListScreen({ title, filters, showCreateButton, enableFilte
     </View>
   );
 
+  const priorityRail = (
+    <View style={styles.rail}>
+      <Text style={styles.railHeader}>PRIORITY</Text>
+      <RailBtn label="all" color={theme.colors.brand} active={priorityFilter === 'all'} onPress={() => setPriorityFilter('all')} />
+      {ALL_PRIORITIES.map((p) => (
+        <RailBtn key={p} label={p} color={theme.priorityColors[p]} active={priorityFilter === p} onPress={() => setPriorityFilter(p)} />
+      ))}
+    </View>
+  );
+
+  const list = (
+    <FlatList
+      data={enableFilters ? filteredTickets : (tickets ?? [])}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => <TicketCard ticket={item} />}
+      contentContainerStyle={styles.list}
+      keyboardShouldPersistTaps="handled"
+      style={{ flex: 1 }}
+      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
+      ListEmptyComponent={
+        <EmptyState icon="ticket-outline" title={t('ticketList.empty')} subtitle={t('ticketList.emptySubtitle')} />
+      }
+    />
+  );
+
   return (
     <Screen edges={['top', 'left', 'right']}>
       <AppHeader
         title={title}
-        right={
-          <View style={styles.headerRight}>
-            {showCreateButton && (
-              <TouchableOpacity onPress={() => router.push('/create-ticket')} style={styles.addBtn}>
-                <Ionicons name="add" size={24} color="#fff" />
-              </TouchableOpacity>
-            )}
-            {profile && <ProfileIconButton profile={profile} />}
-          </View>
-        }
+        right={profile ? <ProfileIconButton profile={profile} /> : undefined}
       />
       {isLoading ? (
         <LoadingOverlay />
+      ) : enableFilters ? (
+        <>
+          {renderTopFilters()}
+          <View style={styles.railRow}>
+            {priorityRail}
+            {list}
+          </View>
+        </>
       ) : (
-        <FlatList
-          data={enableFilters ? filteredTickets : (tickets ?? [])}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <TicketCard ticket={item} />}
-          ListHeaderComponent={enableFilters ? renderFilters() : null}
-          contentContainerStyle={styles.list}
-          keyboardShouldPersistTaps="handled"
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
-          ListEmptyComponent={
-            <EmptyState icon="ticket-outline" title={t('ticketList.empty')} subtitle={t('ticketList.emptySubtitle')} />
-          }
-        />
+        list
       )}
     </Screen>
   );
 }
 
-function Chip({ label, active, onPress, capitalize }: { label: string; active: boolean; onPress: () => void; capitalize?: boolean }) {
+// Status pill: metallic-navy gradient when active (mockup), white otherwise.
+function StatusPill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  if (active) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={styles.pillWrap}>
+        <LinearGradient colors={theme.gradients.navyMetal} locations={theme.gradients.navyMetalLocations} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.pillActive}>
+          <Text style={styles.pillTextActive}>{label}</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
   return (
-    <TouchableOpacity onPress={onPress} style={[styles.chip, active && styles.chipActive]} activeOpacity={0.8}>
-      <Text style={[styles.chipText, capitalize && { textTransform: 'capitalize' }, active && styles.chipTextActive]}>{label}</Text>
+    <TouchableOpacity onPress={onPress} style={styles.pill} activeOpacity={0.8}>
+      <Text style={styles.pillText}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
+// Vertical priority side-rail button: colored tint + outline when active.
+function RailBtn({ label, color, active, onPress }: { label: string; color: string; active: boolean; onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      style={[styles.railBtn, active ? { backgroundColor: color + '18', borderColor: color } : { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
+    >
+      <Text style={[styles.railBtnText, { color: active ? color : theme.colors.textSecondary }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { paddingVertical: theme.spacing.md, flexGrow: 1 },
+  list: { paddingVertical: theme.spacing.sm, flexGrow: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center' },
-  addBtn: { marginRight: theme.spacing.md },
-  filterWrap: { paddingHorizontal: theme.spacing.lg, paddingBottom: theme.spacing.sm, gap: theme.spacing.sm },
+  filterWrap: { paddingHorizontal: theme.spacing.lg, paddingTop: theme.spacing.sm, paddingBottom: theme.spacing.xs, gap: theme.spacing.sm },
   searchBox: {
     flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
-    backgroundColor: theme.colors.surface2, borderWidth: 1, borderColor: theme.colors.border,
-    borderRadius: theme.radius.full, paddingHorizontal: theme.spacing.md, height: 42,
+    backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border,
+    borderRadius: 12, paddingHorizontal: theme.spacing.md, height: 42, ...theme.shadows.xs,
   },
-  searchInput: { flex: 1, color: theme.colors.textPrimary, fontSize: 14, paddingVertical: 0 },
-  chipRow: { gap: theme.spacing.xs, paddingRight: theme.spacing.lg },
-  chip: {
+  searchInput: { flex: 1, color: theme.colors.textPrimary, fontSize: 13, paddingVertical: 0 },
+  chipRow: { gap: 6, paddingRight: theme.spacing.lg },
+  pillWrap: { borderRadius: theme.radius.full, overflow: 'hidden' },
+  pill: {
     borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.full, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.xs,
+    borderRadius: theme.radius.full, paddingHorizontal: 14, paddingVertical: 7,
   },
-  chipActive: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
-  chipText: { fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary },
-  chipTextActive: { color: '#fff' },
+  pillActive: { borderRadius: theme.radius.full, paddingHorizontal: 14, paddingVertical: 8 },
+  pillText: { fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary },
+  pillTextActive: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  railRow: { flex: 1, flexDirection: 'row' },
+  rail: { width: 66, paddingLeft: theme.spacing.lg, paddingRight: theme.spacing.sm, paddingTop: theme.spacing.xs, gap: 6 },
+  railHeader: { fontSize: 8, fontWeight: '800', color: theme.colors.textTertiary, letterSpacing: 1, marginBottom: 2, marginLeft: 2 },
+  railBtn: { borderWidth: 1, borderRadius: 9, paddingHorizontal: 8, paddingVertical: 7 },
+  railBtnText: { fontSize: 9, fontWeight: '700', textTransform: 'capitalize' },
   countRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 2 },
   count: { fontSize: 11, color: theme.colors.textTertiary, fontWeight: '600' },
   exportBtn: {
