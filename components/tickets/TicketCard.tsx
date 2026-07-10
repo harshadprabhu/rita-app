@@ -6,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { TicketWithRelations } from '../../types/ticket';
 import { LifecycleChip } from '../common/StatusChip';
-import { PriorityBadge } from '../common/PriorityBadge';
 import { timeAgo } from '../../lib/utils/date';
 import { useAuthStore } from '../../stores/authStore';
 import { getTechnicians } from '../../lib/api/profiles';
@@ -62,58 +61,48 @@ export function TicketCard({ ticket }: Props) {
   };
 
   const categoryLabel = ticket.category ? t(`category.${ticket.category}`) : null;
+  const priorityColor = theme.priorityColors[ticket.priority];
 
   return (
-    <View style={[styles.card, theme.shadows.sm, { backgroundColor: statusColor }]}>
+    <View style={[styles.card, theme.shadows.sm]}>
       <TouchableOpacity onPress={() => router.push(`/tickets/${ticket.id}`)} activeOpacity={0.7}>
         <View style={styles.inner}>
+          {/* Row 1: status dot · title · priority pill · menu */}
           <View style={styles.topRow}>
-            <View style={styles.left}>
-              <PriorityBadge priority={ticket.priority} />
-              <Text style={styles.ticketNumber}>{ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : ticket.ticket_number}</Text>
-            </View>
-            <View style={styles.rightRow}>
-              <LifecycleChip lifecycle={ticket.lifecycle} />
+            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+            <Text style={styles.title} numberOfLines={2}>{ticket.description}</Text>
+            <View style={styles.rightCol}>
+              <View style={[styles.priorityPill, { backgroundColor: priorityColor + '14' }]}>
+                <Text style={[styles.priorityText, { color: priorityColor }]}>{ticket.priority}</Text>
+              </View>
               {canAct && (
                 <TouchableOpacity
                   onPress={() => { setMenuOpen((v) => !v); setReassignOpen(false); }}
                   hitSlop={8}
                   style={styles.menuBtn}
                 >
-                  <Ionicons name="ellipsis-vertical" size={16} color={theme.colors.textTertiary} />
+                  <Ionicons name="ellipsis-vertical" size={15} color={theme.colors.textTertiary} />
                 </TouchableOpacity>
               )}
             </View>
           </View>
 
-          <Text style={styles.description} numberOfLines={2}>{ticket.description}</Text>
-
-          {/* Meta: category + assignee */}
+          {/* Row 2: lifecycle pill · id · category ........ time */}
           <View style={styles.metaRow}>
-            {categoryLabel && (
-              <View style={styles.tag}>
-                <Ionicons name="pricetag-outline" size={11} color={theme.colors.brand} />
-                <Text style={styles.tagText} numberOfLines={1}>{categoryLabel}</Text>
-              </View>
-            )}
-            <View style={styles.tag}>
-              <Ionicons name="person-outline" size={11} color={theme.colors.textTertiary} />
-              <Text style={styles.assigneeText} numberOfLines={1}>
-                {ticket.assignee?.display_name ?? 'Unassigned'}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.bottomRow}>
-            <View style={styles.timeRow}>
-              <Ionicons name="time-outline" size={12} color={theme.colors.textTertiary} />
-              <Text style={styles.timeAgo}>{timeAgo(ticket.created_at)}</Text>
-            </View>
-            {ticket.sla_breached && (
+            <LifecycleChip lifecycle={ticket.lifecycle} small />
+            <Text style={styles.ticketNumber} numberOfLines={1}>
+              {ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : ticket.ticket_number}
+            </Text>
+            {categoryLabel && <Text style={styles.metaDot}>·</Text>}
+            {categoryLabel && <Text style={styles.metaText} numberOfLines={1}>{categoryLabel}</Text>}
+            <View style={{ flex: 1 }} />
+            {ticket.sla_breached ? (
               <View style={styles.slaBadge}>
-                <Ionicons name="alert" size={11} color={theme.priorityColors.high} />
-                <Text style={styles.slaBreach}>SLA breached</Text>
+                <Ionicons name="alert" size={10} color={theme.priorityColors.high} />
+                <Text style={styles.slaBreach}>SLA</Text>
               </View>
+            ) : (
+              <Text style={styles.timeAgo}>{timeAgo(ticket.created_at)}</Text>
             )}
           </View>
         </View>
@@ -162,30 +151,29 @@ function MenuItem({ icon, color, label, onPress, busy }: { icon: keyof typeof Io
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: theme.radius.lg, marginHorizontal: theme.spacing.lg, marginVertical: 6 },
+  card: { borderRadius: 16, marginHorizontal: theme.spacing.lg, marginVertical: 5 },
   inner: {
-    backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, marginLeft: 4,
-    padding: theme.spacing.md + 2, borderWidth: 1, borderColor: theme.colors.border, borderLeftWidth: 0,
+    backgroundColor: theme.colors.surface, borderRadius: 16,
+    paddingVertical: 12, paddingHorizontal: 14, borderWidth: 1, borderColor: theme.colors.border,
   },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.sm },
-  left: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
-  rightRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.xs },
+  topRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  title: { flex: 1, fontWeight: '600', fontSize: 13, color: theme.colors.textPrimary, lineHeight: 18 },
+  rightCol: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  priorityPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5 },
+  priorityText: { fontSize: 8, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase' },
   menuBtn: { padding: 2 },
-  ticketNumber: { fontWeight: '700', fontSize: 13, color: theme.colors.brand, letterSpacing: 0.2 },
-  description: { fontWeight: '500', fontSize: 14, color: theme.colors.textPrimary, lineHeight: 20, marginBottom: theme.spacing.sm },
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, marginBottom: theme.spacing.sm },
-  tag: { flexDirection: 'row', alignItems: 'center', gap: 4, maxWidth: '60%' },
-  tagText: { fontSize: 11, fontWeight: '700', color: theme.colors.brand },
-  assigneeText: { fontSize: 11, fontWeight: '600', color: theme.colors.textSecondary },
-  bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  timeAgo: { fontSize: 12, color: theme.colors.textTertiary, fontWeight: '500' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  ticketNumber: { fontWeight: '600', fontSize: 9, color: theme.colors.textTertiary, letterSpacing: 0.2 },
+  metaDot: { fontSize: 9, color: theme.colors.textTertiary },
+  metaText: { fontSize: 9, color: theme.colors.textTertiary, maxWidth: 110 },
+  timeAgo: { fontSize: 9, color: theme.colors.textTertiary, fontWeight: '500' },
   slaBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: theme.colors.errorBg, paddingHorizontal: theme.spacing.sm, paddingVertical: 3,
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: theme.colors.errorBg, paddingHorizontal: 6, paddingVertical: 2,
     borderRadius: theme.radius.full,
   },
-  slaBreach: { fontSize: 10, fontWeight: '700', color: theme.priorityColors.high },
+  slaBreach: { fontSize: 8, fontWeight: '800', color: theme.priorityColors.high, letterSpacing: 0.4 },
   // Action menu
   menu: {
     position: 'absolute', top: 40, right: theme.spacing.md, zIndex: 20,

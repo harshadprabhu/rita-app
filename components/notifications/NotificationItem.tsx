@@ -65,9 +65,9 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    borderRadius: theme.radius.md,
+    borderRadius: 16,
     borderWidth: 1,
-    padding: theme.spacing.lg,
+    padding: 14,
     gap: theme.spacing.md,
     ...theme.shadows.sm,
   },
@@ -75,9 +75,12 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface,
     borderColor: theme.colors.border,
   },
+  // Unread: gold left rail on a white card (mockup treatment).
   cardUnread: {
-    backgroundColor: '#F0F5FF',
-    borderColor: '#C7D9F5',
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.accent,
   },
   cardBroadcast: {
     backgroundColor: '#1E3A5F',
@@ -85,9 +88,9 @@ const styles = StyleSheet.create({
   },
 
   iconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: theme.radius.sm,
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -136,6 +139,6 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: theme.radius.full,
-    backgroundColor: '#2563EB',
+    backgroundColor: theme.colors.accent,
   },
 });

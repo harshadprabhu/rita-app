@@ -40,20 +40,20 @@ export function LifecycleChip({ lifecycle, small = false }: LifecycleProps) {
 
 const styles = StyleSheet.create({
   chip: {
-    borderRadius: theme.radius.full,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
+    borderRadius: 5,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
     alignSelf: 'flex-start',
   },
   small: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 2,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
   },
   label: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 9,
+    fontWeight: '700',
   },
   smallText: {
-    fontSize: 10,
+    fontSize: 8,
   },
 });

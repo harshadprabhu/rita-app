@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image,
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../components/common/Screen';
@@ -225,8 +226,16 @@ export default function CreateTicket() {
           style={[styles.submitBtn, theme.shadows.md, (!canSubmit || submit.isPending) && styles.submitBtnDisabled]}
           onPress={() => submit.mutate()}
           disabled={!canSubmit || submit.isPending}
+          activeOpacity={0.85}
         >
-          {submit.isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Submit Ticket</Text>}
+          <LinearGradient colors={theme.gradients.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.submitBtnInner}>
+            {submit.isPending ? <ActivityIndicator color={theme.colors.textPrimary} /> : (
+              <>
+                <Ionicons name="send" size={15} color={theme.colors.textPrimary} />
+                <Text style={styles.submitBtnText}>Submit Ticket</Text>
+              </>
+            )}
+          </LinearGradient>
         </TouchableOpacity>
         {submit.isError && <Text style={styles.error}>{String(submit.error)}</Text>}
       </ScrollView>
@@ -300,10 +309,10 @@ const styles = StyleSheet.create({
   },
   pillRow: { flexDirection: 'row', gap: theme.spacing.sm },
   pill: {
-    flex: 1, alignItems: 'center', paddingVertical: theme.spacing.sm, borderRadius: theme.radius.sm,
-    borderWidth: 1.5, backgroundColor: theme.colors.surface2, borderColor: theme.colors.border,
+    flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10,
+    borderWidth: 1, backgroundColor: theme.colors.surface, borderColor: theme.colors.border,
   },
-  pillText: { fontSize: 12, fontWeight: '700', color: theme.colors.textTertiary, textTransform: 'capitalize' },
+  pillText: { fontSize: 11, fontWeight: '700', color: theme.colors.textTertiary, textTransform: 'capitalize' },
   selectRow: {
     flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
     backgroundColor: theme.colors.surface2, borderWidth: 1.5, borderColor: theme.colors.border,
@@ -342,11 +351,13 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface2,
   },
   submitBtn: {
-    backgroundColor: theme.colors.brand, borderRadius: theme.radius.md, height: 52,
-    alignItems: 'center', justifyContent: 'center', marginTop: theme.spacing.xl,
+    borderRadius: theme.radius.md, overflow: 'hidden', marginTop: theme.spacing.xl,
+  },
+  submitBtnInner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm, height: 52,
   },
   submitBtnDisabled: { opacity: 0.5 },
-  submitBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  submitBtnText: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
   error: { color: theme.colors.error, fontSize: 13, marginTop: theme.spacing.md, textAlign: 'center' },
   requiredHint: { color: theme.colors.error, fontSize: 12, marginTop: theme.spacing.md, textAlign: 'center', fontWeight: '600' },
 });

@@ -41,6 +41,20 @@ export default function SlaConsole() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
+          ListHeaderComponent={
+            <View style={styles.tilesRow}>
+              {[
+                { label: 'Breached', count: (tickets ?? []).filter((x) => x.sla_breached).length, color: '#EF4444', bg: '#FEF2F2' },
+                { label: 'At Risk', count: (tickets ?? []).filter((x) => !x.sla_breached && x.priority === 'high').length, color: '#F59E0B', bg: '#FFFBEB' },
+                { label: 'On Track', count: (tickets ?? []).filter((x) => !x.sla_breached && x.priority !== 'high').length, color: '#10B981', bg: '#ECFDF5' },
+              ].map((tile) => (
+                <View key={tile.label} style={[styles.tile, { backgroundColor: tile.bg }]}>
+                  <Text style={[styles.tileCount, { color: tile.color }]}>{tile.count}</Text>
+                  <Text style={styles.tileLabel}>{tile.label}</Text>
+                </View>
+              ))}
+            </View>
+          }
           renderItem={({ item }) => (
             <View style={[styles.card, theme.shadows.sm]}>
               <View style={styles.topRow}>
@@ -67,6 +81,10 @@ export default function SlaConsole() {
 
 const styles = StyleSheet.create({
   list: { padding: theme.spacing.lg },
+  tilesRow: { flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.md },
+  tile: { flex: 1, borderRadius: 16, paddingVertical: 12, alignItems: 'center' },
+  tileCount: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5 },
+  tileLabel: { fontSize: 9, fontWeight: '600', color: theme.colors.textSecondary, marginTop: 3 },
   exportRow: { flexDirection: 'row', gap: theme.spacing.sm },
   exportBtn: { padding: theme.spacing.xs },
   card: {
