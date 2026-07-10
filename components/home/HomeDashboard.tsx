@@ -35,7 +35,11 @@ export function HomeDashboard({ stats, showCreateButton, showGoldRate }: Props) 
 
   return (
     <Screen edges={['top', 'left', 'right']}>
-      <AppHeader title="RITA" right={profile ? <ProfileIconButton profile={profile} /> : null} />
+      <AppHeader
+        title="Indriya Jewellery"
+        subtitle="RITA · POS Triage"
+        right={profile ? <ProfileIconButton profile={profile} /> : null}
+      />
       <ScrollView contentContainerStyle={styles.body}>
         {/* Greeting row — minimal "Report an issue" action sits at the top-right. */}
         <View style={styles.topRow}>
@@ -49,7 +53,7 @@ export function HomeDashboard({ stats, showCreateButton, showGoldRate }: Props) 
           </View>
           {showCreateButton && (
             <TouchableOpacity style={styles.createBtn} onPress={() => router.push('/create-ticket')} activeOpacity={0.85}>
-              <Ionicons name="add" size={16} color="#fff" />
+              <Ionicons name="add" size={16} color={theme.colors.textPrimary} />
               <Text style={styles.createBtnText}>Report</Text>
             </TouchableOpacity>
           )}
@@ -91,25 +95,25 @@ function StatCard({ label, filters, color, icon, href }: StatDef) {
 const styles = StyleSheet.create({
   body: { padding: theme.spacing.lg },
   topRow: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm, marginBottom: theme.spacing.lg },
-  greeting: { fontSize: 22, fontWeight: '800', color: theme.colors.textPrimary, letterSpacing: 0.2 },
-  greetingSubtitle: { fontSize: 13, color: theme.colors.textTertiary, marginTop: 2, fontWeight: '500' },
+  greeting: { fontSize: 26, fontWeight: '600', color: theme.colors.textPrimary, letterSpacing: 0.2, fontFamily: theme.fonts.serif },
+  greetingSubtitle: { fontSize: 12, color: theme.colors.textSecondary, marginTop: 3, fontWeight: '500' },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
   statCard: {
     flexBasis: '47%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
-    backgroundColor: theme.colors.surface, borderRadius: theme.radius.md,
-    borderWidth: 1, borderColor: theme.colors.border, paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.md,
+    backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg,
+    borderWidth: 1, borderColor: theme.colors.border, paddingVertical: 13, paddingHorizontal: theme.spacing.md,
   },
   statIconRing: {
-    width: 30, height: 30, borderRadius: theme.radius.sm,
+    width: 32, height: 32, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
   },
   statText: { flex: 1 },
-  statValue: { fontSize: 18, fontWeight: '800', color: theme.colors.textPrimary, letterSpacing: 0.2 },
-  statLabel: { fontSize: 11, color: theme.colors.textSecondary, fontWeight: '600' },
+  statValue: { fontSize: 22, fontWeight: '800', color: theme.colors.textPrimary, letterSpacing: 0.2 },
+  statLabel: { fontSize: 10.5, color: theme.colors.textSecondary, fontWeight: '600', marginTop: 1 },
   createBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: theme.colors.brand, borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.accent, borderRadius: theme.radius.full,
     paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.md,
   },
-  createBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  createBtnText: { color: theme.colors.textPrimary, fontSize: 13, fontWeight: '800' },
 });

@@ -6,6 +6,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../../components/common/Screen';
+import { MetalNavy } from '../../components/common/MetalNavy';
 import { signInWithMicrosoft } from '../../lib/auth/oauth';
 import { useUiStore } from '../../stores/uiStore';
 import { extractErrorMessage } from '../../lib/utils/error';
@@ -46,14 +47,16 @@ export default function Login() {
   return (
     <Screen edges={['top', 'left', 'right']} style={styles.screen}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="always">
-        <View style={styles.hero}>
-          {/* Layered translucent circles simulate depth/glow without a gradient dependency */}
+        <MetalNavy edge="none" style={styles.hero}>
+          {/* Layered translucent circles simulate depth/glow */}
           <View style={styles.heroGlowLg} pointerEvents="none" />
           <View style={styles.heroGlowSm} pointerEvents="none" />
-          {/* Gold emblem sits directly on the navy hero (no card). */}
+          {/* Gold emblem sits directly on the metallic navy hero (no card). */}
           <Image source={require('../../assets/logo.png')} style={styles.logoImage} resizeMode="contain" />
+          <Text style={styles.brand}>Indriya Jewellery</Text>
+          <Text style={styles.brandEyebrow}>RITA · POS TRIAGE</Text>
           <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
-        </View>
+        </MetalNavy>
 
         <View style={[styles.card, theme.shadows.lg]}>
           {error ? (
@@ -114,8 +117,10 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: -40, left: -30, width: 140, height: 140,
     borderRadius: 70, backgroundColor: theme.colors.accent + '1A',
   },
-  logoImage: { width: 150, height: 150, marginBottom: theme.spacing.sm },
-  subtitle: { color: 'rgba(255,255,255,0.75)', fontSize: 14, marginTop: theme.spacing.xs, fontWeight: '600' },
+  logoImage: { width: 132, height: 132, marginBottom: theme.spacing.xs },
+  brand: { color: '#fff', fontSize: 26, fontWeight: '600', fontFamily: theme.fonts.serif, letterSpacing: 0.3 },
+  brandEyebrow: { color: theme.colors.accentBright, fontSize: 9, fontWeight: '800', letterSpacing: 2.4, marginTop: 4 },
+  subtitle: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: theme.spacing.sm, fontWeight: '600', textAlign: 'center' },
   card: {
     flex: 1, backgroundColor: theme.colors.surface,
     borderTopLeftRadius: theme.radius.xxl, borderTopRightRadius: theme.radius.xxl,

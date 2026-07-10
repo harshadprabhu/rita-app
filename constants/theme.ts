@@ -1,5 +1,13 @@
-import { TextStyle, ViewStyle } from 'react-native';
+import { Platform, TextStyle, ViewStyle } from 'react-native';
 import { TicketStatus, TicketLifecycle, TicketPriority } from '../types';
+
+// Cross-platform serif stack for the "luxury jewellery" display headings in the
+// Figma design (approximates Cormorant Garamond without bundling a font file).
+const serifFamily = Platform.select({
+  ios: 'Georgia',
+  android: 'serif',
+  default: 'Georgia, "Times New Roman", serif',
+}) as string;
 
 // Suppresses the browser's default focus ring on web (outlineWidth: 0 alone
 // isn't enough — Chromium's default outline-style: auto ignores an explicit
@@ -53,25 +61,44 @@ const shadowBrand: ViewStyle = {
 
 export const theme = {
   colors: {
-    // Indriya-inspired luxury palette: deep midnight navy + refined warm gold,
-    // set on soft ivory backgrounds for a premium jewellery-brand feel.
-    brand: '#132C4D',
-    brandMid: '#28517F',
-    accent: '#C6A14C',
-    accentLight: '#FAF2DD',
-    bg: '#F5F2EB',
+    // Indriya-inspired luxury palette (Figma "Modern App Design" tokens):
+    // deep midnight navy + refined warm gold, set on soft cream backgrounds
+    // for a premium jewellery-brand feel.
+    brand: '#1A2D5C',        // NAVY
+    brandDeep: '#0F1B38',    // deepest navy (gradient tail / gold-rate card)
+    brandMid: '#2E4E8A',     // brushed steel-blue highlight
+    accent: '#C8963E',       // GOLD
+    accentBright: '#E0B55A', // GOLD2 (gradient / highlights)
+    accentLight: '#FDF6EC',  // pale gold wash
+    bg: '#EDE8DC',           // CREAM
     surface: '#FFFFFF',
-    surface2: '#F2EDE3',
-    textPrimary: '#132236',
-    textSecondary: '#5C6B7E',
-    textTertiary: '#98A4B2',
-    border: '#E9E2D4',
-    borderStrong: '#D7CEBD',
+    surface2: '#F4F0E8',
+    textPrimary: '#1A1614',  // INK
+    textSecondary: '#6B6259',// SUB
+    textTertiary: '#A89D95', // MUTED
+    border: 'rgba(26,45,92,0.07)',
+    borderStrong: 'rgba(26,45,92,0.14)',
     error: '#EF4444',
     errorBg: '#FEE2E2',
     errorLight: '#FEF2F2',
     errorBorder: '#FECACA',
     errorStrong: '#DC2626',
+  },
+  // Multi-stop gradients (use with expo-linear-gradient <LinearGradient colors=…>).
+  gradients: {
+    // Brushed steel-blue metallic navy — every navy surface (headers, active
+    // pills, FAB). Pair with `navyMetalLocations`.
+    navyMetal: ['#2E4E8A', '#1A2D5C', '#111E3D', '#1F3670', '#162448'] as const,
+    navyMetalLocations: [0, 0.28, 0.55, 0.72, 1] as const,
+    // Thin specular highlight stripe for the top/bottom edge of navy surfaces.
+    metalEdge: ['transparent', 'rgba(180,210,255,0.28)', 'transparent'] as const,
+    // Gold CTA (buttons, FAB, poster).
+    gold: ['#E0B55A', '#C8963E'] as const,
+    // Gold-rate card body.
+    goldCard: ['#1F3569', '#0F1B38'] as const,
+  },
+  fonts: {
+    serif: serifFamily,
   },
   statusColors: {
     open: { text: '#2563EB', bg: '#EFF6FF', accent: '#2563EB' },
