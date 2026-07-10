@@ -82,6 +82,29 @@ function mapUser(u: Record<string, any>): UserRow | null {
   return { email, name: u.displayName || null, phone, store_id: null };
 }
 
+// Load a lookup of the AD store token -> stores.id (the PK we actually save),
+// keyed by both retail_channel_id (NS####) and code (00000### operating unit).
+async function loadStoreIndex(supabase: ReturnType<typeof createClient>): Promise<Map<string, string>> {
+  const index = new Map<string, string>();
+  const { data } = await supabase.from('stores').select('id, retail_channel_id, code').eq('is_active', true);
+  for (const s of (data ?? []) as { id: string; retail_channel_id: string | null; code: string | null }[]) {
+    if (s.retail_channel_id) index.set(s.retail_channel_id.toUpperCase(), s.id);
+    if (s.code) index.set(s.code, s.id);
+  }
+  return index;
+}
+
+// Resolve the stores.id (PK) encoded in an AD login id, or null (→ HO user).
+function storeIdFromEmail(email: string, index: Map<string, string>): string | null {
+  const local = email.split('@')[0].toLowerCase();
+  const channel = (local.match(/n[a-z]\d{4}/i) ?? [])[0];
+  if (channel && index.has(channel.toUpperCase())) return index.get(channel.toUpperCase())!;
+  if (/^\d{3,8}$/.test(local)) {
+    for (const c of [local, local.padStart(8, '0')]) if (index.has(c)) return index.get(c)!;
+  }
+  return null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (!req.headers.get('Authorization')) {
@@ -108,6 +131,7 @@ Deno.serve(async (req) => {
     }
 
     // --- Sync: resolve each group by name, collect its user members, upsert. ---
+    const storeIndex = await loadStoreIndex(supabase);
     const seen = new Set<string>();
     const rows: UserRow[] = [];
     for (const name of GROUP_NAMES) {
@@ -120,7 +144,12 @@ Deno.serve(async (req) => {
         for (const m of members) {
           if (m.accountEnabled === false) continue;
           const row = mapUser(m);
-          if (row && !seen.has(row.email)) { seen.add(row.email); rows.push(row); }
+          if (row && !seen.has(row.email)) {
+            // Save the resolved stores.id (PK). No match → null = Head Office user.
+            row.store_id = storeIdFromEmail(row.email, storeIndex);
+            seen.add(row.email);
+            rows.push(row);
+          }
         }
       }
     }

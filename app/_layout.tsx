@@ -121,10 +121,6 @@ function AuthGate() {
     let dest: string;
     if (!profile.is_active) {
       dest = 'login'; // deactivated accounts are bounced back to login
-    } else if (profile.role === 'user' && !profile.store_id) {
-      // Microsoft SSO provisions a bare 'user' profile with no store — Azure
-      // knows identity but not which store the person works at.
-      dest = 'onboarding';
     } else if (profile.role === 'technician' && profile.approval_status === 'pending') {
       dest = 'pending';
     } else if (profile.role === 'user' && profile.approval_status === 'approved') {
