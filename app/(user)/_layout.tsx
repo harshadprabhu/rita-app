@@ -1,7 +1,9 @@
+import { View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useNotificationStore } from '../../stores/notificationStore';
+import { ReportFab } from '../../components/common/ReportFab';
 import { theme } from '../../constants/theme';
 
 export default function UserLayout() {
@@ -11,12 +13,13 @@ export default function UserLayout() {
   const totalUnread = unreadCount + unreadAnnouncementCount;
 
   return (
+    <View style={{ flex: 1 }}>
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.brand,
         tabBarInactiveTintColor: theme.colors.textTertiary,
-        tabBarStyle: { borderTopColor: theme.colors.border, paddingBottom: theme.spacing.sm, height: 60 },
+        tabBarStyle: { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border, paddingBottom: theme.spacing.sm, height: 60 },
       }}
     >
       <Tabs.Screen name="home" options={{ title: t('tabs.home'), tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} /> }} />
@@ -32,5 +35,7 @@ export default function UserLayout() {
       <Tabs.Screen name="announcements" options={{ href: null }} />
       <Tabs.Screen name="profile" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     </Tabs>
+    <ReportFab />
+    </View>
   );
 }
