@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, usePathname } from 'expo-router';
 import { theme } from '../../constants/theme';
 
 /**
@@ -11,6 +11,9 @@ import { theme } from '../../constants/theme';
  * <Tabs> in the role layouts that can create tickets.
  */
 export function ReportFab() {
+  const pathname = usePathname();
+  // The profile screen hides the tab bar, so hide the FAB there too.
+  if (pathname?.includes('/profile')) return null;
   return (
     <View style={styles.wrap} pointerEvents="box-none">
       <TouchableOpacity activeOpacity={0.88} onPress={() => router.push('/create-ticket')} style={styles.btnShadow}>

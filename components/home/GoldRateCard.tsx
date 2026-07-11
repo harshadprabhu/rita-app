@@ -96,8 +96,8 @@ export function GoldRateCard() {
         </View>
         <View style={styles.headerRight}>
           {delta !== null && (
-            <View style={styles.deltaPill}>
-              <Text style={styles.deltaText}>
+            <View style={[styles.deltaPill, delta < 0 ? styles.deltaPillDown : styles.deltaPillUp]}>
+              <Text style={[styles.deltaText, delta < 0 ? styles.deltaTextDown : styles.deltaTextUp]}>
                 {delta >= 0 ? '▲' : '▼'} {Math.abs(delta).toFixed(2)}%
               </Text>
             </View>
@@ -216,10 +216,13 @@ const styles = StyleSheet.create({
   cardTitle: { color: '#fff', fontSize: 14, fontWeight: '600', fontFamily: theme.fonts.serif },
   cardEyebrow: { color: 'rgba(255,255,255,0.32)', fontSize: 7.5, fontWeight: '700', letterSpacing: 1.4, marginTop: 2 },
   deltaPill: {
-    paddingHorizontal: 8, paddingVertical: 2, borderRadius: theme.radius.full,
-    backgroundColor: 'rgba(16,185,129,0.12)', borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)',
+    paddingHorizontal: 8, paddingVertical: 2, borderRadius: theme.radius.full, borderWidth: 1,
   },
-  deltaText: { color: '#6EE7B7', fontSize: 9, fontWeight: '800' },
+  deltaPillUp: { backgroundColor: 'rgba(16,185,129,0.12)', borderColor: 'rgba(16,185,129,0.2)' },
+  deltaPillDown: { backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.2)' },
+  deltaText: { fontSize: 9, fontWeight: '800' },
+  deltaTextUp: { color: '#6EE7B7' },
+  deltaTextDown: { color: '#FCA5A5' },
   grid: {
     flexDirection: 'row', flexWrap: 'wrap',
     marginHorizontal: 14, borderRadius: 12, overflow: 'hidden',
