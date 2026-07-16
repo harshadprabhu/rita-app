@@ -12,6 +12,7 @@ import { downloadGoldRatePoster, ratesFromGold, isPosterSupported, PosterRates }
 import { theme } from '../../constants/theme';
 import { GoldRateTrendChart } from './GoldRateTrendChart';
 import { GoldRatePosterModal } from './GoldRatePosterModal';
+import { GoldTrendPosterModal } from './GoldTrendPosterModal';
 
 // LayoutAnimation needs an explicit opt-in on Android for the expand/collapse to animate.
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -34,10 +35,15 @@ export function GoldRateCard() {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [posterRates, setPosterRates] = useState<PosterRates | null>(null); // native modal
+  const [trendPoster, setTrendPoster] = useState(false);
   // Trend window: 1 week / 1 month / 3 months.
   const [rangeDays, setRangeDays] = useState<7 | 30 | 90>(7);
   const { data, isLoading, refetch, isRefetching } = useGoldRate();
   const { data: trend } = useGoldRateTrend(true, rangeDays);
+  // Poster series — only fetched once the trend poster is opened.
+  const { data: t1w } = useGoldRateTrend(trendPoster, 7);
+  const { data: t3m } = useGoldRateTrend(trendPoster, 90);
+  const { data: t1y } = useGoldRateTrend(trendPoster, 365);
   const RANGES: { days: 7 | 30 | 90; label: string }[] = [
     { days: 7, label: '1W' }, { days: 30, label: '1M' }, { days: 90, label: '3M' },
   ];
@@ -154,6 +160,12 @@ export function GoldRateCard() {
               ) : (
                 <Text style={styles.trendEmpty}>{t('goldRate.noTrend')}</Text>
               )}
+              {isPosterSupported() && (
+                <TouchableOpacity style={styles.trendPosterBtn} onPress={() => setTrendPoster(true)} activeOpacity={0.8}>
+                  <Ionicons name="share-social-outline" size={11} color={GOLD} />
+                  <Text style={styles.trendPosterText}>Trend Poster (1W · 3M · 1Y)</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
@@ -188,6 +200,19 @@ export function GoldRateCard() {
         visible={posterRates !== null}
         onClose={() => setPosterRates(null)}
         rates={posterRates}
+        date={data ? new Date(data.updated_at) : new Date()}
+      />
+
+      {/* Native trend poster: 1 Week / 3 Months / 1 Year (no-op on web) */}
+      <GoldTrendPosterModal
+        visible={trendPoster}
+        onClose={() => setTrendPoster(false)}
+        series={[
+          { label: '1 WEEK', points: t1w ?? [] },
+          { label: '3 MONTHS', points: t3m ?? [] },
+          { label: '1 YEAR', points: t1y ?? [] },
+        ]}
+        currentRate={data?.rates['24KT 999'] ?? null}
         date={data ? new Date(data.updated_at) : new Date()}
       />
     </LinearGradient>
@@ -244,6 +269,12 @@ const styles = StyleSheet.create({
   rangeText: { color: 'rgba(255,255,255,0.4)', fontSize: 8.5, fontWeight: '800' },
   rangeTextOn: { color: theme.colors.accentBright },
   trendEmpty: { color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', paddingVertical: theme.spacing.md },
+  trendPosterBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
+    marginTop: 6, paddingVertical: 6, borderRadius: 8,
+    backgroundColor: 'rgba(200,150,62,0.12)', borderWidth: 1, borderColor: 'rgba(200,150,62,0.3)',
+  },
+  trendPosterText: { color: GOLD, fontSize: 9.5, fontWeight: '800', letterSpacing: 0.3 },
   footer: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 14, marginTop: 10,
