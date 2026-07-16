@@ -67,15 +67,7 @@
       ],
       "expo-document-picker",
       "expo-localization",
-      "expo-web-browser",
-      [
-        "expo-speech-recognition",
-        {
-          "microphonePermission": "RITA uses the microphone so you can dictate the issue instead of typing.",
-          "speechRecognitionPermission": "RITA uses speech recognition to turn what you say into the ticket description.",
-          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
-        }
-      ]
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
