@@ -20,6 +20,7 @@ import { useAuthStore } from '../stores/authStore';
 import { updatePushToken } from '../lib/api/profiles';
 import { LoadingOverlay } from '../components/common/LoadingOverlay';
 import { ToastHost } from '../components/common/ToastHost';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -193,6 +194,7 @@ export default function RootLayout() {
   if (!langReady) return <LoadingOverlay message="Loading..." />;
 
   return (
+    <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <PaperProvider theme={theme}>
         <SafeAreaProvider>
@@ -215,5 +217,6 @@ export default function RootLayout() {
         </SafeAreaProvider>
       </PaperProvider>
     </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

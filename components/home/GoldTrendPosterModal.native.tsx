@@ -81,7 +81,7 @@ function TrendBlock({ s }: { s: TrendSeries }) {
 }
 
 export function GoldTrendPosterModal({ visible, onClose, series, currentRate, date }: GoldTrendPosterModalProps) {
-  const shotRef = useRef<ViewShot>(null);
+  const shotRef = useRef<React.ComponentRef<typeof ViewShot>>(null);
   const [sharing, setSharing] = useState(false);
   const W = Math.min(Dimensions.get('window').width - 40, 360);
 

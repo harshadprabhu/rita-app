@@ -31,7 +31,7 @@ function formatDate(d: Date): string {
 }
 
 export function GoldRatePosterModal({ visible, onClose, rates, date }: GoldRatePosterModalProps) {
-  const shotRef = useRef<ViewShot>(null);
+  const shotRef = useRef<React.ComponentRef<typeof ViewShot>>(null);
   const [sharing, setSharing] = useState(false);
 
   const W = Math.min(Dimensions.get('window').width - 40, 360);
