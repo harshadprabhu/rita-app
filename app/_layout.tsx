@@ -83,6 +83,18 @@ function AuthGate() {
             vibrationPattern: [0, 250, 250, 250],
             lightColor: '#1B3A7A',
           });
+          // A standalone Android build needs FCM (google-services.json) to mint
+          // a push token. Without it getExpoPushTokenAsync fails *natively*
+          // ("Default FirebaseApp is not initialized") — which the try/catch
+          // below cannot catch, taking the whole app down right after sign-in.
+          // Skip registration until googleServicesFile is configured; this
+          // re-enables itself automatically once it is.
+          const hasFcm = !!(Constants.expoConfig as { android?: { googleServicesFile?: string } } | null)
+            ?.android?.googleServicesFile;
+          if (!hasFcm) {
+            console.warn('[push] skipping token registration — no google-services.json configured');
+            return;
+          }
         }
         const { status } = await Notifications.requestPermissionsAsync();
         if (status !== 'granted') return;
