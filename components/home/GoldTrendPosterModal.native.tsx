@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import {
-  Modal, View, Image, Text, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator, ScrollView,
+  Modal, View, Image, Text, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator, ScrollView, Linking,
 } from 'react-native';
 import Svg, { Polyline, Polygon } from 'react-native-svg';
 import ViewShot, { captureRef } from 'react-native-view-shot';
@@ -143,11 +143,25 @@ export function GoldTrendPosterModal({ visible, onClose, series, currentRate, da
               {/* Trend blocks: 1 Week, 3 Months, 1 Year */}
               {series.map((s) => <TrendBlock key={s.label} s={s} />)}
 
-              {/* Scheme enrolment link */}
-              <View style={styles.cta}>
-                <Text style={styles.ctaTitle}>Enrol for our savings schemes</Text>
+              {/* Scheme enrolment CTA — tappable here, and printed as a button
+                  in the captured poster image. */}
+              <TouchableOpacity
+                style={styles.ctaWrap}
+                onPress={() => Linking.openURL(IGP_URL).catch(() => null)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.ctaKicker}>START YOUR GOLD SAVINGS JOURNEY</Text>
+                <LinearGradient
+                  colors={theme.gradients.gold}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={styles.ctaBtn}
+                >
+                  <Ionicons name="sparkles" size={13} color={theme.colors.textPrimary} />
+                  <Text style={styles.ctaBtnText}>Enrol for Schemes</Text>
+                  <Ionicons name="arrow-forward" size={13} color={theme.colors.textPrimary} />
+                </LinearGradient>
                 <Text style={styles.ctaUrl}>{IGP_URL.replace(/^https?:\/\//, '').replace(/\/$/, '')}</Text>
-              </View>
+              </TouchableOpacity>
             </LinearGradient>
           </ViewShot>
 
@@ -194,12 +208,19 @@ const styles = StyleSheet.create({
   blockFoot: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
   blockFootText: { color: 'rgba(255,255,255,0.4)', fontSize: 8.5, fontWeight: '600' },
   blockEmpty: { color: 'rgba(255,255,255,0.35)', fontSize: 10, textAlign: 'center', paddingVertical: 14 },
-  cta: {
-    marginHorizontal: 14, marginTop: 12, borderRadius: 12, paddingVertical: 9, alignItems: 'center',
-    backgroundColor: 'rgba(200,150,62,0.12)', borderWidth: 1, borderColor: 'rgba(200,150,62,0.35)',
+  ctaWrap: {
+    marginHorizontal: 14, marginTop: 12, borderRadius: 14, paddingVertical: 11, paddingHorizontal: 10,
+    alignItems: 'center',
+    backgroundColor: 'rgba(200,150,62,0.10)', borderWidth: 1, borderColor: 'rgba(200,150,62,0.3)',
   },
-  ctaTitle: { color: 'rgba(255,255,255,0.65)', fontSize: 8.5, fontWeight: '700', letterSpacing: 0.4 },
-  ctaUrl: { color: GOLD2, fontSize: 12, fontWeight: '800', marginTop: 2 },
+  ctaKicker: { color: 'rgba(255,255,255,0.5)', fontSize: 7.5, fontWeight: '800', letterSpacing: 1.1 },
+  ctaBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    marginTop: 7, paddingVertical: 9, paddingHorizontal: 18, borderRadius: 999,
+    shadowColor: GOLD, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: 5,
+  },
+  ctaBtnText: { color: theme.colors.textPrimary, fontSize: 13, fontWeight: '800', letterSpacing: 0.2 },
+  ctaUrl: { color: GOLD2, fontSize: 10, fontWeight: '700', marginTop: 6 },
   actions: { flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.lg, alignItems: 'center' },
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm, paddingVertical: theme.spacing.md, paddingHorizontal: theme.spacing.xl, borderRadius: theme.radius.full },
   shareBtn: { backgroundColor: GOLD },

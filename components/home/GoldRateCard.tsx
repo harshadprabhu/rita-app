@@ -160,18 +160,18 @@ export function GoldRateCard() {
               ) : (
                 <Text style={styles.trendEmpty}>{t('goldRate.noTrend')}</Text>
               )}
-              {isPosterSupported() && (
-                <TouchableOpacity style={styles.trendPosterBtn} onPress={() => setTrendPoster(true)} activeOpacity={0.8}>
-                  <Ionicons name="share-social-outline" size={11} color={GOLD} />
-                  <Text style={styles.trendPosterText}>Trend Poster (1W · 3M · 1Y)</Text>
-                </TouchableOpacity>
-              )}
             </View>
           )}
 
-          {/* Footer: updated + poster */}
+          {/* Footer: Trend (left) · updated · Poster (right) */}
           <View style={styles.footer}>
-            <Text style={styles.updatedText}>
+            {isPosterSupported() && (
+              <TouchableOpacity style={styles.trendBtn} onPress={() => setTrendPoster(true)} activeOpacity={0.8}>
+                <Ionicons name="trending-up" size={11} color={GOLD} />
+                <Text style={styles.trendBtnText}>Trend</Text>
+              </TouchableOpacity>
+            )}
+            <Text style={styles.updatedText} numberOfLines={1}>
               {t('goldRate.updated', { time: timeAgo(data!.updated_at) })}
             </Text>
             {isPosterSupported() && (
@@ -269,17 +269,17 @@ const styles = StyleSheet.create({
   rangeText: { color: 'rgba(255,255,255,0.4)', fontSize: 8.5, fontWeight: '800' },
   rangeTextOn: { color: theme.colors.accentBright },
   trendEmpty: { color: 'rgba(255,255,255,0.5)', fontSize: 12, textAlign: 'center', paddingVertical: theme.spacing.md },
-  trendPosterBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
-    marginTop: 6, paddingVertical: 6, borderRadius: 8,
-    backgroundColor: 'rgba(200,150,62,0.12)', borderWidth: 1, borderColor: 'rgba(200,150,62,0.3)',
+  trendBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 9,
+    backgroundColor: 'rgba(200,150,62,0.12)', borderWidth: 1, borderColor: 'rgba(200,150,62,0.35)',
   },
-  trendPosterText: { color: GOLD, fontSize: 9.5, fontWeight: '800', letterSpacing: 0.3 },
+  trendBtnText: { color: GOLD, fontSize: 10, fontWeight: '800', letterSpacing: 0.2 },
   footer: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 14, marginTop: 10,
   },
-  updatedText: { color: 'rgba(255,255,255,0.24)', fontSize: 8, fontWeight: '500' },
+  updatedText: { flex: 1, textAlign: 'center', color: 'rgba(255,255,255,0.24)', fontSize: 8, fontWeight: '500' },
   posterBtn: { borderRadius: 9, overflow: 'hidden' },
   posterBtnInner: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6 },
   posterBtnText: { color: theme.colors.textPrimary, fontSize: 10, fontWeight: '800' },
