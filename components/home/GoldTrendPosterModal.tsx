@@ -15,9 +15,11 @@ export interface GoldTrendPosterModalProps {
 
 // Web stub — the real, native implementation lives in
 // GoldTrendPosterModal.native.tsx (ViewShot + share sheet).
+//
+// Export *types only* from here that the native file needs: on native, the
+// path './GoldTrendPosterModal' resolves to the .native file itself, so any
+// runtime value imported from it would be undefined. Shared values belong in
+// constants/links.
 export function GoldTrendPosterModal(_props: GoldTrendPosterModalProps) {
   return null;
 }
-
-/** Customer scheme enrolment link printed on the poster. */
-export const IGP_URL = 'https://www.igp.indriya.com/';

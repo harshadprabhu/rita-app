@@ -7,8 +7,11 @@ import ViewShot, { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+// NOTE: only *types* may be imported from './GoldTrendPosterModal' — on native
+// that path resolves to this very file, so a runtime import would be circular
+// and come back undefined. Shared values live in constants/links.
 import type { GoldTrendPosterModalProps, TrendSeries } from './GoldTrendPosterModal';
-import { IGP_URL } from './GoldTrendPosterModal';
+import { IGP_URL } from '../../constants/links';
 import type { GoldRateTrendPoint } from '../../lib/api/goldRate';
 import { theme } from '../../constants/theme';
 
