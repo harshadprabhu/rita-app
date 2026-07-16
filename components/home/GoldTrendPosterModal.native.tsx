@@ -3,6 +3,7 @@ import {
   Modal, View, Image, Text, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator, ScrollView, Linking,
 } from 'react-native';
 import Svg, { Polyline, Polygon } from 'react-native-svg';
+import QRCode from 'react-native-qrcode-svg';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -151,16 +152,26 @@ export function GoldTrendPosterModal({ visible, onClose, series, currentRate, da
                 activeOpacity={0.85}
               >
                 <Text style={styles.ctaKicker}>START YOUR GOLD SAVINGS JOURNEY</Text>
-                <LinearGradient
-                  colors={theme.gradients.gold}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  style={styles.ctaBtn}
-                >
-                  <Ionicons name="sparkles" size={13} color={theme.colors.textPrimary} />
-                  <Text style={styles.ctaBtnText}>Enrol for Schemes</Text>
-                  <Ionicons name="arrow-forward" size={13} color={theme.colors.textPrimary} />
-                </LinearGradient>
-                <Text style={styles.ctaUrl}>{IGP_URL.replace(/^https?:\/\//, '').replace(/\/$/, '')}</Text>
+                <View style={styles.ctaRow}>
+                  {/* QR makes the *shared image* actionable — a PNG can't carry
+                      a hyperlink, so recipients scan this instead. */}
+                  <View style={styles.qrBox}>
+                    <QRCode value={IGP_URL} size={52} color="#0F1B38" backgroundColor="#FFFFFF" />
+                  </View>
+                  <View style={styles.ctaCol}>
+                    <LinearGradient
+                      colors={theme.gradients.gold}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                      style={styles.ctaBtn}
+                    >
+                      <Ionicons name="sparkles" size={12} color={theme.colors.textPrimary} />
+                      <Text style={styles.ctaBtnText}>Enrol for Schemes</Text>
+                      <Ionicons name="arrow-forward" size={12} color={theme.colors.textPrimary} />
+                    </LinearGradient>
+                    <Text style={styles.ctaUrl}>{IGP_URL.replace(/^https?:\/\//, '').replace(/\/$/, '')}</Text>
+                    <Text style={styles.ctaScan}>Scan the code to enrol</Text>
+                  </View>
+                </View>
               </TouchableOpacity>
             </LinearGradient>
           </ViewShot>
@@ -214,13 +225,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(200,150,62,0.10)', borderWidth: 1, borderColor: 'rgba(200,150,62,0.3)',
   },
   ctaKicker: { color: 'rgba(255,255,255,0.5)', fontSize: 7.5, fontWeight: '800', letterSpacing: 1.1 },
+  ctaRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8, alignSelf: 'stretch' },
+  qrBox: { backgroundColor: '#fff', padding: 4, borderRadius: 7 },
+  ctaCol: { flex: 1, alignItems: 'center' },
   ctaBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
-    marginTop: 7, paddingVertical: 9, paddingHorizontal: 18, borderRadius: 999,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 9, paddingHorizontal: 14, borderRadius: 999, alignSelf: 'stretch',
     shadowColor: GOLD, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: 5,
   },
-  ctaBtnText: { color: theme.colors.textPrimary, fontSize: 13, fontWeight: '800', letterSpacing: 0.2 },
-  ctaUrl: { color: GOLD2, fontSize: 10, fontWeight: '700', marginTop: 6 },
+  ctaBtnText: { color: theme.colors.textPrimary, fontSize: 12.5, fontWeight: '800', letterSpacing: 0.2 },
+  ctaUrl: { color: GOLD2, fontSize: 10, fontWeight: '700', marginTop: 5 },
+  ctaScan: { color: 'rgba(255,255,255,0.4)', fontSize: 7.5, fontWeight: '600', marginTop: 2 },
   actions: { flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.lg, alignItems: 'center' },
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm, paddingVertical: theme.spacing.md, paddingHorizontal: theme.spacing.xl, borderRadius: theme.radius.full },
   shareBtn: { backgroundColor: GOLD },
