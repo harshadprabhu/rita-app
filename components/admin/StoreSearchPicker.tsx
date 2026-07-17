@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import {
-  View, Text, TextInput, Modal, StyleSheet, FlatList, TouchableOpacity,
+  View, Text, TextInput, Modal, StyleSheet, SectionList, TouchableOpacity,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +37,35 @@ function isMulti(p: Props): p is MultiProps {
  */
 function storeNumber(s: DbStore): string {
   return s.retail_channel_id ?? s.code;
+}
+
+// Zone order for the grouped list; anything unrecognised sorts last.
+const ZONE_ORDER = ['North', 'South', 'East', 'West'];
+const UNZONED = 'Other';
+
+/**
+ * Group stores into zone sections (region comes from D365's PwC_RegionCode),
+ * each sorted by city then name so a zone reads city-by-city.
+ */
+function buildSections(stores: DbStore[]): { zone: string; data: DbStore[] }[] {
+  const byZone = new Map<string, DbStore[]>();
+  for (const s of stores) {
+    const zone = s.region?.trim() || UNZONED;
+    const list = byZone.get(zone);
+    if (list) list.push(s); else byZone.set(zone, [s]);
+  }
+  const rank = (z: string) => {
+    const i = ZONE_ORDER.indexOf(z);
+    return i === -1 ? ZONE_ORDER.length + (z === UNZONED ? 1 : 0) : i;
+  };
+  return [...byZone.entries()]
+    .sort((a, b) => rank(a[0]) - rank(b[0]) || a[0].localeCompare(b[0]))
+    .map(([zone, data]) => ({
+      zone,
+      data: data.sort(
+        (a, b) => (a.city ?? '').localeCompare(b.city ?? '') || a.name.localeCompare(b.name),
+      ),
+    }));
 }
 
 function StoreRow({
@@ -153,6 +182,17 @@ export function StoreSearchPicker(props: Props) {
 
   const allStoreSelected = multi ? draft.length === 0 : !(props as SingleProps).selectedId;
 
+  const sections = useMemo(() => buildSections(filtered), [filtered]);
+
+  /** Multi-select: toggle every store in a zone at once. */
+  const toggleZone = useCallback((zoneStores: DbStore[]) => {
+    setDraft((prev) => {
+      const ids = zoneStores.map((s) => s.id);
+      const allIn = ids.every((id) => prev.includes(id));
+      return allIn ? prev.filter((id) => !ids.includes(id)) : [...new Set([...prev, ...ids])];
+    });
+  }, []);
+
   return (
     <>
       {/* Trigger */}
@@ -214,11 +254,28 @@ export function StoreSearchPicker(props: Props) {
               {t('storePicker.storeCount', { count: filtered.length })}
             </Text>
 
-            {/* List */}
-            <FlatList
-              data={filtered}
+            {/* List — grouped by zone (North / South / East / West) */}
+            <SectionList
+              sections={sections}
               keyExtractor={(s) => s.id}
               keyboardShouldPersistTaps="handled"
+              stickySectionHeadersEnabled
+              renderSectionHeader={({ section }) => {
+                const zoneIds = section.data.map((s) => s.id);
+                const allIn = multi && zoneIds.length > 0 && zoneIds.every((id) => draft.includes(id));
+                return (
+                  <View style={styles.zoneHeader}>
+                    <Ionicons name="map-outline" size={12} color={theme.colors.brand} />
+                    <Text style={styles.zoneName}>{section.zone}</Text>
+                    <Text style={styles.zoneCount}>{section.data.length}</Text>
+                    {multi && (
+                      <TouchableOpacity onPress={() => toggleZone(section.data)} hitSlop={8}>
+                        <Text style={styles.zoneAll}>{allIn ? 'Clear' : 'Select all'}</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              }}
               ListHeaderComponent={
                 <TouchableOpacity
                   style={[styles.row, styles.allRow, allStoreSelected && styles.allRowSelected]}
@@ -372,6 +429,37 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.surface2,
     borderBottomColor: theme.colors.border,
     marginBottom: theme.spacing.xs,
+  },
+
+  // Zone section header
+  zoneHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.surface2,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  zoneName: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    color: theme.colors.brand,
+    textTransform: 'uppercase',
+  },
+  zoneCount: {
+    flex: 1,
+    fontSize: 10,
+    fontWeight: '700',
+    color: theme.colors.textTertiary,
+  },
+  zoneAll: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: theme.colors.accent,
   },
   allRowSelected: { backgroundColor: theme.colors.brand + '14' },
   rowSelected: { backgroundColor: theme.colors.brand + '14' },

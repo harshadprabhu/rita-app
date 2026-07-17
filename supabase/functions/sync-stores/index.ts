@@ -107,7 +107,10 @@ function mapStore(row: Record<string, unknown>): StoreRow | null {
     code,
     name,
     city: city || null,
-    region: pick(row, ['AddressState', 'State', 'AddressCountryRegionId', 'Region']) || null,
+    // Zone (East/West/North/South). PwC_RegionCode is the custom field the
+    // RetailStores entity actually carries in this instance — the generic
+    // Address*/State fields are all absent here, which is why region was null.
+    region: pick(row, ['PwC_RegionCode', 'AddressState', 'State', 'AddressCountryRegionId', 'Region']) || null,
     // The channel/warehouse code (NS####) — the key worker address books use to
     // point at a store, distinct from the OMOperatingUnitNumber used as `code`.
     retail_channel_id: pick(row, ['RetailChannelId', 'InventLocationId', 'OMOperatingUnitId']) || null,
@@ -169,6 +172,42 @@ Deno.serve(async (req) => {
   try {
     const cfg = await loadD365Config(supabase);
     const token = await getD365Token(cfg);
+
+    // --- Read-only discovery: dump each entity's field names + a sample row so
+    // we can find where state/zone actually lives. Writes nothing. ?probe=1
+    // Add &entity=Foo to inspect an entity outside STORE_ENTITIES.
+    const url = new URL(req.url);
+    if (url.searchParams.get('probe') === '1') {
+      const extra = url.searchParams.get('entity');
+      const list = extra ? [extra] : [...STORE_ENTITIES, 'OMOperatingUnitHierarchies', 'RetailChannelHierarchies'];
+      const report: Record<string, unknown> = {};
+      for (const entity of list) {
+        try {
+          const res = await fetch(`${cfg.resourceUrl}/data/${entity}?$top=2`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) { report[entity] = { status: res.status }; continue; }
+          const { value } = await res.json();
+          const rows = (value ?? []) as Record<string, unknown>[];
+          const row = rows[0];
+          // Surface only fields that look location/hierarchy related, plus all
+          // key names so we can spot anything we didn't anticipate.
+          const interesting: Record<string, unknown> = {};
+          for (const [k, v] of Object.entries(row ?? {})) {
+            if (/state|region|zone|city|country|hierarch|area|territor|cluster|address|parent|org/i.test(k) && v !== '' && v !== null) {
+              interesting[k] = v;
+            }
+          }
+          report[entity] = { rowCount: rows.length, allKeys: Object.keys(row ?? {}), locationFields: interesting };
+        } catch (e) {
+          report[entity] = { error: e instanceof Error ? e.message : String(e) };
+        }
+      }
+      return new Response(JSON.stringify({ probe: true, report }, null, 2), {
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+
     const stores = await fetchStores(token, cfg);
 
     if (!stores.length) {
