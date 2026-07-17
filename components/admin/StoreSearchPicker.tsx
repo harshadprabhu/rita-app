@@ -182,7 +182,26 @@ export function StoreSearchPicker(props: Props) {
 
   const allStoreSelected = multi ? draft.length === 0 : !(props as SingleProps).selectedId;
 
-  const sections = useMemo(() => buildSections(filtered), [filtered]);
+  const grouped = useMemo(() => buildSections(filtered), [filtered]);
+
+  // Zones start collapsed so 160 stores don't dump out at once; searching
+  // expands everything so matches are never hidden behind a collapsed zone.
+  const [openZones, setOpenZones] = useState<string[]>([]);
+  const searching = query.trim().length > 0;
+  const toggleOpen = useCallback((zone: string) => {
+    setOpenZones((prev) => (prev.includes(zone) ? prev.filter((z) => z !== zone) : [...prev, zone]));
+  }, []);
+
+  // A collapsed zone keeps its header but renders no rows. `all` carries the
+  // full list so the header can still show the count and drive Select all.
+  const sections = useMemo(
+    () => grouped.map((s) => ({
+      zone: s.zone,
+      all: s.data,
+      data: searching || openZones.includes(s.zone) ? s.data : [],
+    })),
+    [grouped, openZones, searching],
+  );
 
   /** Multi-select: toggle every store in a zone at once. */
   const toggleZone = useCallback((zoneStores: DbStore[]) => {
@@ -261,19 +280,32 @@ export function StoreSearchPicker(props: Props) {
               keyboardShouldPersistTaps="handled"
               stickySectionHeadersEnabled
               renderSectionHeader={({ section }) => {
-                const zoneIds = section.data.map((s) => s.id);
+                const zoneIds = section.all.map((s) => s.id);
                 const allIn = multi && zoneIds.length > 0 && zoneIds.every((id) => draft.includes(id));
+                const picked = multi ? zoneIds.filter((id) => draft.includes(id)).length : 0;
+                const open = searching || openZones.includes(section.zone);
                 return (
-                  <View style={styles.zoneHeader}>
-                    <Ionicons name="map-outline" size={12} color={theme.colors.brand} />
+                  <TouchableOpacity
+                    style={styles.zoneHeader}
+                    onPress={() => toggleOpen(section.zone)}
+                    activeOpacity={0.7}
+                    disabled={searching}
+                  >
+                    <Ionicons
+                      name={open ? 'chevron-down' : 'chevron-forward'}
+                      size={13}
+                      color={theme.colors.brand}
+                    />
                     <Text style={styles.zoneName}>{section.zone}</Text>
-                    <Text style={styles.zoneCount}>{section.data.length}</Text>
+                    <Text style={styles.zoneCount}>
+                      {picked > 0 ? `${picked}/${section.all.length}` : section.all.length}
+                    </Text>
                     {multi && (
-                      <TouchableOpacity onPress={() => toggleZone(section.data)} hitSlop={8}>
+                      <TouchableOpacity onPress={() => toggleZone(section.all)} hitSlop={8}>
                         <Text style={styles.zoneAll}>{allIn ? 'Clear' : 'Select all'}</Text>
                       </TouchableOpacity>
                     )}
-                  </View>
+                  </TouchableOpacity>
                 );
               }}
               ListHeaderComponent={
