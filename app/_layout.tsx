@@ -85,11 +85,10 @@ function AuthGate() {
             lightColor: '#1B3A7A',
           });
           // A standalone Android build needs FCM (google-services.json) to mint
-          // a push token. Without it getExpoPushTokenAsync fails *natively*
-          // ("Default FirebaseApp is not initialized") — which the try/catch
-          // below cannot catch, taking the whole app down right after sign-in.
-          // Skip registration until googleServicesFile is configured; this
-          // re-enables itself automatically once it is.
+          // a push token. Without it the native layer fails with "Default
+          // FirebaseApp is not initialized" — which the try/catch below cannot
+          // catch, taking the whole app down right after sign-in. Guard stays
+          // so a misconfigured build degrades instead of crashing.
           const hasFcm = !!(Constants.expoConfig as { android?: { googleServicesFile?: string } } | null)
             ?.android?.googleServicesFile;
           if (!hasFcm) {
@@ -99,8 +98,9 @@ function AuthGate() {
         }
         const { status } = await Notifications.requestPermissionsAsync();
         if (status !== 'granted') return;
-        const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
-        const token = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+        // The *device* (raw FCM) token, not an Expo one: send-push talks to
+        // FCM directly, so nothing routes through Expo's servers.
+        const token = await Notifications.getDevicePushTokenAsync();
         await updatePushToken(profile.id, token.data).catch(() => null);
       } catch {
         // Push token registration is non-critical — never crash the app over it

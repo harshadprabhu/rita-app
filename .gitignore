@@ -51,3 +51,11 @@ credentials.txt
 /ios
 /android
 supabase/.temp/
+
+# Firebase service-account private keys — these authorise sending push as us.
+# They belong in Supabase secrets (FCM_SERVICE_ACCOUNT), never in the repo.
+# NOTE: google-services.json is intentionally NOT ignored — it ships inside the
+# app and holds no private key.
+*-firebase-adminsdk-*.json
+service-account*.json
+**/firebase-adminsdk*.json

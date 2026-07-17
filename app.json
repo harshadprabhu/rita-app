@@ -27,6 +27,7 @@
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#1B3A7A"
       },
+      "googleServicesFile": "./google-services.json",
       "package": "com.indriyajewellery.rita",
       "permissions": [
         "android.permission.CAMERA",

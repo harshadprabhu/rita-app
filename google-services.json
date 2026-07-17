@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "630537193072",
+    "project_id": "indriya-rita",
+    "storage_bucket": "indriya-rita.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:630537193072:android:66fe143870446cea1d16b5",
+        "android_client_info": {
+          "package_name": "com.indriyajewellery.rita"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDePEEqnU1sknrwkg2ocV9lpZH1pjsY3-I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
