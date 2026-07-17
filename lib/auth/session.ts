@@ -128,8 +128,9 @@ async function storeFromAdId(email: string | undefined) {
  * matching profiles row, and a DB trigger can't cover every case — accounts
  * that predate it, or whose primary provider is 'email' after an identity
  * link, slip through. So the app self-heals: if no profile exists, insert a
- * bare one (role 'user', no store yet) under the caller's own RLS INSERT
- * policy, then let onboarding collect store + mobile. Never signs a
+ * bare one (role 'user') under the caller's own RLS INSERT policy. A profile
+ * with no store is a Head Office user and goes straight into the app — we no
+ * longer prompt anyone to pick a location. Never signs a
  * legitimately-authenticated user out for lack of a row.
  */
 export async function ensureProfile(user: User): Promise<DbProfile | null> {
@@ -151,7 +152,7 @@ export async function ensureProfile(user: User): Promise<DbProfile | null> {
   };
   // Store resolution order: bootstrap admins → head office; otherwise the D365
   // worker store (address book); otherwise the store encoded in the AD login id
-  // (store-tablet accounts). Anything still unresolved falls to onboarding.
+  // (store-tablet accounts). Anything still unresolved = a Head Office user.
   const adStore = (worker?.store || isBootstrapAdmin) ? null : await storeFromAdId(user.email);
   const store = worker?.store ?? adStore;
   // A store resolved from the AD id with no matching person record is a shared

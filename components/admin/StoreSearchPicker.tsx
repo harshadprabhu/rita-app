@@ -30,6 +30,15 @@ function isMulti(p: Props): p is MultiProps {
   return p.multiple === true;
 }
 
+/**
+ * The store number staff actually use is the D365 RetailChannelId (NS0040).
+ * `code` is the OMOperatingUnitNumber (00000968) — internal, so only fall back
+ * to it when a store somehow has no channel id.
+ */
+function storeNumber(s: DbStore): string {
+  return s.retail_channel_id ?? s.code;
+}
+
 function StoreRow({
   store, selected, multiMode, onPress,
 }: {
@@ -45,7 +54,7 @@ function StoreRow({
       activeOpacity={0.7}
     >
       <View style={styles.rowBadge}>
-        <Text style={styles.rowCode}>{store.code}</Text>
+        <Text style={styles.rowCode}>{storeNumber(store)}</Text>
       </View>
       <View style={styles.rowInfo}>
         <Text style={[styles.rowName, selected && styles.rowNameSelected]} numberOfLines={1}>
@@ -77,6 +86,7 @@ export function StoreSearchPicker(props: Props) {
     if (!q) return props.stores;
     return props.stores.filter(
       (s) =>
+        storeNumber(s).toLowerCase().includes(q) ||
         s.code.toLowerCase().includes(q) ||
         s.name.toLowerCase().includes(q) ||
         (s.city?.toLowerCase().includes(q) ?? false) ||
@@ -112,7 +122,7 @@ export function StoreSearchPicker(props: Props) {
     }
   } else {
     const s = props.stores.find((x) => x.id === (props as SingleProps).selectedId);
-    triggerLabel = s ? `${s.code} – ${s.name}` : t('storePicker.allStores');
+    triggerLabel = s ? `${storeNumber(s)} – ${s.name}` : t('storePicker.allStores');
   }
 
   const handleToggleDraft = useCallback((id: string) => {

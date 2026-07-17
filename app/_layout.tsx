@@ -153,8 +153,7 @@ function AuthGate() {
     if (lastNav.current === dest) return;
     lastNav.current = dest;
 
-    if (dest === 'onboarding') router.replace('/onboarding-store');
-    else if (dest === 'user') router.replace('/(user)/home');
+    if (dest === 'user') router.replace('/(user)/home');
     else if (dest === 'manager') router.replace('/(manager)/home');
     else if (dest === 'technician') router.replace('/(technician)/home');
     else if (dest === 'admin') router.replace('/(admin)/home');
@@ -209,7 +208,6 @@ export default function RootLayout() {
             <Stack.Screen name="tickets/[id]" options={{ presentation: 'card' }} />
             <Stack.Screen name="create-ticket" options={{ presentation: 'modal' }} />
             <Stack.Screen name="pending-approval" />
-            <Stack.Screen name="onboarding-store" />
             <Stack.Screen name="auth/callback" />
           </Stack>
           <AuthGate />

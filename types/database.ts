@@ -24,12 +24,15 @@ export interface DbDepartment {
 
 export interface DbStore {
   id: string;
+  /** D365 OMOperatingUnitNumber (e.g. 00000968) — internal; not shown to users. */
   code: string;
   name: string;
   city: string | null;
   region: string | null;
   is_active: boolean;
   created_at: string;
+  /** D365 RetailChannelId (e.g. NS0040) — the store number staff know. Display this. */
+  retail_channel_id: string | null;
 }
 
 export interface DbProfile {

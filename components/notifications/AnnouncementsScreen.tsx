@@ -13,8 +13,9 @@ import { AppHeader } from '../common/AppHeader';
 import { EmptyState } from '../common/EmptyState';
 import { LoadingOverlay } from '../common/LoadingOverlay';
 import { QUERY_KEYS } from '../../constants/queryKeys';
-import { getBroadcasts } from '../../lib/api/broadcasts';
+import { getBroadcastsForStore } from '../../lib/api/broadcasts';
 import { formatDateTime } from '../../lib/utils/date';
+import { useAuthStore } from '../../stores/authStore';
 import { DbBroadcast } from '../../types';
 import { theme } from '../../constants/theme';
 
@@ -96,23 +97,40 @@ function AnnouncementModal({
 export function AnnouncementsScreen() {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<DbBroadcast | null>(null);
+  const storeId = useAuthStore((s) => s.profile?.store_id ?? null);
 
+  // Same key + fetcher the Alerts feed uses (useUnifiedNotifications), so this
+  // screen renders straight from cache instead of refetching every open.
   const {
     data: broadcasts,
     isLoading,
+    isError,
+    error,
     refetch,
     isRefetching,
   } = useQuery({
-    queryKey: QUERY_KEYS.broadcasts(),
-    queryFn: getBroadcasts,
+    queryKey: [...QUERY_KEYS.broadcasts(), 'for-store', storeId],
+    queryFn: () => getBroadcastsForStore(storeId),
     staleTime: 60 * 1000,
   });
 
-  if (isLoading) return <LoadingOverlay />;
-
   return (
     <Screen edges={['top', 'left', 'right']}>
+      {/* Header stays mounted while loading — a bare full-screen spinner left
+          the user with no way back if the fetch was slow. */}
       <AppHeader title={t('announcements.title')} showBack />
+      {isLoading ? (
+        <LoadingOverlay />
+      ) : isError ? (
+        <View style={styles.errorWrap}>
+          <Ionicons name="cloud-offline-outline" size={28} color={theme.colors.textTertiary} />
+          <Text style={styles.errorTitle}>Couldn't load announcements</Text>
+          <Text style={styles.errorBody}>{error instanceof Error ? error.message : 'Check your connection and try again.'}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()} activeOpacity={0.8}>
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
       <FlatList
         data={broadcasts ?? []}
         keyExtractor={(b) => b.id}
@@ -136,6 +154,7 @@ export function AnnouncementsScreen() {
           />
         }
       />
+      )}
 
       {selected && (
         <AnnouncementModal item={selected} onClose={() => setSelected(null)} />
@@ -197,6 +216,19 @@ const styles = StyleSheet.create({
   chevron: {
     flexShrink: 0,
   },
+
+  // ── Error state ───────────────────────────────────────────────────────────
+  errorWrap: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    gap: theme.spacing.sm, padding: theme.spacing.xl,
+  },
+  errorTitle: { fontSize: 15, fontWeight: '700', color: theme.colors.textPrimary },
+  errorBody: { fontSize: 12, color: theme.colors.textSecondary, textAlign: 'center' },
+  retryBtn: {
+    marginTop: theme.spacing.sm, backgroundColor: theme.colors.brand,
+    borderRadius: theme.radius.full, paddingHorizontal: theme.spacing.xl, paddingVertical: theme.spacing.sm,
+  },
+  retryText: { color: '#fff', fontWeight: '700', fontSize: 13 },
 
   // ── Modal ─────────────────────────────────────────────────────────────────
   modalOverlay: {
