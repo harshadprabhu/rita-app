@@ -123,8 +123,16 @@ export function StoreSearchPicker(props: Props) {
     );
   }, [props.stores, query]);
 
+  // "All stores" is now an explicit choice rather than "nothing is ticked".
+  // Inferring it from an empty draft meant the picker opened with everyone
+  // pre-selected — one careless tap from broadcasting to every store.
+  const [allDraft, setAllDraft] = useState(false);
+
   const openModal = () => {
-    if (multi) setDraft(props.selectedIds);
+    if (multi) {
+      setDraft(props.selectedIds);
+      setAllDraft(false);
+    }
     setVisible(true);
   };
 
@@ -134,7 +142,9 @@ export function StoreSearchPicker(props: Props) {
   };
 
   const confirmMulti = () => {
-    if (multi) props.onMultiSelect(draft);
+    // An explicit "All stores" is still sent as [] — that's the contract
+    // createBroadcast expects for "everyone".
+    if (multi) props.onMultiSelect(allDraft ? [] : draft);
     closeModal();
   };
 
@@ -155,6 +165,7 @@ export function StoreSearchPicker(props: Props) {
   }
 
   const handleToggleDraft = useCallback((id: string) => {
+    setAllDraft(false); // picking a store means it's no longer "all stores"
     setDraft((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
@@ -162,6 +173,7 @@ export function StoreSearchPicker(props: Props) {
 
   const handleSelectAll = useCallback(() => {
     if (multi) {
+      setAllDraft((prev) => !prev);
       setDraft([]);
     } else {
       (props as SingleProps).onSelect(undefined);
@@ -180,7 +192,7 @@ export function StoreSearchPicker(props: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [multi, handleToggleDraft]);
 
-  const allStoreSelected = multi ? draft.length === 0 : !(props as SingleProps).selectedId;
+  const allStoreSelected = multi ? allDraft : !(props as SingleProps).selectedId;
 
   const grouped = useMemo(() => buildSections(filtered), [filtered]);
 
@@ -205,6 +217,7 @@ export function StoreSearchPicker(props: Props) {
 
   /** Multi-select: toggle every store in a zone at once. */
   const toggleZone = useCallback((zoneStores: DbStore[]) => {
+    setAllDraft(false); // picking a zone means it's no longer "all stores"
     setDraft((prev) => {
       const ids = zoneStores.map((s) => s.id);
       const allIn = ids.every((id) => prev.includes(id));
@@ -301,8 +314,17 @@ export function StoreSearchPicker(props: Props) {
                       {picked > 0 ? `${picked}/${section.all.length}` : section.all.length}
                     </Text>
                     {multi && (
-                      <TouchableOpacity onPress={() => toggleZone(section.all)} hitSlop={8}>
-                        <Text style={styles.zoneAll}>{allIn ? 'Clear' : 'Select all'}</Text>
+                      <TouchableOpacity onPress={() => toggleZone(section.all)} hitSlop={10}>
+                        {/* Checkbox rather than a word — matches the store rows.
+                            Half-filled when only some of the zone is picked. */}
+                        <View style={[
+                          styles.checkbox,
+                          allIn && styles.checkboxSelected,
+                          !allIn && picked > 0 && styles.checkboxPartial,
+                        ]}>
+                          {allIn && <Ionicons name="checkmark" size={13} color="#fff" />}
+                          {!allIn && picked > 0 && <View style={styles.dash} />}
+                        </View>
                       </TouchableOpacity>
                     )}
                   </TouchableOpacity>
@@ -361,11 +383,18 @@ export function StoreSearchPicker(props: Props) {
             {/* Multi-select confirm */}
             {multi && (
               <View style={styles.confirmRow}>
-                <TouchableOpacity style={styles.confirmBtn} onPress={confirmMulti} activeOpacity={0.8}>
+                <TouchableOpacity
+                  style={[styles.confirmBtn, !allDraft && draft.length === 0 && styles.confirmBtnDisabled]}
+                  onPress={confirmMulti}
+                  activeOpacity={0.8}
+                  disabled={!allDraft && draft.length === 0}
+                >
                   <Text style={styles.confirmBtnText}>
-                    {draft.length === 0
+                    {allDraft
                       ? t('storePicker.confirmAll')
-                      : t('storePicker.confirmCount', { count: draft.length })}
+                      : draft.length === 0
+                        ? 'Select stores'
+                        : t('storePicker.confirmCount', { count: draft.length })}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -527,6 +556,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxSelected: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
+  checkboxPartial: { borderColor: theme.colors.brand },
+  dash: { width: 10, height: 2, borderRadius: 1, backgroundColor: theme.colors.brand },
 
   emptyWrap: { alignItems: 'center', paddingVertical: theme.spacing.xxl, gap: theme.spacing.sm },
   emptyText: { color: theme.colors.textTertiary, fontSize: 14 },
@@ -544,5 +575,6 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.md,
     alignItems: 'center',
   },
+  confirmBtnDisabled: { opacity: 0.4 },
   confirmBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

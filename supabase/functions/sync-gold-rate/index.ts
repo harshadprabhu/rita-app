@@ -304,20 +304,25 @@ Deno.serve(async (req) => {
 
     if (upsertError) throw upsertError;
 
-    // Rates changed → push a notification to all app users (best-effort).
+    // Rates changed → record it as a system broadcast. That makes it visible in
+    // the in-app Alerts feed (it previously only fired a push, so nothing ever
+    // surfaced in Alerts), and the `broadcast_push` trigger sends the OS push
+    // from here — so we no longer call send-push directly and can't double-send.
     try {
-      const anon = Deno.env.get('SUPABASE_ANON_KEY');
       const k24 = filteredItems.find((i) => i.Purity === '24KT 999')?.Rate;
-      if (anon && k24 && k24 > 0) {
+      if (k24 && k24 > 0) {
         const inr = Math.round(k24).toLocaleString('en-IN');
-        await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${anon}` },
-          body: JSON.stringify({ title: 'Gold rate updated', body: `24K (999): ₹${inr}/g` }),
+        const { error: bErr } = await supabase.from('broadcasts').insert({
+          sender_id: null,          // system-generated
+          kind: 'gold_rate',
+          title: 'Gold rate updated',
+          body: `24K (999): ₹${inr}/g`,
+          target_store_ids: null,   // everyone
         });
+        if (bErr) console.warn('[sync-gold-rate] broadcast insert failed:', bErr.message);
       }
     } catch (e) {
-      console.warn('[sync-gold-rate] push failed:', e);
+      console.warn('[sync-gold-rate] alert insert failed:', e);
     }
 
     // Re-fetch to get DB-stamped updated_at

@@ -109,8 +109,10 @@ export function AnnouncementsScreen() {
     refetch,
     isRefetching,
   } = useQuery({
-    queryKey: [...QUERY_KEYS.broadcasts(), 'for-store', storeId],
-    queryFn: () => getBroadcastsForStore(storeId),
+    // Announcements are the human-authored ones; gold-rate alerts belong in
+    // the Alerts feed, not here.
+    queryKey: [...QUERY_KEYS.broadcasts(), 'for-store', storeId, 'announcement'],
+    queryFn: () => getBroadcastsForStore(storeId, 'announcement'),
     staleTime: 60 * 1000,
   });
 

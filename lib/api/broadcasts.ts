@@ -10,13 +10,23 @@ export async function getBroadcasts(): Promise<DbBroadcast[]> {
   return (data ?? []) as DbBroadcast[];
 }
 
-/** Fetch broadcasts visible to a specific store (includes "all stores" ones). */
-export async function getBroadcastsForStore(storeId: string | null): Promise<DbBroadcast[]> {
-  const { data, error } = await supabase
+/**
+ * Fetch broadcasts visible to a specific store (includes "all stores" ones).
+ * `kind` filters system alerts (e.g. gold_rate) vs human announcements — the
+ * Alerts feed wants everything, the Announcements screen only wants the
+ * manager-authored ones.
+ */
+export async function getBroadcastsForStore(
+  storeId: string | null,
+  kind?: DbBroadcast['kind'],
+): Promise<DbBroadcast[]> {
+  let q = supabase
     .from('broadcasts')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(100);
+  if (kind) q = q.eq('kind', kind);
+  const { data, error } = await q;
   if (error) throw error;
   const all = (data ?? []) as DbBroadcast[];
   if (!storeId) return all;

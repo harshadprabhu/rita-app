@@ -122,12 +122,15 @@ export interface DbNotification {
 
 export interface DbBroadcast {
   id: string;
-  sender_id: string;
+  /** Null for system-generated alerts (e.g. gold rate updates). */
+  sender_id: string | null;
   target_store_id: string | null;
   target_store_ids: string[] | null;
   title: string;
   body: string;
   created_at: string;
+  /** 'announcement' = human-authored; 'gold_rate' = system alert. */
+  kind: 'announcement' | 'gold_rate';
 }
 
 export interface DbChatChannel {
