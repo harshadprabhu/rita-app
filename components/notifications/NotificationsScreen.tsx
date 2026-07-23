@@ -24,7 +24,7 @@ export function NotificationsScreen() {
   const userId = profile?.id ?? '';
   const {
     feed, isLoading, isRefetching, refetch,
-    unreadTicketCount, unreadAnnouncementCount, markAllBroadcastsRead,
+    unreadTicketCount, unreadAnnouncementCount, markAllBroadcastsRead, markBroadcastRead,
   } = useUnifiedNotifications(userId, profile?.store_id ?? null);
   const { markOne, markAll } = useMarkRead(userId);
 
@@ -93,7 +93,11 @@ export function NotificationsScreen() {
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <View style={styles.itemWrap}>
-              <UnifiedNotificationItem item={item} onMarkRead={(id) => markOne.mutate(id)} />
+              <UnifiedNotificationItem
+                item={item}
+                onMarkRead={(id) => markOne.mutate(id)}
+                onReadAnnouncement={(id) => markBroadcastRead(id)}
+              />
             </View>
           )}
           contentContainerStyle={styles.list}

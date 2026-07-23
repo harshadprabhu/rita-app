@@ -15,6 +15,7 @@ import { theme } from '../../constants/theme';
 interface Props {
   item: FeedItem;
   onMarkRead?: (notificationId: string) => void;
+  onReadAnnouncement?: (broadcastId: string) => void;
 }
 
 // ─── A) Announcement card ────────────────────────────────────────────────────
@@ -85,11 +86,29 @@ function AnnouncementModal({ item, onClose }: { item: FeedItem; onClose: () => v
   );
 }
 
-function AnnouncementCard({ item }: { item: FeedItem }) {
+function AnnouncementCard({
+  item, onReadAnnouncement, onMarkRead,
+}: {
+  item: FeedItem;
+  onReadAnnouncement?: (broadcastId: string) => void;
+  onMarkRead?: (notificationId: string) => void;
+}) {
   const [open, setOpen] = useState(false);
+  const isUnread = !item.is_read;
+
+  const handleOpen = () => {
+    // Reading an announcement marks it read (clears its dot + the tab badge).
+    // Broadcasts read via broadcast_reads; legacy notification rows via markOne.
+    if (isUnread) {
+      if (item.broadcastId && onReadAnnouncement) onReadAnnouncement(item.broadcastId);
+      else if (item.notificationId && onMarkRead) onMarkRead(item.notificationId);
+    }
+    setOpen(true);
+  };
+
   return (
     <>
-      <TouchableOpacity onPress={() => setOpen(true)} activeOpacity={0.75}>
+      <TouchableOpacity onPress={handleOpen} activeOpacity={0.75}>
         <View style={styles.announceCard}>
           <View style={styles.baseRow}>
             <View style={styles.announceIconBox}>
@@ -104,6 +123,7 @@ function AnnouncementCard({ item }: { item: FeedItem }) {
             </View>
             <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.35)" style={styles.announceChevron} />
           </View>
+          {isUnread && <View style={styles.announceUnreadDot} />}
         </View>
       </TouchableOpacity>
       {open && <AnnouncementModal item={item} onClose={() => setOpen(false)} />}
@@ -176,8 +196,10 @@ function TicketCard({ item, onMarkRead }: { item: FeedItem; onMarkRead?: (id: st
 
 // ─── Main export ─────────────────────────────────────────────────────────────
 
-export function UnifiedNotificationItem({ item, onMarkRead }: Props) {
-  if (item.kind === 'announcement') return <AnnouncementCard item={item} />;
+export function UnifiedNotificationItem({ item, onMarkRead, onReadAnnouncement }: Props) {
+  if (item.kind === 'announcement') {
+    return <AnnouncementCard item={item} onReadAnnouncement={onReadAnnouncement} onMarkRead={onMarkRead} />;
+  }
   return <TicketCard item={item} onMarkRead={onMarkRead} />;
 }
 
@@ -240,6 +262,15 @@ const styles = StyleSheet.create({
   announceChevron: {
     alignSelf: 'center',
     flexShrink: 0,
+  },
+  announceUnreadDot: {
+    position: 'absolute',
+    top: theme.spacing.sm,
+    right: theme.spacing.sm,
+    width: 7,
+    height: 7,
+    borderRadius: theme.radius.full,
+    backgroundColor: theme.colors.accent,
   },
 
   // ── Modal ─────────────────────────────────────────────────────────────────

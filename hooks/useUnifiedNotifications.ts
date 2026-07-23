@@ -133,6 +133,14 @@ export function useUnifiedNotifications(userId: string, storeId: string | null) 
     setUnreadAnnouncementCount(unreadAnnouncementCount);
   }, [unreadAnnouncementCount]);
 
+  // Mark a single announcement read (when the user opens it), so its unread
+  // marker + the tab badge clear without needing "Mark all read".
+  const markBroadcastRead = useCallback(async (broadcastId: string) => {
+    if (!userId || !broadcastId) return;
+    await markBroadcastsRead(userId, [broadcastId]);
+    qc.invalidateQueries({ queryKey: QUERY_KEYS.broadcastReads(userId) });
+  }, [userId, qc]);
+
   const markAllBroadcastsRead = useCallback(async () => {
     if (!userId) return;
     const unreadIds = announcementNotifications
@@ -151,6 +159,7 @@ export function useUnifiedNotifications(userId: string, storeId: string | null) 
     unreadTicketCount,
     unreadAnnouncementCount,
     markAllBroadcastsRead,
+    markBroadcastRead,
     isLoading: notifQuery.isLoading || broadcastQuery.isLoading,
     isRefetching: notifQuery.isRefetching || broadcastQuery.isRefetching,
     refetch: async () => {
