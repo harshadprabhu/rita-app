@@ -106,9 +106,11 @@ export function GoldRateTrendChart({ points }: Props) {
   const deltaColor = up ? '#7FCF9E' : '#E89B9B';
 
   // The readout follows the scrubber; with nothing selected it shows the latest.
-  const sel = active ?? points.length - 1;
-  const selPoint = points[sel];
-  const selCoord = geom.coords[sel];
+  // Clamp to the current range — switching 3M→1W leaves `active` pointing past
+  // the shorter array, and points[stale] would be undefined (the crash).
+  const sel = Math.min(Math.max(active ?? points.length - 1, 0), points.length - 1);
+  const selPoint = points[sel] ?? points[points.length - 1];
+  const selCoord = geom.coords[sel] ?? geom.coords[geom.coords.length - 1];
   const showDots = points.length <= DOTS_MAX;
 
   return (

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { ProfileIconButton } from '../common/ProfileIconButton';
 import { GoldRateCard } from './GoldRateCard';
 import { getTickets } from '../../lib/api/tickets';
 import { useAuthStore } from '../../stores/authStore';
+import { SoftPress } from '../common/SoftPress';
 import { QUERY_KEYS } from '../../constants/queryKeys';
 import { theme } from '../../constants/theme';
 
@@ -76,9 +77,9 @@ function StatCard({ label, filters, color, icon, href }: StatDef) {
   );
   if (!href) return <View style={[styles.statCard, theme.shadows.xs]}>{inner}</View>;
   return (
-    <TouchableOpacity style={[styles.statCard, theme.shadows.xs]} onPress={() => router.push(href)} activeOpacity={0.7}>
+    <SoftPress style={[styles.statCard, theme.shadows.xs]} onPress={() => router.push(href)}>
       {inner}
-    </TouchableOpacity>
+    </SoftPress>
   );
 }
 

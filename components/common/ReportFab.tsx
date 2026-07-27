@@ -1,8 +1,9 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, usePathname } from 'expo-router';
+import { SoftPress } from './SoftPress';
 import { theme } from '../../constants/theme';
 
 /**
@@ -16,7 +17,7 @@ export function ReportFab() {
   if (pathname?.includes('/profile')) return null;
   return (
     <View style={styles.wrap} pointerEvents="box-none">
-      <TouchableOpacity activeOpacity={0.88} onPress={() => router.push('/create-ticket')} style={styles.btnShadow}>
+      <SoftPress scaleTo={0.9} onPress={() => router.push('/create-ticket')} style={styles.btnShadow}>
         <LinearGradient
           colors={theme.gradients.gold}
           start={{ x: 0.2, y: 0 }}
@@ -25,7 +26,7 @@ export function ReportFab() {
         >
           <Ionicons name="add" size={32} color={theme.colors.textPrimary} />
         </LinearGradient>
-      </TouchableOpacity>
+      </SoftPress>
     </View>
   );
 }

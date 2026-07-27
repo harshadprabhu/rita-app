@@ -71,7 +71,13 @@ export function GoldRateCard() {
       : null;
 
   const toggle = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    // Soft spring landing rather than a linear ease.
+    LayoutAnimation.configureNext({
+      duration: 320,
+      create: { type: 'easeInEaseOut', property: 'opacity' },
+      update: { type: 'spring', springDamping: 0.7 },
+      delete: { type: 'easeInEaseOut', property: 'opacity' },
+    });
     setExpanded((e) => !e);
   };
 
