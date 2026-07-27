@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../components/common/Screen';
 import { AppHeader } from '../components/common/AppHeader';
+import { SoftPress } from '../components/common/SoftPress';
 import { createTicket, uploadAttachment, pushTicketToSampark } from '../lib/api/tickets';
 import { getTicketCategories } from '../lib/api/categories';
 import { parseCategory, parsePriority } from '../lib/utils/chatTicketParser';
@@ -214,13 +215,13 @@ export default function CreateTicket() {
         <Text style={[styles.label, styles.spaced]}>Priority</Text>
         <View style={styles.pillRow}>
           {ALL_PRIORITIES.map((p) => (
-            <TouchableOpacity
+            <SoftPress
               key={p}
               style={[styles.pill, priority === p && { backgroundColor: theme.priorityColors[p] + '22', borderColor: theme.priorityColors[p] }]}
               onPress={() => setPriorityOverride(p)}
             >
               <Text style={[styles.pillText, priority === p && { color: theme.priorityColors[p] }]}>{p}</Text>
-            </TouchableOpacity>
+            </SoftPress>
           ))}
         </View>
         <Text style={styles.hint}>
@@ -239,11 +240,10 @@ export default function CreateTicket() {
           )}
         </View>
 
-        <TouchableOpacity
+        <SoftPress
           style={[styles.submitBtn, theme.shadows.md, submit.isPending && styles.submitBtnDisabled]}
           onPress={() => { if (!canSubmit) { setSubmitAttempted(true); return; } submit.mutate(); }}
           disabled={submit.isPending}
-          activeOpacity={0.85}
         >
           <LinearGradient colors={theme.gradients.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.submitBtnInner}>
             {submit.isPending ? <ActivityIndicator color={theme.colors.textPrimary} /> : (
@@ -253,7 +253,7 @@ export default function CreateTicket() {
               </>
             )}
           </LinearGradient>
-        </TouchableOpacity>
+        </SoftPress>
         {submit.isError && <Text style={styles.error}>{String(submit.error)}</Text>}
       </ScrollView>
 

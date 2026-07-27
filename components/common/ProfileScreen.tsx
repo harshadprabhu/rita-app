@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Screen } from './Screen';
 import { AppHeader } from './AppHeader';
 import { MetalNavy } from './MetalNavy';
+import { SoftPress } from './SoftPress';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useAuthStore } from '../../stores/authStore';
 import { signOut } from '../../lib/auth/session';
@@ -78,23 +79,23 @@ export function ProfileScreen({ tools, toolsTitle = 'Tools' }: { tools?: Profile
             <Text style={styles.sectionLabel}>{toolsTitle.toUpperCase()}</Text>
             <View style={styles.toolsGrid}>
               {tools.map((tool) => (
-                <TouchableOpacity key={tool.label} style={[styles.tool, theme.shadows.xs]} onPress={tool.onPress} activeOpacity={0.8}>
+                <SoftPress key={tool.label} style={[styles.tool, theme.shadows.xs]} onPress={tool.onPress}>
                   <View style={[styles.toolIcon, { backgroundColor: tool.bg }]}>
                     <Ionicons name={tool.icon} size={13} color={tool.color} />
                   </View>
                   <Text style={styles.toolLabel} numberOfLines={1}>{tool.label}</Text>
                   <Ionicons name="chevron-forward" size={11} color={theme.colors.textTertiary} />
-                </TouchableOpacity>
+                </SoftPress>
               ))}
             </View>
           </>
         )}
 
         {/* Sign out */}
-        <TouchableOpacity style={styles.signOut} onPress={signOut} activeOpacity={0.8}>
+        <SoftPress style={styles.signOut} onPress={signOut}>
           <Ionicons name="log-out-outline" size={15} color={theme.colors.error} />
           <Text style={styles.signOutText}>{t('common.signOut')}</Text>
-        </TouchableOpacity>
+        </SoftPress>
 
         <Text style={styles.version}>RITA · Indriya Jewellery</Text>
       </ScrollView>

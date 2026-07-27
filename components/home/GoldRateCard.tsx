@@ -10,6 +10,7 @@ import { useGoldRate, useGoldRateTrend } from '../../hooks/useGoldRate';
 import { timeAgo } from '../../lib/utils/date';
 import { downloadGoldRatePoster, ratesFromGold, isPosterSupported, PosterRates } from '../../lib/utils/goldPoster';
 import { theme } from '../../constants/theme';
+import { SoftPress } from '../common/SoftPress';
 import { GoldRateTrendChart } from './GoldRateTrendChart';
 import { GoldRatePosterModal } from './GoldRatePosterModal';
 import { GoldTrendPosterModal } from './GoldTrendPosterModal';
@@ -154,9 +155,9 @@ export function GoldRateCard() {
                   {RANGES.map((r) => {
                     const on = rangeDays === r.days;
                     return (
-                      <TouchableOpacity key={r.days} onPress={() => setRangeDays(r.days)} style={[styles.rangePill, on && styles.rangePillOn]}>
+                      <SoftPress key={r.days} onPress={() => setRangeDays(r.days)} style={[styles.rangePill, on && styles.rangePillOn]}>
                         <Text style={[styles.rangeText, on && styles.rangeTextOn]}>{r.label}</Text>
-                      </TouchableOpacity>
+                      </SoftPress>
                     );
                   })}
                 </View>
@@ -172,16 +173,16 @@ export function GoldRateCard() {
           {/* Footer: Trend (left) · updated · Poster (right) */}
           <View style={styles.footer}>
             {isPosterSupported() && (
-              <TouchableOpacity style={styles.trendBtn} onPress={() => setTrendPoster(true)} activeOpacity={0.8}>
+              <SoftPress style={styles.trendBtn} onPress={() => setTrendPoster(true)}>
                 <Ionicons name="trending-up" size={11} color={GOLD} />
                 <Text style={styles.trendBtnText}>Trend</Text>
-              </TouchableOpacity>
+              </SoftPress>
             )}
             <Text style={styles.updatedText} numberOfLines={1}>
               {t('goldRate.updated', { time: timeAgo(data!.updated_at) })}
             </Text>
             {isPosterSupported() && (
-              <TouchableOpacity style={styles.posterBtn} onPress={handleDownload} activeOpacity={0.85}>
+              <SoftPress style={styles.posterBtn} onPress={handleDownload}>
                 <LinearGradient
                   colors={theme.gradients.gold}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -190,7 +191,7 @@ export function GoldRateCard() {
                   <Ionicons name="download-outline" size={11} color={theme.colors.textPrimary} />
                   <Text style={styles.posterBtnText}>Poster</Text>
                 </LinearGradient>
-              </TouchableOpacity>
+              </SoftPress>
             )}
           </View>
         </>

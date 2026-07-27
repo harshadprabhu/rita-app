@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../common/Screen';
+import { SoftPress } from '../common/SoftPress';
 import { AppHeader } from '../common/AppHeader';
 import { ProfileIconButton } from '../common/ProfileIconButton';
 import { EmptyState } from '../common/EmptyState';
@@ -176,30 +177,29 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
 function StatusPill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   if (active) {
     return (
-      <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={styles.pillWrap}>
+      <SoftPress onPress={onPress} style={styles.pillWrap}>
         <LinearGradient colors={theme.gradients.navyMetal} locations={theme.gradients.navyMetalLocations} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.pillActive}>
           <Text style={styles.pillTextActive}>{label}</Text>
         </LinearGradient>
-      </TouchableOpacity>
+      </SoftPress>
     );
   }
   return (
-    <TouchableOpacity onPress={onPress} style={styles.pill} activeOpacity={0.8}>
+    <SoftPress onPress={onPress} style={styles.pill}>
       <Text style={styles.pillText}>{label}</Text>
-    </TouchableOpacity>
+    </SoftPress>
   );
 }
 
 // Vertical priority side-rail button: colored tint + outline when active.
 function RailBtn({ label, color, active, onPress }: { label: string; color: string; active: boolean; onPress: () => void }) {
   return (
-    <TouchableOpacity
+    <SoftPress
       onPress={onPress}
-      activeOpacity={0.8}
       style={[styles.railBtn, active ? { backgroundColor: color + '18', borderColor: color } : { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
     >
       <Text style={[styles.railBtnText, { color: active ? color : theme.colors.textSecondary }]}>{label}</Text>
-    </TouchableOpacity>
+    </SoftPress>
   );
 }
 

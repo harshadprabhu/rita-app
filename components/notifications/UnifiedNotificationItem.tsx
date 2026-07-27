@@ -7,6 +7,7 @@ import { Portal } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SoftPress } from '../common/SoftPress';
 import { FeedItem } from '../../hooks/useUnifiedNotifications';
 import { NotificationType } from '../../types';
 import { timeAgo, formatDateTime } from '../../lib/utils/date';
@@ -108,7 +109,7 @@ function AnnouncementCard({
 
   return (
     <>
-      <TouchableOpacity onPress={handleOpen} activeOpacity={0.75}>
+      <SoftPress onPress={handleOpen} scaleTo={0.97}>
         <View style={styles.announceCard}>
           <View style={styles.baseRow}>
             <View style={styles.announceIconBox}>
@@ -125,7 +126,7 @@ function AnnouncementCard({
           </View>
           {isUnread && <View style={styles.announceUnreadDot} />}
         </View>
-      </TouchableOpacity>
+      </SoftPress>
       {open && <AnnouncementModal item={item} onClose={() => setOpen(false)} />}
     </>
   );
@@ -172,10 +173,10 @@ function TicketCard({ item, onMarkRead }: { item: FeedItem; onMarkRead?: (id: st
   };
 
   return (
-    <TouchableOpacity
+    <SoftPress
       style={[styles.ticketCard, isUnread ? styles.ticketUnread : styles.ticketRead]}
       onPress={handlePress}
-      activeOpacity={item.ticket_id ? 0.7 : 1}
+      scaleTo={0.97}
     >
       <View style={styles.baseRow}>
         <View style={[styles.iconBox, { backgroundColor: bg }]}>
@@ -190,7 +191,7 @@ function TicketCard({ item, onMarkRead }: { item: FeedItem; onMarkRead?: (id: st
         </View>
       </View>
       {isUnread && <View style={styles.unreadDot} />}
-    </TouchableOpacity>
+    </SoftPress>
   );
 }
 

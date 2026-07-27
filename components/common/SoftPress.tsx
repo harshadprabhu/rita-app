@@ -1,6 +1,8 @@
 import React, { useRef } from 'react';
 import { Animated, Pressable, PressableProps, ViewStyle, StyleProp, GestureResponderEvent } from 'react-native';
 
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
 interface Props extends Omit<PressableProps, 'style'> {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -11,8 +13,9 @@ interface Props extends Omit<PressableProps, 'style'> {
 /**
  * A pressable with a soft spring "landing": it eases down on press-in and
  * springs back with a gentle bounce on release, instead of the instant opacity
- * flip TouchableOpacity gives. Drop-in replacement for buttons that should feel
- * tactile — the FAB, primary CTAs, tiles.
+ * flip TouchableOpacity gives. Drop-in replacement for TouchableOpacity — the
+ * style and transform sit on the Pressable itself, so flex layouts and
+ * backgrounds scale as a whole and nothing shifts.
  */
 export function SoftPress({ children, style, scaleTo = 0.94, onPressIn, onPressOut, ...rest }: Props) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -27,8 +30,8 @@ export function SoftPress({ children, style, scaleTo = 0.94, onPressIn, onPressO
   };
 
   return (
-    <Pressable onPressIn={down} onPressOut={up} {...rest}>
-      <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>
-    </Pressable>
+    <AnimatedPressable onPressIn={down} onPressOut={up} style={[style, { transform: [{ scale }] }]} {...rest}>
+      {children}
+    </AnimatedPressable>
   );
 }

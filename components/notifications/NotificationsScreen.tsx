@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View, TouchableOpacity, Text } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Screen } from '../common/Screen';
+import { SoftPress } from '../common/SoftPress';
 import { AppHeader } from '../common/AppHeader';
 import { ProfileIconButton } from '../common/ProfileIconButton';
 import { EmptyState } from '../common/EmptyState';
@@ -66,20 +67,20 @@ export function NotificationsScreen() {
         right={
           <View style={styles.headerRight}>
             {anyUnread && (
-              <TouchableOpacity style={styles.markBtn} onPress={markAllRead} activeOpacity={0.85}>
+              <SoftPress style={styles.markBtn} onPress={markAllRead}>
                 <Ionicons name="checkmark-done" size={13} color={theme.colors.accent} />
                 <Text style={styles.markBtnText}>{t('common.markAllRead', { defaultValue: 'Mark all read' })}</Text>
-              </TouchableOpacity>
+              </SoftPress>
             )}
             {hasItems && (
-              <TouchableOpacity
+              <SoftPress
                 style={styles.clearBtn}
                 onPress={() => clearAll.mutate()}
                 disabled={clearAll.isPending}
                 hitSlop={8}
               >
                 <Ionicons name="trash-outline" size={16} color="#fff" />
-              </TouchableOpacity>
+              </SoftPress>
             )}
             {profile ? <ProfileIconButton profile={profile} /> : null}
           </View>
