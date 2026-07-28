@@ -35,7 +35,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.brand,
+    // The gazelle in the GIF is navy — needs a light ground to be visible.
+    backgroundColor: theme.colors.bg, // cream #EDE8DC
   },
-  gif: { width: 160, height: 160 },
+  gif: { width: 180, height: 180 },
 });
