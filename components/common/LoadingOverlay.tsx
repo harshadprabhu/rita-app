@@ -1,18 +1,21 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Easing } from 'react-native';
-import { Text } from 'react-native-paper';
 import { theme } from '../../constants/theme';
 
 interface Props {
+  /** Accepted for backwards-compat but no longer shown — the boot screen is a
+   *  single, wordless animation so there's never a "Loading…" vs "Starting…"
+   *  mismatch across the boot sequence. */
   message?: string;
 }
 
 /**
- * Branded loading screen: the gold Indriya gazelle gently "steps" (a bobbing +
- * slight sway) over a pulsing ground shadow on the brand navy — an original,
- * lightweight motion (no external animation asset needed).
+ * The one and only loading screen: the gold Indriya gazelle gently "steps"
+ * (a bobbing + slight sway) over a pulsing ground shadow on the brand navy.
+ * No text — every loader in the app shows this identical silent animation, so
+ * the native splash flows straight into it as a single continuous screen.
  */
-export function LoadingOverlay({ message }: Props) {
+export function LoadingOverlay(_props: Props) {
   const step = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -43,7 +46,6 @@ export function LoadingOverlay({ message }: Props) {
         />
         <Animated.View style={[styles.shadow, { opacity: shadowOpacity, transform: [{ scaleX: shadowScale }] }]} />
       </View>
-      {message && <Text style={styles.text}>{message}</Text>}
     </View>
   );
 }
@@ -70,10 +72,5 @@ const styles = StyleSheet.create({
     height: 14,
     borderRadius: 999,
     backgroundColor: '#000',
-  },
-  text: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 13,
-    fontWeight: '600',
   },
 });
