@@ -1,5 +1,5 @@
 import { PromotionsScreen } from '../../components/common/PromotionsScreen';
 
-export default function ManagerPromotions() {
+export default function AdminPromotions() {
   return <PromotionsScreen />;
 }
