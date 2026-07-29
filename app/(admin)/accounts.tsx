@@ -15,7 +15,7 @@ import { extractErrorMessage } from '../../lib/utils/error';
 import { UserRole, DbProfile } from '../../types';
 import { theme } from '../../constants/theme';
 
-const ASSIGNABLE_ROLES: UserRole[] = ['user', 'technician', 'manager', 'admin'];
+const ASSIGNABLE_ROLES: UserRole[] = ['user', 'in_store_manager', 'technician', 'manager', 'ops_manager', 'admin'];
 
 export default function Accounts() {
   const profile = useAuthStore((s) => s.profile);

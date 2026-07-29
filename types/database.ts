@@ -1,4 +1,10 @@
-export type UserRole = 'user' | 'manager' | 'technician' | 'admin';
+export type UserRole =
+  | 'user'
+  | 'manager'
+  | 'technician'
+  | 'admin'
+  | 'ops_manager'       // manager rights + can push promotions
+  | 'in_store_manager'; // user rights for now
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
 export type TicketStatus = 'open' | 'in_progress' | 'resolved';
 export type TicketLifecycle = 'open' | 'being_worked_on' | 'pending_your_action' | 'escalated' | 'resolved' | 'closed';
@@ -129,8 +135,9 @@ export interface DbBroadcast {
   title: string;
   body: string;
   created_at: string;
-  /** 'announcement' = human-authored; 'gold_rate' = system alert. */
-  kind: 'announcement' | 'gold_rate';
+  /** 'announcement' = human-authored; 'gold_rate' = system alert;
+   *  'promotion' = Ops Manager scheme/offer, shown on the gold-rate poster. */
+  kind: 'announcement' | 'gold_rate' | 'promotion';
 }
 
 export interface DbChatChannel {

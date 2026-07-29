@@ -136,9 +136,11 @@ function AuthGate() {
       dest = 'login'; // deactivated accounts are bounced back to login
     } else if (profile.role === 'technician' && profile.approval_status === 'pending') {
       dest = 'pending';
-    } else if (profile.role === 'user' && profile.approval_status === 'approved') {
+    } else if ((profile.role === 'user' || profile.role === 'in_store_manager') && profile.approval_status === 'approved') {
+      // In-Store Manager uses the store-staff screens for now.
       dest = 'user';
-    } else if (profile.role === 'manager' && profile.approval_status === 'approved') {
+    } else if ((profile.role === 'manager' || profile.role === 'ops_manager') && profile.approval_status === 'approved') {
+      // Ops Manager uses the manager screens (+ promotions, gated in-screen).
       dest = 'manager';
     } else if (profile.role === 'technician' && profile.approval_status === 'approved') {
       dest = 'technician';

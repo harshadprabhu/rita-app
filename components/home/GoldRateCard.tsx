@@ -6,7 +6,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import { useGoldRate, useGoldRateTrend } from '../../hooks/useGoldRate';
+import { getActivePromotion } from '../../lib/api/broadcasts';
 import { timeAgo } from '../../lib/utils/date';
 import { downloadGoldRatePoster, ratesFromGold, isPosterSupported, PosterRates } from '../../lib/utils/goldPoster';
 import { theme } from '../../constants/theme';
@@ -45,6 +47,8 @@ export function GoldRateCard() {
   const { data: t1w } = useGoldRateTrend(trendPoster, 7);
   const { data: t3m } = useGoldRateTrend(trendPoster, 90);
   const { data: t1y } = useGoldRateTrend(trendPoster, 365);
+  // Ops Manager promotion band, if any.
+  const { data: promo } = useQuery({ queryKey: ['activePromotion'], queryFn: getActivePromotion, staleTime: 5 * 60 * 1000 });
   const RANGES: { days: 7 | 30 | 90; label: string }[] = [
     { days: 7, label: '1W' }, { days: 30, label: '1M' }, { days: 90, label: '3M' },
   ];
@@ -170,6 +174,14 @@ export function GoldRateCard() {
             </View>
           )}
 
+          {/* Ops Manager promotion band */}
+          {promo && (
+            <View style={styles.promoBand}>
+              <Ionicons name="pricetag" size={11} color={theme.colors.textPrimary} />
+              <Text style={styles.promoText} numberOfLines={2}>{promo}</Text>
+            </View>
+          )}
+
           {/* Footer: Trend (left) · updated · Poster (right) */}
           <View style={styles.footer}>
             {isPosterSupported() && (
@@ -282,6 +294,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(200,150,62,0.12)', borderWidth: 1, borderColor: 'rgba(200,150,62,0.35)',
   },
   trendBtnText: { color: GOLD, fontSize: 10, fontWeight: '800', letterSpacing: 0.2 },
+  promoBand: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginHorizontal: 14, marginTop: 10, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9,
+    backgroundColor: theme.colors.accentBright,
+  },
+  promoText: { flex: 1, color: theme.colors.textPrimary, fontSize: 11, fontWeight: '800' },
   footer: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 14, marginTop: 10,

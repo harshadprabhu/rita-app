@@ -25,7 +25,9 @@ export async function getBroadcastsForStore(
     .select('*')
     .order('created_at', { ascending: false })
     .limit(100);
+  // Promotions live only on the gold-rate poster, never in the Alerts feed.
   if (kind) q = q.eq('kind', kind);
+  else q = q.neq('kind', 'promotion');
   const { data, error } = await q;
   if (error) throw error;
   const all = (data ?? []) as DbBroadcast[];
@@ -50,6 +52,38 @@ export interface CreateBroadcastPayload {
   target_store_id?: string;
   /** One or more stores; empty/undefined means all stores. */
   target_store_ids?: string[];
+}
+
+/** Max length of a promotion line shown on the gold-rate poster. */
+export const PROMOTION_MAX_LEN = 100;
+
+/**
+ * The current promotion (Ops Manager scheme/offer), or null. The latest
+ * kind='promotion' broadcast wins; an empty body clears it.
+ */
+export async function getActivePromotion(): Promise<string | null> {
+  const { data } = await supabase
+    .from('broadcasts')
+    .select('body')
+    .eq('kind', 'promotion')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const body = (data as { body: string } | null)?.body?.trim();
+  return body ? body : null;
+}
+
+/** Publish a promotion (Ops Manager only, enforced by RLS + role gating). */
+export async function createPromotion(senderId: string, text: string): Promise<void> {
+  const body = text.trim().slice(0, PROMOTION_MAX_LEN);
+  const { error } = await supabase.from('broadcasts').insert({
+    sender_id: senderId,
+    kind: 'promotion',
+    title: 'Promotion',
+    body,
+    target_store_ids: null, // everyone
+  });
+  if (error) throw error;
 }
 
 /** Fetch the set of broadcast IDs this user has already read. */
