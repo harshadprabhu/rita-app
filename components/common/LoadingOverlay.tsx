@@ -32,11 +32,16 @@ export function LoadingOverlay(_props: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    // Absolute full-screen, not flex: AuthGate renders this as a sibling of the
+    // screen stack, so if a screen ALSO shows a loader they'd stack vertically
+    // (two gazelles). Absolute-fill makes any second loader land exactly on top
+    // of the first, so only one gazelle is ever visible.
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     justifyContent: 'center',
     // The gazelle in the GIF is navy — needs a light ground to be visible.
     backgroundColor: theme.colors.bg, // cream #EDE8DC
+    zIndex: 100,
   },
   gif: { width: 180, height: 180 },
 });
