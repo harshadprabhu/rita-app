@@ -5,6 +5,8 @@ export interface GoldRatePosterModalProps {
   onClose: () => void;
   rates: PosterRates | null;
   date: Date;
+  /** Active Ops Manager promotion, printed as a Special Offer banner. */
+  promo?: string | null;
 }
 
 // Web stub — the browser uses the DOM-canvas download in lib/utils/goldPoster.

@@ -30,7 +30,11 @@ function formatDate(d: Date): string {
   return `${d.getDate()}${ordinal(d.getDate())} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-export function GoldRatePosterModal({ visible, onClose, rates, date }: GoldRatePosterModalProps) {
+// Special-offer banner as fractions of the 1054×1492 template (matches the web
+// canvas geometry in goldPoster.ts).
+const OFFER = { left: 150 / 1054, top: 1196 / 1492, width: 700 / 1054, height: 96 / 1492 };
+
+export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: GoldRatePosterModalProps) {
   const shotRef = useRef<React.ComponentRef<typeof ViewShot>>(null);
   const [sharing, setSharing] = useState(false);
 
@@ -77,6 +81,15 @@ export function GoldRatePosterModal({ visible, onClose, rates, date }: GoldRateP
               })}
             </>
           )}
+          {/* Special-offer banner — only when a promotion is active. */}
+          {rates && promo?.trim() ? (
+            <View style={[styles.offer, {
+              left: OFFER.left * W, top: OFFER.top * H, width: OFFER.width * W, height: OFFER.height * H,
+            }]}>
+              <Text style={[styles.offerKicker, { fontSize: Math.round(W * 0.021) }]}>S P E C I A L   O F F E R</Text>
+              <Text numberOfLines={1} style={[styles.offerText, { fontSize: Math.round(W * 0.05) }]}>{promo.trim()}</Text>
+            </View>
+          ) : null}
         </ViewShot>
 
         <View style={styles.actions}>
@@ -100,6 +113,12 @@ export function GoldRatePosterModal({ visible, onClose, rates, date }: GoldRateP
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', padding: theme.spacing.lg },
   anchor: { position: 'absolute', alignItems: 'center' },
+  offer: {
+    position: 'absolute', borderRadius: 14, backgroundColor: '#E0B55A',
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10,
+  },
+  offerKicker: { color: '#5A3D12', fontWeight: '800', letterSpacing: 0.5 },
+  offerText: { color: '#1A1614', fontWeight: '800', marginTop: 2 },
   actions: { flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.xl, alignItems: 'center' },
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm, paddingVertical: theme.spacing.md, paddingHorizontal: theme.spacing.xl, borderRadius: theme.radius.full },
   shareBtn: { backgroundColor: theme.colors.accent },

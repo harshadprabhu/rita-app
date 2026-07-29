@@ -57,7 +57,7 @@ export function GoldRateCard() {
     if (!data) return;
     const rates = ratesFromGold(data.rates);
     if (!rates) return;
-    if (Platform.OS === 'web') downloadGoldRatePoster(rates, new Date(data.updated_at));
+    if (Platform.OS === 'web') downloadGoldRatePoster(rates, new Date(data.updated_at), 2, promo);
     else setPosterRates(rates);
   };
 
@@ -220,6 +220,7 @@ export function GoldRateCard() {
         onClose={() => setPosterRates(null)}
         rates={posterRates}
         date={data ? new Date(data.updated_at) : new Date()}
+        promo={promo}
       />
 
       {/* Native trend poster: 1 Week / 3 Months / 1 Year (no-op on web) */}

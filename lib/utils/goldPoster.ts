@@ -156,8 +156,12 @@ export function isPosterSupported(): boolean {
   return typeof document !== 'undefined' && typeof document.createElement === 'function' && !!getTemplateUri();
 }
 
+// Special-offer banner geometry (template pixel space), sits over the bottom
+// tagline band, clear of the corner jewellery. Only drawn when a promo exists.
+const OFFER = { x: 150, y: 1196, w: 700, h: 96, r: 16 };
+
 /** Draw the poster (template + overlaid date & rates) onto a fresh canvas. */
-function renderPosterCanvas(img: HTMLImageElement, rates: PosterRates, date: Date, scale: number): HTMLCanvasElement | null {
+function renderPosterCanvas(img: HTMLImageElement, rates: PosterRates, date: Date, scale: number, promo?: string | null): HTMLCanvasElement | null {
   const canvas = document.createElement('canvas');
   canvas.width = TPL_W * scale;
   canvas.height = TPL_H * scale;
@@ -187,6 +191,35 @@ function renderPosterCanvas(img: HTMLImageElement, rates: PosterRates, date: Dat
     ctx.fillText(Math.round(value).toLocaleString('en-IN'), pt.x * scale, pt.y * scale);
   }
   ctx.restore();
+
+  // 4. Special-offer banner (only when a promotion is active).
+  const offer = promo?.trim();
+  if (offer) {
+    ctx.save();
+    const x = OFFER.x * scale, y = OFFER.y * scale, w = OFFER.w * scale, h = OFFER.h * scale, r = OFFER.r * scale;
+    const grad = ctx.createLinearGradient(x, y, x + w, y + h);
+    grad.addColorStop(0, '#E0B55A');
+    grad.addColorStop(1, '#C8963E');
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+    // "SPECIAL OFFER" kicker + the offer text.
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#5A3D12';
+    ctx.font = `700 ${Math.round(16 * scale)}px Arial, sans-serif`;
+    ctx.fillText('S P E C I A L   O F F E R', (x + w / 2), y + 26 * scale);
+    ctx.fillStyle = '#1A1614';
+    ctx.font = `700 ${Math.round(34 * scale)}px Georgia, "Playfair Display", serif`;
+    ctx.fillText(offer, (x + w / 2), y + 60 * scale, w - 40 * scale);
+    ctx.restore();
+  }
   return canvas;
 }
 
@@ -196,7 +229,7 @@ function renderPosterCanvas(img: HTMLImageElement, rates: PosterRates, date: Dat
  * download on desktop.
  * @param scale render multiplier (1 = native 1054x1492; 2 = higher-res print).
  */
-export function downloadGoldRatePoster(rates: PosterRates, date = new Date(), scale = 2): void {
+export function downloadGoldRatePoster(rates: PosterRates, date = new Date(), scale = 2, promo?: string | null): void {
   if (!isPosterSupported()) return;
   const img = getTemplateImage();
   if (!img) return;
@@ -204,7 +237,7 @@ export function downloadGoldRatePoster(rates: PosterRates, date = new Date(), sc
   const fileName = `indriya_gold_rates_${date.toISOString().slice(0, 10)}.png`;
   const run = () => {
     try {
-      const canvas = renderPosterCanvas(img, rates, date, scale);
+      const canvas = renderPosterCanvas(img, rates, date, scale, promo);
       if (canvas) deliverPoster(canvas, fileName);
     } catch {
       // Same-origin asset shouldn't taint the canvas; ignore if it somehow does.
