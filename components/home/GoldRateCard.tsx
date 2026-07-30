@@ -10,7 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useGoldRate, useGoldRateTrend } from '../../hooks/useGoldRate';
 import { getActivePromotion } from '../../lib/api/broadcasts';
 import { timeAgo } from '../../lib/utils/date';
-import { downloadGoldRatePoster, ratesFromGold, isPosterSupported, PosterRates } from '../../lib/utils/goldPoster';
+import { ratesFromGold, isPosterSupported, PosterRates } from '../../lib/utils/goldPoster';
 import { theme } from '../../constants/theme';
 import { SoftPress } from '../common/SoftPress';
 import { GoldRateTrendChart } from './GoldRateTrendChart';
@@ -57,8 +57,7 @@ export function GoldRateCard() {
     if (!data) return;
     const rates = ratesFromGold(data.rates);
     if (!rates) return;
-    if (Platform.OS === 'web') downloadGoldRatePoster(rates, new Date(data.updated_at), 2, promo);
-    else setPosterRates(rates);
+    setPosterRates(rates); // open the preview modal on both web + native
   };
 
   // Build the list of columns that actually have a rate value
