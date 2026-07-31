@@ -137,7 +137,7 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
 
   const list = (
     <FlatList
-      data={enableFilters ? filteredTickets : (tickets ?? [])}
+      data={filteredTickets}
       keyExtractor={(item) => item.id}
       renderItem={({ item }) => <TicketCard ticket={item} />}
       contentContainerStyle={styles.list}

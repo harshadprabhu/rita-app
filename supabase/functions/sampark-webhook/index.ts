@@ -77,25 +77,83 @@ Deno.serve(async (req) => {
     if (!requestId) return new Response(JSON.stringify({ ok: false, error: 'no_request_id' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
     // Find the RITA ticket linked to this Sampark request.
-    const { data: ticket } = await supabase.from('tickets').select('id, status').eq('sampark_request_id', requestId).maybeSingle();
+    const { data: ticket } = await supabase.from('tickets')
+      .select('id, status, lifecycle, assignee_id, requester_id, ticket_number')
+      .eq('sampark_request_id', requestId).maybeSingle();
     if (!ticket) return new Response(JSON.stringify({ ok: true, ignored: 'no_linked_ticket', requestId }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
-    const ticketId = (ticket as any).id;
+    const t = ticket as {
+      id: string; status: string; lifecycle: string; assignee_id: string | null;
+      requester_id: string | null; ticket_number: string;
+    };
+    const ticketId = t.id;
 
     const cfg = await loadCfg(supabase);
     const accessToken = await getToken(cfg);
 
-    // 1. Pull the request → sync status.
+    // 1. Pull the request → sync status + technician assignment.
     const reqDetail = await sdpGet(cfg, accessToken, `/requests/${requestId}`);
     const statusName = reqDetail.request?.status?.name as string | undefined;
+
+    let newStatus = t.status;
+    let newLifecycle = t.lifecycle;
     let statusChanged = false;
     if (statusName) {
       const mapped = mapStatus(statusName);
-      if (mapped && mapped.status !== (ticket as any).status) {
-        await supabase.from('tickets').update({
-          status: mapped.status, lifecycle: mapped.lifecycle,
-          ...(mapped.status === 'resolved' ? { resolved_at: new Date().toISOString() } : {}),
-        }).eq('id', ticketId);
+      if (mapped && mapped.status !== t.status) {
+        newStatus = mapped.status;
+        newLifecycle = mapped.lifecycle;
         statusChanged = true;
+      }
+    }
+
+    // Match the Sampark technician (name, normalized) against a RITA technician
+    // profile, so self-assignment in Sampark reflects who owns the ticket here.
+    let assigneeChanged = false;
+    let newAssigneeId = t.assignee_id;
+    let assigneeName: string | null = null;
+    const techName = String(reqDetail.request?.technician?.name ?? '').trim();
+    if (techName) {
+      const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+      const { data: techs } = await supabase.from('profiles')
+        .select('id, display_name').eq('role', 'technician').eq('is_active', true);
+      const match = (techs as { id: string; display_name: string }[] | null)?.find(
+        (p) => norm(p.display_name) === norm(techName),
+      );
+      if (match && match.id !== t.assignee_id) {
+        newAssigneeId = match.id;
+        assigneeName = match.display_name;
+        assigneeChanged = true;
+        // A technician taking ownership in Sampark is work starting — reflect
+        // that in RITA even if Sampark's own status field hasn't moved yet.
+        if (newStatus === 'open') {
+          newStatus = 'in_progress';
+          newLifecycle = 'being_worked_on';
+          statusChanged = true;
+        }
+      }
+    }
+
+    if (statusChanged || assigneeChanged) {
+      await supabase.from('tickets').update({
+        ...(statusChanged ? { status: newStatus, lifecycle: newLifecycle } : {}),
+        ...(newStatus === 'resolved' && t.status !== 'resolved' ? { resolved_at: new Date().toISOString() } : {}),
+        ...(assigneeChanged ? { assignee_id: newAssigneeId } : {}),
+      }).eq('id', ticketId);
+
+      // Alert the requester in-app — the `notification_push` DB trigger fires an
+      // OS push automatically on this insert.
+      if (t.requester_id) {
+        const title = assigneeChanged ? 'Technician assigned' : (newStatus === 'resolved' ? 'Ticket resolved' : 'Ticket status updated');
+        const body = assigneeChanged
+          ? `${t.ticket_number}: picked up by ${assigneeName}`
+          : `${t.ticket_number}: moved to ${newStatus.replace(/_/g, ' ')}`;
+        await supabase.from('notifications').insert({
+          recipient_id: t.requester_id,
+          ticket_id: ticketId,
+          title,
+          body,
+          type: assigneeChanged ? 'ticket_assigned' : (newStatus === 'resolved' ? 'ticket_resolved' : 'ticket_updated'),
+        }).catch((e) => console.warn('[sampark-webhook] notification insert failed:', e));
       }
     }
 
@@ -122,7 +180,7 @@ Deno.serve(async (req) => {
       console.warn('[sampark-webhook] notes pull failed:', e);
     }
 
-    return new Response(JSON.stringify({ ok: true, ticketId, statusChanged, notesAdded }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ ok: true, ticketId, statusChanged, assigneeChanged, notesAdded }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
   } catch (err) {
     console.error('[sampark-webhook]', err);
     return new Response(JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });
