@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     borderRadius: 70, backgroundColor: theme.colors.accent + '1A',
   },
   logoImage: { width: 132, height: 132, marginBottom: theme.spacing.xs },
-  brand: { color: '#fff', fontSize: 26, fontWeight: '600', fontFamily: theme.fonts.serif, letterSpacing: 0.3 },
+  brand: { color: '#fff', fontSize: 26, fontWeight: '600', letterSpacing: 0.3 },
   brandEyebrow: { color: theme.colors.accentBright, fontSize: 9, fontWeight: '800', letterSpacing: 2.4, marginTop: 4 },
   subtitle: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginTop: theme.spacing.sm, fontWeight: '600', textAlign: 'center' },
   card: {

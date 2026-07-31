@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(200,150,62,0.10)', borderWidth: 1, borderColor: 'rgba(200,150,62,0.30)',
     alignItems: 'center', justifyContent: 'center',
   },
-  cardTitle: { color: '#fff', fontSize: 14, fontWeight: '600', fontFamily: theme.fonts.serif },
+  cardTitle: { color: '#fff', fontSize: 14, fontWeight: '600' },
   cardEyebrow: { color: 'rgba(255,255,255,0.32)', fontSize: 7.5, fontWeight: '700', letterSpacing: 1.4, marginTop: 2 },
   deltaPill: {
     paddingHorizontal: 8, paddingVertical: 2, borderRadius: theme.radius.full, borderWidth: 1,

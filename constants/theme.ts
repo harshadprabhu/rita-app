@@ -1,13 +1,5 @@
-import { Platform, TextStyle, ViewStyle } from 'react-native';
+import { TextStyle, ViewStyle } from 'react-native';
 import { TicketStatus, TicketLifecycle, TicketPriority } from '../types';
-
-// Cross-platform serif stack for the "luxury jewellery" display headings in the
-// Figma design (approximates Cormorant Garamond without bundling a font file).
-const serifFamily = Platform.select({
-  ios: 'Georgia',
-  android: 'serif',
-  default: 'Georgia, "Times New Roman", serif',
-}) as string;
 
 // Suppresses the browser's default focus ring on web (outlineWidth: 0 alone
 // isn't enough — Chromium's default outline-style: auto ignores an explicit
@@ -96,9 +88,6 @@ export const theme = {
     gold: ['#E0B55A', '#C8963E'] as const,
     // Gold-rate card body.
     goldCard: ['#1F3569', '#0F1B38'] as const,
-  },
-  fonts: {
-    serif: serifFamily,
   },
   statusColors: {
     open: { text: '#2563EB', bg: '#EFF6FF', accent: '#2563EB' },

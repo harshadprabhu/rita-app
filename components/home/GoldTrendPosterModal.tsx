@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   hairline: { height: 1, width: '100%' },
   header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingTop: 12 },
   logo: { width: 34, height: 34 },
-  brand: { color: '#fff', fontSize: 15, fontWeight: '600', fontFamily: theme.fonts.serif },
+  brand: { color: '#fff', fontSize: 15, fontWeight: '600' },
   eyebrow: { color: GOLD, fontSize: 7, fontWeight: '800', letterSpacing: 1.2, marginTop: 2 },
   headline: { alignItems: 'center', paddingTop: 12, paddingBottom: 8 },
   headlineLabel: { color: 'rgba(255,255,255,0.35)', fontSize: 7.5, fontWeight: '800', letterSpacing: 1.4 },

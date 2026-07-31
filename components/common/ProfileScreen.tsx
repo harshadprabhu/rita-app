@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontSize: 18, fontWeight: '800', color: theme.colors.textPrimary },
   heroText: { flex: 1 },
-  name: { fontSize: 19, fontWeight: '600', color: '#fff', fontFamily: theme.fonts.serif },
+  name: { fontSize: 19, fontWeight: '600', color: '#fff' },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm, marginTop: 4 },
   roleBadge: {
     paddingHorizontal: 8, paddingVertical: 2, borderRadius: theme.radius.full,

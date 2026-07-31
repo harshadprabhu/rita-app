@@ -44,7 +44,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 19,
     fontWeight: '600',
-    fontFamily: theme.fonts.serif,
     letterSpacing: 0.2,
   },
   subtitle: {
