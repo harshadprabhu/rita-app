@@ -1,21 +1,41 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Screen } from './Screen';
 import { AppHeader } from './AppHeader';
 import { SoftPress } from './SoftPress';
 import { StoreSearchPicker } from '../admin/StoreSearchPicker';
-import { getLatestPromotionRow, createPromotion, truncateUnicode, PROMOTION_MAX_LEN } from '../../lib/api/broadcasts';
+import {
+  getPromotions, createPromotion, deactivatePromotion, findOverlappingPromotions,
+  truncateUnicode, PROMOTION_MAX_LEN, Promotion,
+} from '../../lib/api/promotions';
 import { getStores } from '../../lib/api/stores';
 import { useAuthStore } from '../../stores/authStore';
 import { canPushPromotions } from '../../constants/roles';
+import { DbStore } from '../../types';
 import { webNoOutline, theme } from '../../constants/theme';
 
+const PROMOTIONS_KEY = ['promotions'];
+
+function targetLabel(p: Pick<Promotion, 'target_store_id' | 'target_store_ids'>, stores: DbStore[]): string {
+  const ids = p.target_store_ids?.length ? p.target_store_ids : (p.target_store_id ? [p.target_store_id] : []);
+  if (!ids.length) return 'All stores';
+  if (ids.length === 1) return stores.find((s) => s.id === ids[0])?.name ?? '1 store';
+  return `${ids.length} stores`;
+}
+
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 /**
- * Ops Manager promotions: one short line (scheme / offer) shown on the gold-rate
- * poster, e.g. "10% off on all making charges". Publishing replaces the current
- * one; clearing removes it. Ops Manager (and admin) only.
+ * Ops Manager promotions: any number of short lines (scheme / offer), each
+ * targeted at specific stores/regions or all of them, shown on the gold-rate
+ * poster. A store can only ever show one ACTIVE promotion at a time, so
+ * publishing warns (rather than silently double-booking) when the chosen
+ * stores already have an overlapping active promotion. Deactivating keeps the
+ * row in history — it never gets deleted.
  */
 export function PromotionsScreen() {
   const profile = useAuthStore((s) => s.profile);
@@ -25,30 +45,61 @@ export function PromotionsScreen() {
 
   const allowed = !!profile && canPushPromotions(profile.role);
 
-  const { data: current, isLoading } = useQuery({
-    queryKey: ['latestPromotionRow'],
-    queryFn: getLatestPromotionRow,
+  const { data: promotions, isLoading } = useQuery({
+    queryKey: PROMOTIONS_KEY,
+    queryFn: getPromotions,
     enabled: allowed,
   });
   const { data: stores } = useQuery({ queryKey: ['stores'], queryFn: getStores, enabled: allowed });
 
-  const currentTargetLabel = (() => {
-    if (!current) return null;
-    const ids = current.target_store_ids?.length ? current.target_store_ids : (current.target_store_id ? [current.target_store_id] : []);
-    if (!ids.length) return 'All stores';
-    if (ids.length === 1) return (stores ?? []).find((s) => s.id === ids[0])?.name ?? '1 store';
-    return `${ids.length} stores`;
-  })();
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: PROMOTIONS_KEY });
+    qc.invalidateQueries({ queryKey: ['activePromotion'] });
+  };
 
   const publish = useMutation({
     mutationFn: (body: string) => createPromotion(profile!.id, body, targetStoreIds),
     onSuccess: () => {
       setText('');
       setTargetStoreIds([]);
-      qc.invalidateQueries({ queryKey: ['latestPromotionRow'] });
-      qc.invalidateQueries({ queryKey: ['activePromotion'] });
+      invalidate();
     },
   });
+
+  const deactivate = useMutation({
+    mutationFn: (id: string) => deactivatePromotion(id),
+    onSuccess: invalidate,
+  });
+
+  const handlePublish = async () => {
+    const body = text.trim();
+    if (!body) return;
+    try {
+      const overlaps = await findOverlappingPromotions(targetStoreIds);
+      if (overlaps.length) {
+        const names = overlaps.map((o) => `#${o.seq} (${targetLabel(o, stores ?? [])}) — "${o.body}"`).join('\n');
+        Alert.alert(
+          'Overlapping promotion',
+          `${targetStoreIds.length ? 'These stores already have' : 'All stores already have'} an active promotion:\n\n${names}\n\nDeactivate ${overlaps.length > 1 ? 'them' : 'it'} and publish this one instead?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Deactivate & publish',
+              style: 'destructive',
+              onPress: async () => {
+                await Promise.all(overlaps.map((o) => deactivatePromotion(o.id)));
+                publish.mutate(body);
+              },
+            },
+          ],
+        );
+        return;
+      }
+      publish.mutate(body);
+    } catch (e) {
+      Alert.alert('Could not check for overlaps', String(e));
+    }
+  };
 
   if (!allowed) {
     return (
@@ -64,34 +115,16 @@ export function PromotionsScreen() {
 
   // Unicode-safe length: `.length` overcounts surrogate-pair characters
   // (emoji etc.), which would show a wrong remaining-count and let the input
-  // truncate mid-character (the source of the garbled-text bug).
+  // truncate mid-character.
   const remaining = PROMOTION_MAX_LEN - Array.from(text).length;
 
   return (
     <Screen edges={['top', 'left', 'right']}>
       <AppHeader title="Promotions" subtitle="SHOWN ON THE GOLD RATE POSTER" showBack />
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        {/* Currently live */}
-        <Text style={styles.label}>CURRENTLY ON THE POSTER</Text>
-        <View style={styles.currentCard}>
-          {isLoading ? (
-            <ActivityIndicator color={theme.colors.accent} />
-          ) : current ? (
-            <>
-              <Text style={styles.currentText}>{current.body}</Text>
-              <View style={styles.currentTargetRow}>
-                <Ionicons name="business-outline" size={11} color={theme.colors.textTertiary} />
-                <Text style={styles.currentTarget}>{currentTargetLabel}</Text>
-              </View>
-            </>
-          ) : (
-            <Text style={styles.currentEmpty}>No promotion — the poster space is blank.</Text>
-          )}
-        </View>
-
         {/* Compose */}
         <View style={styles.labelRow}>
-          <Text style={[styles.label, styles.spaced]}>NEW PROMOTION</Text>
+          <Text style={styles.label}>NEW PROMOTION</Text>
           <Text style={[styles.counter, remaining < 0 && { color: theme.colors.error }]}>{remaining}</Text>
         </View>
         <TextInput
@@ -102,7 +135,7 @@ export function PromotionsScreen() {
           placeholderTextColor={theme.colors.textTertiary}
           multiline
         />
-        <Text style={styles.hint}>Keep it short — it prints as one line on the poster (max {PROMOTION_MAX_LEN} characters).</Text>
+        <Text style={styles.hint}>Keep it short — it prints as one line or two on the poster (max {PROMOTION_MAX_LEN} characters).</Text>
 
         <Text style={[styles.label, styles.spaced]}>WHERE TO SHOW IT</Text>
         <StoreSearchPicker
@@ -114,7 +147,7 @@ export function PromotionsScreen() {
 
         <SoftPress
           style={[styles.publishBtn, (!text.trim() || publish.isPending) && styles.publishBtnDisabled]}
-          onPress={() => publish.mutate(text.trim())}
+          onPress={handlePublish}
           disabled={!text.trim() || publish.isPending}
         >
           {publish.isPending ? <ActivityIndicator color={theme.colors.textPrimary} /> : (
@@ -124,37 +157,66 @@ export function PromotionsScreen() {
             </>
           )}
         </SoftPress>
-
-        {current && (
-          <SoftPress
-            style={styles.clearBtn}
-            onPress={() => publish.mutate('')}
-            disabled={publish.isPending}
-          >
-            <Text style={styles.clearText}>Clear the current promotion</Text>
-          </SoftPress>
-        )}
         {publish.isError && <Text style={styles.error}>{String(publish.error)}</Text>}
+
+        {/* List — all promotions, active first, most recent first within each */}
+        <Text style={[styles.label, styles.spaced]}>ALL PROMOTIONS</Text>
+        {isLoading ? (
+          <ActivityIndicator color={theme.colors.accent} style={{ marginTop: theme.spacing.lg }} />
+        ) : !promotions?.length ? (
+          <Text style={styles.currentEmpty}>No promotions published yet.</Text>
+        ) : (
+          <View style={styles.list}>
+            {promotions.map((p) => (
+              <View key={p.id} style={[styles.promoCard, !p.is_active && styles.promoCardInactive]}>
+                <View style={styles.promoTop}>
+                  <Text style={styles.promoSeq}>#{p.seq}</Text>
+                  <View style={[styles.statusPill, p.is_active ? styles.statusActive : styles.statusInactive]}>
+                    <Text style={[styles.statusText, p.is_active ? styles.statusTextActive : styles.statusTextInactive]}>
+                      {p.is_active ? 'Active' : 'Inactive'}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.promoBody}>{p.body}</Text>
+                <View style={styles.promoMetaRow}>
+                  <Ionicons name="business-outline" size={11} color={theme.colors.textTertiary} />
+                  <Text style={styles.promoMeta}>{targetLabel(p, stores ?? [])}</Text>
+                </View>
+                <View style={styles.promoMetaRow}>
+                  <Ionicons name="calendar-outline" size={11} color={theme.colors.textTertiary} />
+                  <Text style={styles.promoMeta}>
+                    Activated {formatDate(p.activated_at)}
+                    {p.deactivated_at ? ` · Deactivated ${formatDate(p.deactivated_at)}` : ''}
+                  </Text>
+                </View>
+                {p.is_active && (
+                  <SoftPress
+                    style={styles.deactivateBtn}
+                    onPress={() => Alert.alert('Deactivate promotion', `Stop showing #${p.seq} on the poster?`, [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Deactivate', style: 'destructive', onPress: () => deactivate.mutate(p.id) },
+                    ])}
+                    disabled={deactivate.isPending}
+                  >
+                    <Text style={styles.deactivateText}>Deactivate</Text>
+                  </SoftPress>
+                )}
+              </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { padding: theme.spacing.lg },
+  body: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xxl },
   label: { fontSize: 10, fontWeight: '800', color: theme.colors.textTertiary, letterSpacing: 1 },
   labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   spaced: { marginTop: theme.spacing.xl },
-  counter: { fontSize: 11, fontWeight: '700', color: theme.colors.textTertiary, marginTop: theme.spacing.xl },
-  currentCard: {
-    marginTop: theme.spacing.sm, minHeight: 54, justifyContent: 'center',
-    backgroundColor: theme.colors.accentLight, borderWidth: 1, borderColor: theme.colors.accent + '55',
-    borderRadius: theme.radius.md, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.md,
-  },
-  currentText: { fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary },
-  currentTargetRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: theme.spacing.xs },
-  currentTarget: { fontSize: 11, color: theme.colors.textTertiary, fontWeight: '600' },
-  currentEmpty: { fontSize: 13, color: theme.colors.textTertiary, fontStyle: 'italic' },
+  counter: { fontSize: 11, fontWeight: '700', color: theme.colors.textTertiary },
+  currentEmpty: { fontSize: 13, color: theme.colors.textTertiary, fontStyle: 'italic', marginTop: theme.spacing.sm },
   input: {
     marginTop: theme.spacing.sm, backgroundColor: theme.colors.surface,
     borderWidth: 1.5, borderColor: theme.colors.border, borderRadius: theme.radius.md,
@@ -167,9 +229,27 @@ const styles = StyleSheet.create({
   },
   publishBtnDisabled: { opacity: 0.5 },
   publishText: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
-  clearBtn: { alignItems: 'center', paddingVertical: theme.spacing.md, marginTop: theme.spacing.sm },
-  clearText: { color: theme.colors.error, fontSize: 13, fontWeight: '700' },
   error: { color: theme.colors.error, fontSize: 13, marginTop: theme.spacing.md, textAlign: 'center' },
   denied: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm, padding: theme.spacing.xl },
   deniedText: { color: theme.colors.textSecondary, fontSize: 14, textAlign: 'center' },
+
+  list: { marginTop: theme.spacing.sm, gap: theme.spacing.sm },
+  promoCard: {
+    backgroundColor: theme.colors.accentLight, borderWidth: 1, borderColor: theme.colors.accent + '55',
+    borderRadius: theme.radius.md, padding: theme.spacing.md, gap: 4,
+  },
+  promoCardInactive: { backgroundColor: theme.colors.surface2, borderColor: theme.colors.border },
+  promoTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  promoSeq: { fontSize: 11, fontWeight: '800', color: theme.colors.textTertiary, letterSpacing: 0.5 },
+  statusPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: theme.radius.full },
+  statusActive: { backgroundColor: '#ECFDF5' },
+  statusInactive: { backgroundColor: theme.colors.surface },
+  statusText: { fontSize: 10, fontWeight: '800' },
+  statusTextActive: { color: '#059669' },
+  statusTextInactive: { color: theme.colors.textTertiary },
+  promoBody: { fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary, marginTop: 2 },
+  promoMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  promoMeta: { fontSize: 11, color: theme.colors.textTertiary, fontWeight: '600' },
+  deactivateBtn: { alignSelf: 'flex-start', marginTop: 4, paddingVertical: 4 },
+  deactivateText: { color: theme.colors.error, fontSize: 12, fontWeight: '700' },
 });

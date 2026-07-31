@@ -30,8 +30,10 @@ const RATES: { key: keyof PosterRates; top: number }[] = [
   { key: '22k_916', top: 940 / 1492 },
   { key: '18k_750', top: 1086 / 1492 },
 ];
-// Special-offer banner as fractions of the template.
-const OFFER = { left: 150 / 1054, top: 1196 / 1492, width: 700 / 1054, height: 96 / 1492 };
+// Special-offer banner as fractions of the template — sized to comfortably
+// hold up to 100 characters wrapped over 2 lines (matches goldPoster.ts's web
+// canvas geometry).
+const OFFER = { left: 130 / 1054, top: 1180 / 1492, width: 794 / 1054, height: 148 / 1492 };
 
 function ordinal(d: number): string {
   if (d > 3 && d < 21) return 'th';
@@ -106,7 +108,9 @@ export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: Go
               left: OFFER.left * W, top: OFFER.top * H, width: OFFER.width * W, height: OFFER.height * H,
             }]}>
               <Text style={[styles.offerKicker, { fontSize: Math.round(W * 0.021) }]}>S P E C I A L   O F F E R</Text>
-              <Text numberOfLines={1} style={[styles.offerText, { fontSize: Math.round(W * 0.05) }]}>{promo.trim()}</Text>
+              <View style={styles.offerTextWrap}>
+                <Text numberOfLines={2} style={[styles.offerText, { fontSize: Math.round(W * 0.044) }]}>{promo.trim()}</Text>
+              </View>
             </View>
           ) : null}
         </ViewShot>
@@ -134,10 +138,13 @@ const styles = StyleSheet.create({
   anchor: { position: 'absolute', alignItems: 'center' },
   offer: {
     position: 'absolute', borderRadius: 14, backgroundColor: '#E0B55A',
-    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10,
+    alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10,
   },
   offerKicker: { color: '#5A3D12', fontWeight: '800', letterSpacing: 0.5 },
-  offerText: { color: '#1A1614', fontWeight: '800', marginTop: 2 },
+  // Kicker sits at the top of the box (justifyContent: space-between above);
+  // this wrap pins the offer text to the bottom, centered horizontally.
+  offerTextWrap: { width: '100%', alignItems: 'center', justifyContent: 'flex-end' },
+  offerText: { color: '#1A1614', fontWeight: '800', textAlign: 'center' },
   actions: { flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.xl, alignItems: 'center' },
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm, paddingVertical: theme.spacing.md, paddingHorizontal: theme.spacing.xl, borderRadius: theme.radius.full },
   shareBtn: { backgroundColor: theme.colors.accent },

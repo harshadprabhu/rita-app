@@ -156,9 +156,41 @@ export function isPosterSupported(): boolean {
   return typeof document !== 'undefined' && typeof document.createElement === 'function' && !!getTemplateUri();
 }
 
-// Special-offer banner geometry (template pixel space), sits over the bottom
-// tagline band, clear of the corner jewellery. Only drawn when a promo exists.
-const OFFER = { x: 150, y: 1196, w: 700, h: 96, r: 16 };
+// Special-offer banner geometry (template pixel space) — sized to comfortably
+// hold up to PROMOTION_MAX_LEN (100) characters wrapped over 2 lines, sits
+// over the bottom tagline band, clear of the corner jewellery. Only drawn
+// when a promo exists.
+const OFFER = { x: 130, y: 1180, w: 794, h: 148, r: 18 };
+
+/** Word-wrap `text` to fit `maxWidth` at the current ctx font, capped at
+ *  `maxLines` (excess is ellipsised onto the last line). */
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, maxLines: number): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let line = '';
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word;
+    if (ctx.measureText(candidate).width <= maxWidth || !line) {
+      line = candidate;
+    } else {
+      lines.push(line);
+      line = word;
+      if (lines.length === maxLines - 1) break;
+    }
+  }
+  if (line) lines.push(line);
+  // Anything left over after the line cap: append with an ellipsis, trimming
+  // characters until it fits.
+  const consumed = lines.join(' ').length;
+  if (consumed < text.length && lines.length >= maxLines) {
+    let last = lines[maxLines - 1];
+    while (ctx.measureText(`${last}…`).width > maxWidth && last.length > 1) {
+      last = last.slice(0, -1).trimEnd();
+    }
+    lines[maxLines - 1] = `${last}…`;
+  }
+  return lines.slice(0, maxLines);
+}
 
 /** Draw the poster (template + overlaid date & rates) onto a fresh canvas. */
 function renderPosterCanvas(img: HTMLImageElement, rates: PosterRates, date: Date, scale: number, promo?: string | null): HTMLCanvasElement | null {
@@ -209,15 +241,26 @@ function renderPosterCanvas(img: HTMLImageElement, rates: PosterRates, date: Dat
     ctx.closePath();
     ctx.fillStyle = grad;
     ctx.fill();
-    // "SPECIAL OFFER" kicker + the offer text.
+    const centerX = x + w / 2;
+    const innerPad = 36 * scale;
+
+    // "SPECIAL OFFER" kicker — anchored to the top of the box.
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#5A3D12';
     ctx.font = `700 ${Math.round(16 * scale)}px Arial, sans-serif`;
-    ctx.fillText('S P E C I A L   O F F E R', (x + w / 2), y + 26 * scale);
+    ctx.fillText('S P E C I A L   O F F E R', centerX, y + 24 * scale);
+
+    // Offer text — centered horizontally, wrapped to up to 2 lines, and the
+    // whole text block bottom-aligned within the box (grows upward from the
+    // bottom edge rather than overflowing it).
     ctx.fillStyle = '#1A1614';
-    ctx.font = `700 ${Math.round(34 * scale)}px Georgia, "Playfair Display", serif`;
-    ctx.fillText(offer, (x + w / 2), y + 60 * scale, w - 40 * scale);
+    ctx.font = `700 ${Math.round(30 * scale)}px Georgia, "Playfair Display", serif`;
+    const lines = wrapText(ctx, offer, w - innerPad * 2, 2);
+    const lineHeight = 36 * scale;
+    const blockBottom = y + h - 20 * scale;
+    const firstLineY = blockBottom - lineHeight * (lines.length - 1);
+    lines.forEach((ln, i) => ctx.fillText(ln, centerX, firstLineY + i * lineHeight));
     ctx.restore();
   }
   return canvas;

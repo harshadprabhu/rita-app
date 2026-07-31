@@ -54,73 +54,9 @@ export interface CreateBroadcastPayload {
   target_store_ids?: string[];
 }
 
-/** Max length of a promotion line shown on the gold-rate poster. */
-export const PROMOTION_MAX_LEN = 100;
-
-/**
- * Truncate by Unicode code point, not UTF-16 code unit. Plain `.slice(0, n)`
- * can bisect a surrogate pair (emoji, some symbols outside the BMP), leaving
- * a dangling half-character that renders as a replacement glyph/mojibake —
- * this was why promotion text sometimes showed garbled characters.
- */
-export function truncateUnicode(text: string, maxLen: number): string {
-  return Array.from(text).slice(0, maxLen).join('');
-}
-
-/**
- * The current promotion (Ops Manager scheme/offer) visible to a store, or
- * null. `storeId` scopes it the same way broadcasts are scoped — a promotion
- * with no target stores is visible everywhere; one targeted at specific
- * stores only shows there. The latest matching kind='promotion' row wins; an
- * empty body clears it.
- */
-export async function getActivePromotion(storeId?: string | null): Promise<string | null> {
-  const { data } = await supabase
-    .from('broadcasts')
-    .select('body, target_store_id, target_store_ids')
-    .eq('kind', 'promotion')
-    .order('created_at', { ascending: false })
-    .limit(20);
-  const rows = (data ?? []) as { body: string; target_store_id: string | null; target_store_ids: string[] | null }[];
-  const visible = rows.find((b) => {
-    if (!b.target_store_id && (!b.target_store_ids || b.target_store_ids.length === 0)) return true;
-    if (!storeId) return false; // a store-scoped promo doesn't apply to a store-less viewer
-    if (b.target_store_id === storeId) return true;
-    return !!b.target_store_ids?.includes(storeId);
-  });
-  const body = visible?.body?.trim();
-  return body ? body : null;
-}
-
-/** The most recently published promotion row, unscoped by viewer store — used
- *  by the composer screen to preview what's currently live and who it targets
- *  (as opposed to getActivePromotion, which is audience-scoped for display). */
-export async function getLatestPromotionRow(): Promise<{ body: string; target_store_id: string | null; target_store_ids: string[] | null } | null> {
-  const { data } = await supabase
-    .from('broadcasts')
-    .select('body, target_store_id, target_store_ids')
-    .eq('kind', 'promotion')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  const row = data as { body: string; target_store_id: string | null; target_store_ids: string[] | null } | null;
-  return row?.body?.trim() ? row : null;
-}
-
-/** Publish a promotion (Ops Manager only, enforced by RLS + role gating). */
-export async function createPromotion(
-  senderId: string,
-  text: string,
-  targetStoreIds?: string[],
-): Promise<void> {
-  const body = truncateUnicode(text.trim(), PROMOTION_MAX_LEN);
-  const insert: Record<string, unknown> = { sender_id: senderId, kind: 'promotion', title: 'Promotion', body };
-  if (targetStoreIds && targetStoreIds.length === 1) insert.target_store_id = targetStoreIds[0];
-  else if (targetStoreIds && targetStoreIds.length > 1) insert.target_store_ids = targetStoreIds;
-  // else: no target => visible everywhere (target_store_id/ids left null)
-  const { error } = await supabase.from('broadcasts').insert(insert);
-  if (error) throw error;
-}
+// Promotions moved to their own table/module (lib/api/promotions.ts) — they
+// needed multiple concurrent active rows, numbering, and an active/inactive
+// lifecycle that "latest kind='promotion' broadcast wins" couldn't support.
 
 /** Fetch the set of broadcast IDs this user has already read. */
 export async function getBroadcastReadIds(userId: string): Promise<Set<string>> {

@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useGoldRate, useGoldRateTrend } from '../../hooks/useGoldRate';
-import { getActivePromotion } from '../../lib/api/broadcasts';
+import { getActivePromotionForStore } from '../../lib/api/promotions';
 import { useAuthStore } from '../../stores/authStore';
 import { timeAgo } from '../../lib/utils/date';
 import { ratesFromGold, isPosterSupported, PosterRates } from '../../lib/utils/goldPoster';
@@ -58,7 +58,7 @@ export function GoldRateCard() {
   const storeId = useAuthStore((s) => s.profile?.store_id) ?? null;
   const { data: promo } = useQuery({
     queryKey: ['activePromotion', storeId],
-    queryFn: () => getActivePromotion(storeId),
+    queryFn: () => getActivePromotionForStore(storeId),
     staleTime: 5 * 60 * 1000,
   });
   const RANGES: { days: 7 | 30 | 90; label: string }[] = [
