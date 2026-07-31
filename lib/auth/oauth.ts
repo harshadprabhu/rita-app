@@ -73,11 +73,19 @@ function extractCode(url: string): string {
 export async function signInWithMicrosoft(): Promise<void> {
   const redirectTo = getRedirectTo();
 
+  // Without this, Microsoft's own SSO cookie in the browser/webview silently
+  // re-authenticates whoever last signed in — signing out of RITA only clears
+  // Supabase's session, not Microsoft's, so a second person tapping "Sign in
+  // with Microsoft" on the same device got logged straight back in as the
+  // first person with no account picker (the reported "deadlock"). Azure AD's
+  // OIDC `prompt=select_account` forces the chooser every time instead.
+  const queryParams = { prompt: 'select_account' };
+
   if (Platform.OS === 'web') {
     // No skipBrowserRedirect: supabase-js navigates this tab to Microsoft.
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'azure',
-      options: { redirectTo, scopes: 'openid profile email' },
+      options: { redirectTo, scopes: 'openid profile email', queryParams },
     });
     if (error) throw error;
     return; // the browser is navigating away
@@ -85,7 +93,7 @@ export async function signInWithMicrosoft(): Promise<void> {
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'azure',
-    options: { redirectTo, skipBrowserRedirect: true, scopes: 'openid profile email' },
+    options: { redirectTo, skipBrowserRedirect: true, scopes: 'openid profile email', queryParams },
   });
   if (error) throw error;
   if (!data?.url) throw new Error('Could not start Microsoft sign-in');

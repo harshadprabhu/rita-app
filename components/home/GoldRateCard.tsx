@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useGoldRate, useGoldRateTrend } from '../../hooks/useGoldRate';
 import { getActivePromotion } from '../../lib/api/broadcasts';
+import { useAuthStore } from '../../stores/authStore';
 import { timeAgo } from '../../lib/utils/date';
 import { ratesFromGold, isPosterSupported, PosterRates } from '../../lib/utils/goldPoster';
 import { theme } from '../../constants/theme';
@@ -43,12 +44,23 @@ export function GoldRateCard() {
   const [rangeDays, setRangeDays] = useState<7 | 30 | 90>(7);
   const { data, isLoading, refetch, isRefetching } = useGoldRate();
   const { data: trend } = useGoldRateTrend(true, rangeDays);
+  // Dedicated day-over-day fetch for the header badge — independent of
+  // `rangeDays` (the 1W/1M/3M picker below), which the header must not follow
+  // since "vs yesterday" needs to stay vs yesterday no matter what range the
+  // trend chart is currently showing.
+  const { data: dayTrend } = useGoldRateTrend(true, 2);
   // Poster series — only fetched once the trend poster is opened.
   const { data: t1w } = useGoldRateTrend(trendPoster, 7);
   const { data: t3m } = useGoldRateTrend(trendPoster, 90);
   const { data: t1y } = useGoldRateTrend(trendPoster, 365);
-  // Ops Manager promotion band, if any.
-  const { data: promo } = useQuery({ queryKey: ['activePromotion'], queryFn: getActivePromotion, staleTime: 5 * 60 * 1000 });
+  // Ops Manager promotion band, if any — scoped to the viewer's store so a
+  // promotion targeted at specific stores only shows there.
+  const storeId = useAuthStore((s) => s.profile?.store_id) ?? null;
+  const { data: promo } = useQuery({
+    queryKey: ['activePromotion', storeId],
+    queryFn: () => getActivePromotion(storeId),
+    staleTime: 5 * 60 * 1000,
+  });
   const RANGES: { days: 7 | 30 | 90; label: string }[] = [
     { days: 7, label: '1W' }, { days: 30, label: '1M' }, { days: 90, label: '3M' },
   ];
@@ -68,10 +80,11 @@ export function GoldRateCard() {
       })
     : [];
 
-  // Delta % over the collected trend window (first → last), if we have enough points.
+  // Header badge: strictly yesterday vs today (the two most recent daily
+  // entries), regardless of what range the trend chart below is set to.
   const delta =
-    trend && trend.length >= 2 && trend[0].rate > 0
-      ? (((trend[trend.length - 1].rate - trend[0].rate) / trend[0].rate) * 100)
+    dayTrend && dayTrend.length >= 2 && dayTrend[dayTrend.length - 2].rate > 0
+      ? (((dayTrend[dayTrend.length - 1].rate - dayTrend[dayTrend.length - 2].rate) / dayTrend[dayTrend.length - 2].rate) * 100)
       : null;
 
   const toggle = () => {

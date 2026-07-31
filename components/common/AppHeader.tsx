@@ -11,9 +11,12 @@ interface Props {
   subtitle?: string;
   showBack?: boolean;
   right?: React.ReactNode;
+  /** Replaces the text title with custom content (e.g. the Indriya wordmark
+   *  mark) while `title` still supplies the accessible/back-button label. */
+  titleNode?: React.ReactNode;
 }
 
-export function AppHeader({ title, subtitle, showBack = false, right }: Props) {
+export function AppHeader({ title, subtitle, showBack = false, right, titleNode }: Props) {
   return (
     <MetalNavy edge="bottom" style={[styles.header, theme.shadows.sm]}>
       {showBack && (
@@ -22,7 +25,7 @@ export function AppHeader({ title, subtitle, showBack = false, right }: Props) {
         </TouchableOpacity>
       )}
       <View style={styles.titleWrap}>
-        <Text style={styles.title} numberOfLines={1}>{title}</Text>
+        {titleNode ?? <Text style={styles.title} numberOfLines={1}>{title}</Text>}
         {subtitle ? <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text> : null}
       </View>
       {right}

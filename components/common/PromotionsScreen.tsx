@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
-import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Screen } from './Screen';
 import { AppHeader } from './AppHeader';
 import { SoftPress } from './SoftPress';
-import { getActivePromotion, createPromotion, PROMOTION_MAX_LEN } from '../../lib/api/broadcasts';
+import { StoreSearchPicker } from '../admin/StoreSearchPicker';
+import { getLatestPromotionRow, createPromotion, truncateUnicode, PROMOTION_MAX_LEN } from '../../lib/api/broadcasts';
+import { getStores } from '../../lib/api/stores';
 import { useAuthStore } from '../../stores/authStore';
 import { canPushPromotions } from '../../constants/roles';
 import { webNoOutline, theme } from '../../constants/theme';
@@ -20,19 +21,31 @@ export function PromotionsScreen() {
   const profile = useAuthStore((s) => s.profile);
   const qc = useQueryClient();
   const [text, setText] = useState('');
+  const [targetStoreIds, setTargetStoreIds] = useState<string[]>([]); // [] = all stores
 
   const allowed = !!profile && canPushPromotions(profile.role);
 
   const { data: current, isLoading } = useQuery({
-    queryKey: ['activePromotion'],
-    queryFn: getActivePromotion,
+    queryKey: ['latestPromotionRow'],
+    queryFn: getLatestPromotionRow,
     enabled: allowed,
   });
+  const { data: stores } = useQuery({ queryKey: ['stores'], queryFn: getStores, enabled: allowed });
+
+  const currentTargetLabel = (() => {
+    if (!current) return null;
+    const ids = current.target_store_ids?.length ? current.target_store_ids : (current.target_store_id ? [current.target_store_id] : []);
+    if (!ids.length) return 'All stores';
+    if (ids.length === 1) return (stores ?? []).find((s) => s.id === ids[0])?.name ?? '1 store';
+    return `${ids.length} stores`;
+  })();
 
   const publish = useMutation({
-    mutationFn: (body: string) => createPromotion(profile!.id, body),
+    mutationFn: (body: string) => createPromotion(profile!.id, body, targetStoreIds),
     onSuccess: () => {
       setText('');
+      setTargetStoreIds([]);
+      qc.invalidateQueries({ queryKey: ['latestPromotionRow'] });
       qc.invalidateQueries({ queryKey: ['activePromotion'] });
     },
   });
@@ -49,7 +62,10 @@ export function PromotionsScreen() {
     );
   }
 
-  const remaining = PROMOTION_MAX_LEN - text.length;
+  // Unicode-safe length: `.length` overcounts surrogate-pair characters
+  // (emoji etc.), which would show a wrong remaining-count and let the input
+  // truncate mid-character (the source of the garbled-text bug).
+  const remaining = PROMOTION_MAX_LEN - Array.from(text).length;
 
   return (
     <Screen edges={['top', 'left', 'right']}>
@@ -61,7 +77,13 @@ export function PromotionsScreen() {
           {isLoading ? (
             <ActivityIndicator color={theme.colors.accent} />
           ) : current ? (
-            <Text style={styles.currentText}>{current}</Text>
+            <>
+              <Text style={styles.currentText}>{current.body}</Text>
+              <View style={styles.currentTargetRow}>
+                <Ionicons name="business-outline" size={11} color={theme.colors.textTertiary} />
+                <Text style={styles.currentTarget}>{currentTargetLabel}</Text>
+              </View>
+            </>
           ) : (
             <Text style={styles.currentEmpty}>No promotion — the poster space is blank.</Text>
           )}
@@ -75,13 +97,20 @@ export function PromotionsScreen() {
         <TextInput
           style={[styles.input, webNoOutline]}
           value={text}
-          onChangeText={(t) => setText(t.slice(0, PROMOTION_MAX_LEN))}
+          onChangeText={(t) => setText(truncateUnicode(t, PROMOTION_MAX_LEN))}
           placeholder="e.g. 10% off on all making charges this festive season"
           placeholderTextColor={theme.colors.textTertiary}
-          maxLength={PROMOTION_MAX_LEN}
           multiline
         />
         <Text style={styles.hint}>Keep it short — it prints as one line on the poster (max {PROMOTION_MAX_LEN} characters).</Text>
+
+        <Text style={[styles.label, styles.spaced]}>WHERE TO SHOW IT</Text>
+        <StoreSearchPicker
+          stores={stores ?? []}
+          multiple
+          selectedIds={targetStoreIds}
+          onMultiSelect={setTargetStoreIds}
+        />
 
         <SoftPress
           style={[styles.publishBtn, (!text.trim() || publish.isPending) && styles.publishBtnDisabled]}
@@ -123,6 +152,8 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md, paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.md,
   },
   currentText: { fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary },
+  currentTargetRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: theme.spacing.xs },
+  currentTarget: { fontSize: 11, color: theme.colors.textTertiary, fontWeight: '600' },
   currentEmpty: { fontSize: 13, color: theme.colors.textTertiary, fontStyle: 'italic' },
   input: {
     marginTop: theme.spacing.sm, backgroundColor: theme.colors.surface,

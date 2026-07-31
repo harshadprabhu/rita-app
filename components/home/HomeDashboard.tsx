@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../common/Screen';
 import { AppHeader } from '../common/AppHeader';
+import { IndriyaWordmark } from '../common/IndriyaWordmark';
 import { ProfileIconButton } from '../common/ProfileIconButton';
 import { GoldRateCard } from './GoldRateCard';
 import { getTickets } from '../../lib/api/tickets';
@@ -37,7 +38,8 @@ export function HomeDashboard({ stats, showGoldRate }: Props) {
   return (
     <Screen edges={['top', 'left', 'right']}>
       <AppHeader
-        title="Indriya Jewellery"
+        title="Indriya"
+        titleNode={<IndriyaWordmark color="#fff" width={104} />}
         subtitle="RITA · POS Triage"
         right={profile ? <ProfileIconButton profile={profile} /> : null}
       />
