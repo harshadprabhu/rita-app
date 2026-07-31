@@ -68,6 +68,7 @@ export async function createTicket(payload: {
   priority: TicketPriority;
   category?: string | null;
   subcategory?: string | null;
+  item?: string | null;
   source?: DbTicket['source'];
 }): Promise<DbTicket> {
   const sla_due_at = computeSlaDueAt(payload.priority).toISOString();
@@ -97,7 +98,7 @@ export async function pushTicketToSampark(ticketId: string): Promise<void> {
 
 export async function updateTicket(
   id: string,
-  updates: Partial<Pick<DbTicket, 'status' | 'lifecycle' | 'priority' | 'assignee_id' | 'resolution' | 'resolved_at' | 'category' | 'subcategory' | 'description' | 'long_description' | 'department_id'>>,
+  updates: Partial<Pick<DbTicket, 'status' | 'lifecycle' | 'priority' | 'assignee_id' | 'resolution' | 'resolved_at' | 'category' | 'subcategory' | 'item' | 'description' | 'long_description' | 'department_id'>>,
   actorId?: string,
 ): Promise<DbTicket> {
   const before = actorId ? await getTicketById(id).catch(() => null) : null;

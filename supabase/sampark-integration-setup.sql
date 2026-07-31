@@ -29,15 +29,20 @@ alter table integration_settings
 alter table tickets
   add column if not exists sampark_request_id text,  -- Sampark internal id (for API calls)
   add column if not exists sampark_display_id text,  -- Sampark human ticket no. (mirrors ticket_number)
-  add column if not exists sampark_synced_at  timestamptz;
+  add column if not exists sampark_synced_at  timestamptz,
+  add column if not exists item               text;  -- Sampark's finest classification level (below subcategory)
 
--- Category/subcategory taxonomy synced from Sampark; the RITA parser and the
--- create-ticket picker use only these values.
+-- Category/subcategory/item taxonomy synced from Sampark; the RITA parser and
+-- the create-ticket picker use only these values. `item` is Sampark's finest
+-- classification level (parent_id points at a subcategory, or a category if
+-- that category has no subcategories).
 create table if not exists ticket_categories (
-  id             text primary key,   -- Sampark category/subcategory id
+  id             text primary key,   -- Sampark category/subcategory/item id
   name           text not null,
-  parent_id      text,               -- parent category id for subcategories
-  is_subcategory boolean not null default false,
+  parent_id      text,               -- parent node id (subcategory → category, item → subcategory)
+  is_subcategory boolean not null default false, -- true for both subcategory and item nodes
+  is_item        boolean not null default false, -- true only for item nodes
+  keywords       text[],             -- top TF-IDF keywords learned from real ticket history
   is_active      boolean not null default true,
   updated_at     timestamptz not null default now()
 );

@@ -11,7 +11,8 @@ import { AppHeader } from '../components/common/AppHeader';
 import { SoftPress } from '../components/common/SoftPress';
 import { createTicket, uploadAttachment, pushTicketToSampark } from '../lib/api/tickets';
 import { getTicketCategories } from '../lib/api/categories';
-import { parseCategory, parsePriority } from '../lib/utils/chatTicketParser';
+import { parsePriority } from '../lib/utils/chatTicketParser';
+import { classifySamparkTicket } from '../lib/utils/samparkClassifier';
 import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useAuthStore } from '../stores/authStore';
 import { QUERY_KEYS } from '../constants/queryKeys';
@@ -34,11 +35,13 @@ export default function CreateTicket() {
   // Validation warnings only appear once the user has tried to submit.
   const [submitAttempted, setSubmitAttempted] = useState(false);
 
-  // Category is auto-detected but fully overridable; subcategory is chosen from
-  // the picker. Both are Sampark taxonomy values (from ticket_categories).
+  // Category / subcategory / item are auto-detected but fully overridable —
+  // all three are Sampark taxonomy values (from ticket_categories), matched by
+  // the samparkClassifier engine below.
   const [categoryOverride, setCategoryOverride] = useState<string | null>(null);
   const [subcategoryOverride, setSubcategoryOverride] = useState<string | null>(null);
-  const [picker, setPicker] = useState<null | 'category' | 'subcategory'>(null);
+  const [itemOverride, setItemOverride] = useState<string | null>(null);
+  const [picker, setPicker] = useState<null | 'category' | 'subcategory' | 'item'>(null);
   const [pickerSearch, setPickerSearch] = useState('');
 
   const { data: allCategories } = useQuery({ queryKey: ['ticketCategories'], queryFn: getTicketCategories });
@@ -49,51 +52,57 @@ export default function CreateTicket() {
     setDescription((prev) => (prev ? `${prev.trim()} ${text}` : text));
   });
 
-  const autoCategory = useMemo(() => parseCategory(description), [description]);
+  // A single classifier pass over the live Sampark taxonomy drives all three
+  // auto-detected fields — it's data-driven (learned from real historical
+  // tickets), so it re-scores category, subcategory, and item together rather
+  // than three independent heuristics that could disagree with each other.
+  const classified = useMemo(() => classifySamparkTicket(description, allCategories ?? []), [description, allCategories]);
   const autoPriority = useMemo(() => parsePriority(description), [description]);
   const priority = priorityOverride ?? autoPriority;
-  const category = categoryOverride ?? autoCategory;
+  const category = categoryOverride ?? classified.category ?? categories[0]?.name ?? 'Other Issue';
 
   // Subcategories belonging to the currently-selected category.
   const subcategories = useMemo(() => {
     const parent = categories.find((c) => c.name === category);
     if (!parent) return [];
-    return (allCategories ?? []).filter((c) => c.is_subcategory && c.parent_id === parent.id);
+    return (allCategories ?? []).filter((c) => c.is_subcategory && !c.is_item && c.parent_id === parent.id);
   }, [allCategories, categories, category]);
 
-  // Auto-parse the subcategory: pick the one whose name words best match the
-  // description (e.g. "coupon not showing" → "Coupon Creation"). Overridable.
-  const autoSubcategory = useMemo(() => {
-    const text = description.toLowerCase();
-    if (!text.trim() || !subcategories.length) return null;
-    let best: { name: string; hits: number } | null = null;
-    for (const sub of subcategories) {
-      const words = sub.name.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
-      const hits = words.filter((w) => text.includes(w)).length;
-      if (hits > 0 && (!best || hits > best.hits)) best = { name: sub.name, hits };
-    }
-    return best?.name ?? null;
-  }, [description, subcategories]);
-
+  // Only trust the classifier's auto-subcategory when it's for the same
+  // category currently in effect (it may differ once the user overrides
+  // category manually, at which point the picker takes over).
+  const autoSubcategory = !categoryOverride || classified.category === categoryOverride ? classified.subcategory : null;
   const subcategory = subcategoryOverride ?? autoSubcategory;
 
+  // Items belonging to the currently-selected subcategory (Sampark's finest
+  // classification level — e.g. Subcategory "POS" → Item "MPOS").
+  const items = useMemo(() => {
+    const parent = subcategories.find((c) => c.name === subcategory);
+    if (!parent) return [];
+    return (allCategories ?? []).filter((c) => c.is_item && c.parent_id === parent.id);
+  }, [allCategories, subcategories, subcategory]);
+  const autoItem = !subcategoryOverride && (!categoryOverride || classified.category === categoryOverride) ? classified.item : null;
+  const item = itemOverride ?? autoItem;
+
   // Can submit once there's a description and — when the category has
-  // subcategories — a subcategory is chosen (auto-parsed or picked).
+  // subcategories — a subcategory is chosen (auto-parsed or picked). Item is
+  // the finest level and not every subcategory has one, so it's optional.
   const canSubmit = !!description.trim() && (subcategories.length === 0 || !!subcategory);
   const subcategoryMissing = subcategories.length > 0 && !subcategory;
 
   // The list shown in the picker modal, filtered by the search box.
   const pickerItems = useMemo(() => {
-    const source = picker === 'category' ? categories : subcategories;
+    const source = picker === 'category' ? categories : picker === 'subcategory' ? subcategories : items;
     const q = pickerSearch.trim().toLowerCase();
     const names = source.map((c) => c.name);
     return q ? names.filter((n) => n.toLowerCase().includes(q)) : names;
-  }, [picker, categories, subcategories, pickerSearch]);
+  }, [picker, categories, subcategories, items, pickerSearch]);
 
-  const openPicker = (mode: 'category' | 'subcategory') => { setPickerSearch(''); setPicker(mode); };
+  const openPicker = (mode: 'category' | 'subcategory' | 'item') => { setPickerSearch(''); setPicker(mode); };
   const selectPicked = (name: string) => {
-    if (picker === 'category') { setCategoryOverride(name); setSubcategoryOverride(null); }
-    else setSubcategoryOverride(name);
+    if (picker === 'category') { setCategoryOverride(name); setSubcategoryOverride(null); setItemOverride(null); }
+    else if (picker === 'subcategory') { setSubcategoryOverride(name); setItemOverride(null); }
+    else setItemOverride(name);
     setPicker(null);
   };
 
@@ -107,6 +116,7 @@ export default function CreateTicket() {
         priority,
         category,
         subcategory,
+        item,
         source: 'form',
       });
       for (const img of images) {
@@ -212,6 +222,19 @@ export default function CreateTicket() {
         </TouchableOpacity>
         {submitAttempted && subcategoryMissing && <Text style={styles.micError}>Please choose a subcategory.</Text>}
 
+        {items.length > 0 && (
+          <>
+            <Text style={[styles.label, styles.spaced]}>Item (optional)</Text>
+            <TouchableOpacity style={styles.selectRow} onPress={() => openPicker('item')} activeOpacity={0.7}>
+              <Ionicons name="pricetags-outline" size={16} color={theme.colors.brand} />
+              <Text style={[styles.selectValue, !item && styles.selectPlaceholder]}>
+                {item ?? 'Select an item'}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
+            </TouchableOpacity>
+          </>
+        )}
+
         <Text style={[styles.label, styles.spaced]}>Priority</Text>
         <View style={styles.pillRow}>
           {ALL_PRIORITIES.map((p) => (
@@ -263,7 +286,7 @@ export default function CreateTicket() {
           <Pressable style={styles.pickerSheet} onPress={(e) => e.stopPropagation()}>
             <View style={styles.pickerHeader}>
               <Text style={styles.pickerTitle}>
-                {picker === 'category' ? 'Select category' : 'Select subcategory'}
+                {picker === 'category' ? 'Select category' : picker === 'subcategory' ? 'Select subcategory' : 'Select item'}
               </Text>
               <TouchableOpacity onPress={() => setPicker(null)} hitSlop={8}>
                 <Ionicons name="close" size={22} color={theme.colors.textSecondary} />
@@ -286,11 +309,12 @@ export default function CreateTicket() {
               keyExtractor={(name) => name}
               keyboardShouldPersistTaps="handled"
               style={{ maxHeight: 360 }}
-              renderItem={({ item }) => {
-                const selected = (picker === 'category' ? category : subcategory) === item;
+              renderItem={({ item: rowName }) => {
+                const selectedValue = picker === 'category' ? category : picker === 'subcategory' ? subcategory : item;
+                const selected = selectedValue === rowName;
                 return (
-                  <TouchableOpacity style={styles.pickerRow} onPress={() => selectPicked(item)} activeOpacity={0.7}>
-                    <Text style={[styles.pickerRowText, selected && styles.pickerRowTextSel]}>{item}</Text>
+                  <TouchableOpacity style={styles.pickerRow} onPress={() => selectPicked(rowName)} activeOpacity={0.7}>
+                    <Text style={[styles.pickerRowText, selected && styles.pickerRowTextSel]}>{rowName}</Text>
                     {selected && <Ionicons name="checkmark" size={18} color={theme.colors.brand} />}
                   </TouchableOpacity>
                 );

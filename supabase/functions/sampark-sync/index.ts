@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
           row_count: 3,
           sort_field: 'created_time',
           sort_order: 'desc',
-          fields_required: ['subject', 'category', 'subcategory', 'status', 'created_time'],
+          fields_required: ['subject', 'category', 'subcategory', 'item', 'status', 'created_time'],
         });
         const list = (reqs.requests ?? []) as Record<string, unknown>[];
         report.requestSample = list.map((r) => ({
@@ -122,6 +122,7 @@ Deno.serve(async (req) => {
           subject: r.subject,
           category: r.category,
           subcategory: r.subcategory,
+          item: r.item,
         }));
       } catch (e) {
         report.requestsError = e instanceof Error ? e.message : String(e);
@@ -152,8 +153,20 @@ Deno.serve(async (req) => {
 
     const catMap = new Map<string, string>();          // id → name
     const subMap = new Map<string, { name: string; parent: string }>();
-    const kw = new Map<string, Map<string, number>>(); // category name → word → count
+    const itemMap = new Map<string, { name: string; parent: string }>(); // parent = subcategory id (or category id if no subcategory)
+    // Keyword frequency per taxonomy node, keyed by "level|nodeId" (id, not
+    // name, so identically-named nodes under different parents never collide).
+    const kw = new Map<string, Map<string, number>>();
     let scanned = 0;
+
+    const addKeywords = (key: string, subject: string) => {
+      const bucket = kw.get(key) ?? new Map<string, number>();
+      for (const w of subject.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)) {
+        if (w.length < 3 || STOP.has(w)) continue;
+        bucket.set(w, (bucket.get(w) ?? 0) + 1);
+      }
+      kw.set(key, bucket);
+    };
 
     for (let page = 0; page < maxPages; page++) {
       const res = await sdpGet(cfg, token, '/requests', {
@@ -161,7 +174,7 @@ Deno.serve(async (req) => {
         start_index: page * 100 + 1,
         sort_field: 'created_time',
         sort_order: 'desc',
-        fields_required: ['subject', 'category', 'subcategory'],
+        fields_required: ['subject', 'category', 'subcategory', 'item'],
         ...(dateCriteria ? { search_criteria: dateCriteria } : {}),
       });
       const list = (res.requests ?? []) as Record<string, any>[];
@@ -169,23 +182,57 @@ Deno.serve(async (req) => {
         scanned++;
         const cat = r.category as { id?: string; name?: string } | null;
         const sub = r.subcategory as { id?: string; name?: string } | null;
+        const item = r.item as { id?: string; name?: string } | null;
         if (cat?.id && cat.name) catMap.set(String(cat.id), cat.name);
         if (sub?.id && sub.name && cat?.id) subMap.set(String(sub.id), { name: sub.name, parent: String(cat.id) });
-        if (cat?.name && typeof r.subject === 'string') {
-          const bucket = kw.get(cat.name) ?? new Map<string, number>();
-          for (const w of r.subject.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)) {
-            if (w.length < 3 || STOP.has(w)) continue;
-            bucket.set(w, (bucket.get(w) ?? 0) + 1);
-          }
-          kw.set(cat.name, bucket);
+        // Item's parent is the subcategory when present, else falls back to the
+        // category itself (Sampark allows items without a subcategory). Sampark
+        // uses "-" as a placeholder for "no item set" — skip those.
+        if (item?.id && item.name && item.name.trim() !== '-') {
+          const parent = sub?.id ? String(sub.id) : (cat?.id ? String(cat.id) : null);
+          if (parent) itemMap.set(String(item.id), { name: item.name, parent });
         }
+        if (typeof r.subject !== 'string') continue;
+        if (cat?.id) addKeywords(`category|${cat.id}`, r.subject);
+        if (sub?.id) addKeywords(`subcategory|${sub.id}`, r.subject);
+        if (item?.id && item.name && item.name.trim() !== '-') addKeywords(`item|${item.id}`, r.subject);
       }
       if (!(res.list_info?.has_more_rows)) break;
     }
 
+    // ---- TF-IDF: turn raw per-node word counts into a small set of genuinely
+    // discriminative keywords. A word that shows up in most nodes ("issue",
+    // "showing") is generic — down-weighted. A word concentrated in a few nodes
+    // ("saksham", "grn", "zscaler") is a real signal — up-weighted. This is what
+    // powers the auto-parse engine (lib/utils/samparkClassifier.ts): it studies
+    // every historical ticket's actual wording per category/subcategory/item and
+    // re-learns on every sync run, rather than relying on a hand-typed list.
+    const totalNodes = kw.size;
+    const df = new Map<string, number>(); // word → number of distinct nodes containing it
+    for (const bucket of kw.values()) {
+      for (const w of bucket.keys()) df.set(w, (df.get(w) ?? 0) + 1);
+    }
+    const topKeywords = (bucket: Map<string, number>, n = 12): string[] => {
+      const scored = [...bucket.entries()].map(([w, tf]) => {
+        const idf = Math.log((totalNodes + 1) / ((df.get(w) ?? 1) + 1)) + 1;
+        return [w, tf * idf] as const;
+      });
+      return scored.sort((a, b) => b[1] - a[1]).slice(0, n).map(([w]) => w);
+    };
+
     const rows = [
-      ...[...catMap].map(([id, name]) => ({ id, name, parent_id: null as string | null, is_subcategory: false, is_active: true })),
-      ...[...subMap].map(([id, v]) => ({ id, name: v.name, parent_id: v.parent, is_subcategory: true, is_active: true })),
+      ...[...catMap].map(([id, name]) => ({
+        id, name, parent_id: null as string | null, is_subcategory: false, is_item: false, is_active: true,
+        keywords: kw.has(`category|${id}`) ? topKeywords(kw.get(`category|${id}`)!) : [],
+      })),
+      ...[...subMap].map(([id, v]) => ({
+        id, name: v.name, parent_id: v.parent, is_subcategory: true, is_item: false, is_active: true,
+        keywords: kw.has(`subcategory|${id}`) ? topKeywords(kw.get(`subcategory|${id}`)!) : [],
+      })),
+      ...[...itemMap].map(([id, v]) => ({
+        id, name: v.name, parent_id: v.parent, is_subcategory: true, is_item: true, is_active: true,
+        keywords: kw.has(`item|${id}`) ? topKeywords(kw.get(`item|${id}`)!) : [],
+      })),
     ];
     if (rows.length) {
       const { error } = await supabase.from('ticket_categories').upsert(rows, { onConflict: 'id' });
@@ -197,13 +244,19 @@ Deno.serve(async (req) => {
       scanned,
       categories: catMap.size,
       subcategories: subMap.size,
+      items: itemMap.size,
     };
     if (analyze) {
+      // Human-readable: resolve "level|id" → "level|Name" and show the actual
+      // TF-IDF keywords now stored on the row, so this doubles as a way to spot-
+      // check what the classifier learned.
+      const nameOf = (level: string, id: string) =>
+        level === 'category' ? catMap.get(id) : level === 'subcategory' ? subMap.get(id)?.name : itemMap.get(id)?.name;
       result.keywords = Object.fromEntries(
-        [...kw].map(([cat, words]) => [
-          cat,
-          [...words.entries()].sort((a, b) => b[1] - a[1]).slice(0, 15).map(([w, n]) => `${w}:${n}`),
-        ]),
+        [...kw].map(([key, bucket]) => {
+          const [level, id] = key.split('|');
+          return [`${level}|${nameOf(level, id) ?? id}`, topKeywords(bucket, 15)];
+        }),
       );
     }
     return new Response(JSON.stringify(result, null, 2), { headers: { ...CORS, 'Content-Type': 'application/json' } });

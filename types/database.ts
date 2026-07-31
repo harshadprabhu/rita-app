@@ -72,6 +72,7 @@ export interface DbTicket {
   priority: TicketPriority;
   category: string | null;
   subcategory: string | null;
+  item: string | null;
   resolution: string | null;
   resolved_at: string | null;
   source: TicketSource;
