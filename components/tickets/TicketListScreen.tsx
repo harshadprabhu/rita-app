@@ -168,13 +168,23 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
         </>
       ) : (
         <>
-          {/* Compact status chips for non-admin screens so users can see/change the active filter */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.compactChipRow}>
-            <StatusPill label={t('common.all')} active={statusFilter === 'all'} onPress={() => setStatusFilter('all')} />
-            {STATUSES.map((s) => (
-              <StatusPill key={s} label={statusLabel(s)} active={statusFilter === s} onPress={() => setStatusFilter(s)} />
-            ))}
-          </ScrollView>
+          <View style={styles.compactFilterBar}>
+            {(['all', ...STATUSES] as const).map((s) => {
+              const isAll = s === 'all';
+              const active = statusFilter === s;
+              const label = isAll ? t('common.all') : statusLabel(s);
+              return (
+                <TouchableOpacity
+                  key={s}
+                  onPress={() => setStatusFilter(s)}
+                  activeOpacity={0.7}
+                  style={[styles.compactChip, active && styles.compactChipActive]}
+                >
+                  <Text style={[styles.compactChipText, active && styles.compactChipTextActive]}>{label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
           {list}
         </>
       )}
@@ -223,7 +233,20 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, color: theme.colors.textPrimary, fontSize: 13, paddingVertical: 0 },
   chipRow: { gap: 6, paddingRight: theme.spacing.lg },
-  compactChipRow: { gap: 6, paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm },
+  compactFilterBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm,
+  },
+  compactChip: {
+    paddingHorizontal: 14, height: 32, justifyContent: 'center' as const,
+    borderRadius: 16, borderWidth: 1,
+    borderColor: theme.colors.border, backgroundColor: theme.colors.surface,
+  },
+  compactChipActive: {
+    backgroundColor: theme.colors.brand, borderColor: theme.colors.brand,
+  },
+  compactChipText: { fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary },
+  compactChipTextActive: { color: '#fff' },
   pillWrap: { borderRadius: theme.radius.full, overflow: 'hidden' },
   pill: {
     borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface,
