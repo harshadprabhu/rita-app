@@ -98,7 +98,9 @@ export async function signInWithMicrosoft(): Promise<void> {
   if (error) throw error;
   if (!data?.url) throw new Error('Could not start Microsoft sign-in');
 
-  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, {
+    preferEphemeralSession: true,
+  });
   if (result.type !== 'success') return; // user cancelled/dismissed — not an error
 
   await completeSessionFromCode(extractCode(result.url));

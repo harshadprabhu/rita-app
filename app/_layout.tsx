@@ -1,7 +1,8 @@
 import '../global.css';
 import '../lib/i18n';
 import React, { useEffect, useRef, useState } from 'react';
-import { Platform } from 'react-native';
+import { Platform, Text as RNText, TextInput as RNTextInput } from 'react-native';
+import { useFonts } from 'expo-font';
 import { Stack, router, usePathname } from 'expo-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { PaperProvider, MD3LightTheme } from 'react-native-paper';
@@ -21,6 +22,39 @@ import { updatePushToken } from '../lib/api/profiles';
 import { LoadingOverlay } from '../components/common/LoadingOverlay';
 import { ToastHost } from '../components/common/ToastHost';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
+
+// Bricolage Grotesque — the app's brand typeface.
+// Web: loaded from Google Fonts CDN (faster than bundling) via DOM injection.
+// Native: bundled TTFs loaded by expo-font (useFonts in RootLayout below).
+const FONT_FAMILY = 'BricolageGrotesque';
+
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  const id = 'bricolage-grotesque';
+  if (!document.getElementById(id)) {
+    const pre1 = document.createElement('link');
+    pre1.rel = 'preconnect';
+    pre1.href = 'https://fonts.googleapis.com';
+    const pre2 = document.createElement('link');
+    pre2.rel = 'preconnect';
+    pre2.href = 'https://fonts.gstatic.com';
+    pre2.crossOrigin = '';
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&display=swap';
+    const style = document.createElement('style');
+    style.textContent = `* { font-family: 'Bricolage Grotesque', system-ui, -apple-system, sans-serif !important; }`;
+    document.head.append(pre1, pre2, link, style);
+  }
+}
+
+// Set Bricolage Grotesque as the default font for all Text and TextInput on native.
+if (Platform.OS !== 'web') {
+  const textProps = (RNText as any).defaultProps || {};
+  (RNText as any).defaultProps = { ...textProps, style: [{ fontFamily: FONT_FAMILY }, textProps.style] };
+  const inputProps = (RNTextInput as any).defaultProps || {};
+  (RNTextInput as any).defaultProps = { ...inputProps, style: [{ fontFamily: FONT_FAMILY }, inputProps.style] };
+}
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -169,6 +203,12 @@ function AuthGate() {
 
 export default function RootLayout() {
   const [langReady, setLangReady] = useState(false);
+  const [fontsLoaded] = useFonts({
+    BricolageGrotesque: require('../assets/fonts/BricolageGrotesque-Regular.ttf'),
+    'BricolageGrotesque-SemiBold': require('../assets/fonts/BricolageGrotesque-SemiBold.ttf'),
+    'BricolageGrotesque-Bold': require('../assets/fonts/BricolageGrotesque-Bold.ttf'),
+    'BricolageGrotesque-ExtraBold': require('../assets/fonts/BricolageGrotesque-ExtraBold.ttf'),
+  });
 
   useEffect(() => {
     loadSavedLanguage().finally(() => setLangReady(true));
@@ -192,7 +232,7 @@ export default function RootLayout() {
     window.history.replaceState(null, '', url.pathname + url.search);
   }, []);
 
-  if (!langReady) return <LoadingOverlay message="Loading..." />;
+  if (!langReady || !fontsLoaded) return <LoadingOverlay message="Loading..." />;
 
   return (
     <ErrorBoundary>

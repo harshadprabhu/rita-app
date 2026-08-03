@@ -185,5 +185,5 @@ export async function ensureProfile(user: User): Promise<DbProfile | null> {
 }
 
 export async function signOut() {
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: 'global' });
 }

@@ -1,3 +1,8 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Bricolage Grotesque — web only (loaded via app/+html.tsx Google Fonts link) */
+body, input, textarea, button, select {
+  font-family: 'Bricolage Grotesque', system-ui, -apple-system, sans-serif;
+}
