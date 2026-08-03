@@ -109,7 +109,7 @@ export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: Go
             }]}>
               <Text style={[styles.offerKicker, { fontSize: Math.round(W * 0.021) }]}>S P E C I A L   O F F E R</Text>
               <View style={styles.offerTextWrap}>
-                <Text numberOfLines={2} style={[styles.offerText, { fontSize: Math.round(W * 0.044) }]}>{promo.trim()}</Text>
+                <Text numberOfLines={3} style={[styles.offerText, { fontSize: Math.round(W * 0.026) }]}>{promo.trim()}</Text>
               </View>
             </View>
           ) : null}

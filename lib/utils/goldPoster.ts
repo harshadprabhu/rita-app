@@ -255,9 +255,9 @@ function renderPosterCanvas(img: HTMLImageElement, rates: PosterRates, date: Dat
     // whole text block bottom-aligned within the box (grows upward from the
     // bottom edge rather than overflowing it).
     ctx.fillStyle = '#1A1614';
-    ctx.font = `700 ${Math.round(30 * scale)}px Georgia, "Playfair Display", serif`;
-    const lines = wrapText(ctx, offer, w - innerPad * 2, 2);
-    const lineHeight = 36 * scale;
+    ctx.font = `700 ${Math.round(18 * scale)}px Arial, sans-serif`;
+    const lines = wrapText(ctx, offer, w - innerPad * 2, 3);
+    const lineHeight = 22 * scale;
     const blockBottom = y + h - 20 * scale;
     const firstLineY = blockBottom - lineHeight * (lines.length - 1);
     lines.forEach((ln, i) => ctx.fillText(ln, centerX, firstLineY + i * lineHeight));

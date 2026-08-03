@@ -18,11 +18,30 @@ import { webNoOutline, theme } from '../../constants/theme';
 
 const PROMOTIONS_KEY = ['promotions'];
 
+function getTargetIds(p: Pick<Promotion, 'target_store_id' | 'target_store_ids'>): string[] {
+  if (p.target_store_ids?.length) return p.target_store_ids;
+  if (p.target_store_id) return [p.target_store_id];
+  return [];
+}
+
 function targetLabel(p: Pick<Promotion, 'target_store_id' | 'target_store_ids'>, stores: DbStore[]): string {
-  const ids = p.target_store_ids?.length ? p.target_store_ids : (p.target_store_id ? [p.target_store_id] : []);
+  const ids = getTargetIds(p);
   if (!ids.length) return 'All stores';
   if (ids.length === 1) return stores.find((s) => s.id === ids[0])?.name ?? '1 store';
+  // Check if all stores belong to the same region — show zone name if so
+  const matched = ids.map((id) => stores.find((s) => s.id === id)).filter(Boolean) as DbStore[];
+  const regions = [...new Set(matched.map((s) => s.region).filter(Boolean))];
+  if (regions.length === 1) {
+    const zoneStores = stores.filter((s) => s.region === regions[0]);
+    if (zoneStores.length === matched.length) return `${regions[0]} Zone (${ids.length} stores)`;
+  }
   return `${ids.length} stores`;
+}
+
+function targetStoreNames(p: Pick<Promotion, 'target_store_id' | 'target_store_ids'>, stores: DbStore[]): string[] {
+  const ids = getTargetIds(p);
+  if (!ids.length) return [];
+  return ids.map((id) => stores.find((s) => s.id === id)?.name).filter(Boolean) as string[];
 }
 
 function formatDate(iso: string): string {
@@ -77,21 +96,11 @@ export function PromotionsScreen() {
     try {
       const overlaps = await findOverlappingPromotions(targetStoreIds);
       if (overlaps.length) {
-        const names = overlaps.map((o) => `#${o.seq} (${targetLabel(o, stores ?? [])}) — "${o.body}"`).join('\n');
+        const names = overlaps.map((o) => `#${o.seq} — ${targetLabel(o, stores ?? [])}\n"${o.body}"`).join('\n\n');
         Alert.alert(
-          'Overlapping promotion',
-          `${targetStoreIds.length ? 'These stores already have' : 'All stores already have'} an active promotion:\n\n${names}\n\nDeactivate ${overlaps.length > 1 ? 'them' : 'it'} and publish this one instead?`,
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Deactivate & publish',
-              style: 'destructive',
-              onPress: async () => {
-                await Promise.all(overlaps.map((o) => deactivatePromotion(o.id)));
-                publish.mutate(body);
-              },
-            },
-          ],
+          'Cannot publish',
+          `${targetStoreIds.length ? 'Some of the selected stores' : 'All stores'} already have an active promotion. Deactivate the existing one first before publishing a new one.\n\nActive:\n${names}`,
+          [{ text: 'OK' }],
         );
         return;
       }
@@ -167,42 +176,54 @@ export function PromotionsScreen() {
           <Text style={styles.currentEmpty}>No promotions published yet.</Text>
         ) : (
           <View style={styles.list}>
-            {promotions.map((p) => (
-              <View key={p.id} style={[styles.promoCard, !p.is_active && styles.promoCardInactive]}>
-                <View style={styles.promoTop}>
-                  <Text style={styles.promoSeq}>#{p.seq}</Text>
-                  <View style={[styles.statusPill, p.is_active ? styles.statusActive : styles.statusInactive]}>
-                    <Text style={[styles.statusText, p.is_active ? styles.statusTextActive : styles.statusTextInactive]}>
-                      {p.is_active ? 'Active' : 'Inactive'}
+            {promotions.map((p) => {
+              const storeNames = targetStoreNames(p, stores ?? []);
+              return (
+                <View key={p.id} style={[styles.promoCard, !p.is_active && styles.promoCardInactive]}>
+                  <View style={styles.promoTop}>
+                    <Text style={styles.promoSeq}>#{p.seq}</Text>
+                    <View style={[styles.statusPill, p.is_active ? styles.statusActive : styles.statusInactive]}>
+                      <Text style={[styles.statusText, p.is_active ? styles.statusTextActive : styles.statusTextInactive]}>
+                        {p.is_active ? 'Active' : 'Inactive'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.promoBody}>{p.body}</Text>
+                  <View style={styles.promoMetaRow}>
+                    <Ionicons name="business-outline" size={11} color={theme.colors.textTertiary} />
+                    <Text style={styles.promoMeta}>{targetLabel(p, stores ?? [])}</Text>
+                  </View>
+                  {storeNames.length > 0 && (
+                    <View style={styles.storeList}>
+                      {storeNames.map((name) => (
+                        <View key={name} style={styles.storeTag}>
+                          <Text style={styles.storeTagText}>{name}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                  <View style={styles.promoMetaRow}>
+                    <Ionicons name="calendar-outline" size={11} color={theme.colors.textTertiary} />
+                    <Text style={styles.promoMeta}>
+                      Activated {formatDate(p.activated_at)}
+                      {p.deactivated_at ? ` · Deactivated ${formatDate(p.deactivated_at)}` : ''}
                     </Text>
                   </View>
+                  {p.is_active && (
+                    <SoftPress
+                      style={styles.deactivateBtn}
+                      onPress={() => Alert.alert('Deactivate promotion', `Stop showing #${p.seq} on the poster?`, [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Deactivate', style: 'destructive', onPress: () => deactivate.mutate(p.id) },
+                      ])}
+                      disabled={deactivate.isPending}
+                    >
+                      <Text style={styles.deactivateText}>Deactivate</Text>
+                    </SoftPress>
+                  )}
                 </View>
-                <Text style={styles.promoBody}>{p.body}</Text>
-                <View style={styles.promoMetaRow}>
-                  <Ionicons name="business-outline" size={11} color={theme.colors.textTertiary} />
-                  <Text style={styles.promoMeta}>{targetLabel(p, stores ?? [])}</Text>
-                </View>
-                <View style={styles.promoMetaRow}>
-                  <Ionicons name="calendar-outline" size={11} color={theme.colors.textTertiary} />
-                  <Text style={styles.promoMeta}>
-                    Activated {formatDate(p.activated_at)}
-                    {p.deactivated_at ? ` · Deactivated ${formatDate(p.deactivated_at)}` : ''}
-                  </Text>
-                </View>
-                {p.is_active && (
-                  <SoftPress
-                    style={styles.deactivateBtn}
-                    onPress={() => Alert.alert('Deactivate promotion', `Stop showing #${p.seq} on the poster?`, [
-                      { text: 'Cancel', style: 'cancel' },
-                      { text: 'Deactivate', style: 'destructive', onPress: () => deactivate.mutate(p.id) },
-                    ])}
-                    disabled={deactivate.isPending}
-                  >
-                    <Text style={styles.deactivateText}>Deactivate</Text>
-                  </SoftPress>
-                )}
-              </View>
-            ))}
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -250,6 +271,12 @@ const styles = StyleSheet.create({
   promoBody: { fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary, marginTop: 2 },
   promoMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   promoMeta: { fontSize: 11, color: theme.colors.textTertiary, fontWeight: '600' },
+  storeList: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 },
+  storeTag: {
+    backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border,
+    borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2,
+  },
+  storeTagText: { fontSize: 10, fontWeight: '600', color: theme.colors.textSecondary },
   deactivateBtn: { alignSelf: 'flex-start', marginTop: 4, paddingVertical: 4 },
   deactivateText: { color: theme.colors.error, fontSize: 12, fontWeight: '700' },
 });
