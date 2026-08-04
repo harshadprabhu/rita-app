@@ -43,18 +43,19 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
     link.rel = 'stylesheet';
     link.href = 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&display=swap';
     const style = document.createElement('style');
-    style.textContent = `* { font-family: 'Bricolage Grotesque', system-ui, -apple-system, sans-serif !important; }`;
+    style.textContent = `body, input, textarea, button, select { font-family: 'Bricolage Grotesque', system-ui, -apple-system, sans-serif; }`;
     document.head.append(pre1, pre2, link, style);
   }
 }
 
-// Set Bricolage Grotesque as the default font for all Text and TextInput on native.
-if (Platform.OS !== 'web') {
-  const textProps = (RNText as any).defaultProps || {};
-  (RNText as any).defaultProps = { ...textProps, style: [{ fontFamily: FONT_FAMILY }, textProps.style] };
-  const inputProps = (RNTextInput as any).defaultProps || {};
-  (RNTextInput as any).defaultProps = { ...inputProps, style: [{ fontFamily: FONT_FAMILY }, inputProps.style] };
-}
+// Set Bricolage Grotesque as the default font for all Text and TextInput.
+// On web this also prevents the `* !important` CSS from being needed — each
+// Text element gets fontFamily inline, which won't interfere with icon fonts
+// (Ionicons etc.) that set their own fontFamily inline.
+const textProps = (RNText as any).defaultProps || {};
+(RNText as any).defaultProps = { ...textProps, style: [{ fontFamily: FONT_FAMILY }, textProps.style] };
+const inputProps = (RNTextInput as any).defaultProps || {};
+(RNTextInput as any).defaultProps = { ...inputProps, style: [{ fontFamily: FONT_FAMILY }, inputProps.style] };
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
