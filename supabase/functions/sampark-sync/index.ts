@@ -159,6 +159,17 @@ Deno.serve(async (req) => {
     const kw = new Map<string, Map<string, number>>();
     let scanned = 0;
 
+    // Per-ticket volume tally (distinct from `kw`, which is keyword frequency,
+    // not ticket count) — powers `?analyze=1`'s `ticketCounts` report. "Other"/
+    // "Others" is the parser's fallback default, so those tickets are excluded
+    // from the count (an exact-name match, not a substring — "Other Id card
+    // issue" is a real category and stays counted).
+    const isOtherName = (name: string) => /^others?$/i.test(name.trim());
+    const catTicketCount = new Map<string, number>();  // id → ticket count
+    const subTicketCount = new Map<string, number>();
+    const itemTicketCount = new Map<string, number>();
+    let excludedOther = 0;
+
     const addKeywords = (key: string, subject: string) => {
       const bucket = kw.get(key) ?? new Map<string, number>();
       const words = subject.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length >= 3 && !STOP.has(w));
@@ -197,6 +208,23 @@ Deno.serve(async (req) => {
           const parent = sub?.id ? String(sub.id) : (cat?.id ? String(cat.id) : null);
           if (parent) itemMap.set(String(item.id), { name: item.name, parent });
         }
+
+        // Ticket-volume tally, skipping the "Other"/"Others" catch-all at any
+        // of the three levels — a ticket routed there tells us nothing about
+        // real category distribution, it's just the parser's default.
+        const catIsOther = cat?.name ? isOtherName(cat.name) : false;
+        const subIsOther = sub?.name ? isOtherName(sub.name) : false;
+        const itemIsOther = item?.name ? isOtherName(item.name) : false;
+        if (catIsOther || subIsOther || itemIsOther) {
+          excludedOther++;
+        } else {
+          if (cat?.id) catTicketCount.set(String(cat.id), (catTicketCount.get(String(cat.id)) ?? 0) + 1);
+          if (sub?.id) subTicketCount.set(String(sub.id), (subTicketCount.get(String(sub.id)) ?? 0) + 1);
+          if (item?.id && item.name && item.name.trim() !== '-') {
+            itemTicketCount.set(String(item.id), (itemTicketCount.get(String(item.id)) ?? 0) + 1);
+          }
+        }
+
         if (typeof r.subject !== 'string') continue;
         if (cat?.id) addKeywords(`category|${cat.id}`, r.subject);
         if (sub?.id) addKeywords(`subcategory|${sub.id}`, r.subject);
@@ -229,14 +257,17 @@ Deno.serve(async (req) => {
       ...[...catMap].map(([id, name]) => ({
         id, name, parent_id: null as string | null, is_subcategory: false, is_item: false, is_active: true,
         keywords: kw.has(`category|${id}`) ? topKeywords(kw.get(`category|${id}`)!) : [],
+        ticket_count: catTicketCount.get(id) ?? 0,
       })),
       ...[...subMap].map(([id, v]) => ({
         id, name: v.name, parent_id: v.parent, is_subcategory: true, is_item: false, is_active: true,
         keywords: kw.has(`subcategory|${id}`) ? topKeywords(kw.get(`subcategory|${id}`)!) : [],
+        ticket_count: subTicketCount.get(id) ?? 0,
       })),
       ...[...itemMap].map(([id, v]) => ({
         id, name: v.name, parent_id: v.parent, is_subcategory: true, is_item: true, is_active: true,
         keywords: kw.has(`item|${id}`) ? topKeywords(kw.get(`item|${id}`)!) : [],
+        ticket_count: itemTicketCount.get(id) ?? 0,
       })),
     ];
     if (rows.length) {
@@ -250,11 +281,34 @@ Deno.serve(async (req) => {
       categories: catMap.size,
       subcategories: subMap.size,
       items: itemMap.size,
+      excludedOther,
+      analyzedTickets: scanned - excludedOther,
     };
     if (analyze) {
+      // Real ticket-volume distribution (not keyword frequency) — "Other"/
+      // "Others" tickets already excluded above. Sorted descending so the
+      // response reads as a ranked breakdown.
+      result.categoryCounts = Object.fromEntries(
+        [...catTicketCount.entries()]
+          .map(([id, count]) => [catMap.get(id) ?? id, count] as const)
+          .sort((a, b) => b[1] - a[1]),
+      );
+      result.subcategoryCounts = Object.fromEntries(
+        [...subTicketCount.entries()]
+          .map(([id, count]) => {
+            const sub = subMap.get(id);
+            const label = sub ? `${catMap.get(sub.parent) ?? '?'} › ${sub.name}` : id;
+            return [label, count] as const;
+          })
+          .sort((a, b) => b[1] - a[1]),
+      );
+    }
+    if (qp.get('keywords') === '1') {
       // Human-readable: resolve "level|id" → "level|Name" and show the actual
       // TF-IDF keywords now stored on the row, so this doubles as a way to spot-
-      // check what the classifier learned.
+      // check what the classifier learned. Separate flag from `analyze` since
+      // this dump is large (one entry per taxonomy node) and usually not
+      // needed alongside the ticket-count breakdown.
       const nameOf = (level: string, id: string) =>
         level === 'category' ? catMap.get(id) : level === 'subcategory' ? subMap.get(id)?.name : itemMap.get(id)?.name;
       result.keywords = Object.fromEntries(

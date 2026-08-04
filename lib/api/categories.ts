@@ -12,6 +12,10 @@ export interface TicketCategory {
    *  (TF-IDF, refreshed on every sampark-sync run) — ranked most → least
    *  distinctive. Powers samparkClassifier's auto-parse engine. */
   keywords: string[] | null;
+  /** Real ticket volume at this node from the last sync's sample — used as a
+   *  small tie-breaking prior (common categories nudge ahead of rare ones on
+   *  close keyword-score calls). Not cumulative; refreshed each sync. */
+  ticket_count: number;
 }
 
 /**
@@ -22,7 +26,7 @@ export interface TicketCategory {
 export async function getTicketCategories(): Promise<TicketCategory[]> {
   const { data, error } = await supabase
     .from('ticket_categories')
-    .select('id, name, parent_id, is_subcategory, is_item, keywords')
+    .select('id, name, parent_id, is_subcategory, is_item, keywords, ticket_count')
     .eq('is_active', true)
     .order('name');
   if (error) throw error;

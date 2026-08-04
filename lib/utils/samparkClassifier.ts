@@ -107,6 +107,18 @@ function scoreNode(
   return max ? hit / max : 0;
 }
 
+// ---- Volume prior -------------------------------------------------------
+// A small tie-breaker, not a primary signal: real Sampark history is heavily
+// skewed (e.g. "POS Issue" alone is ~42% of all real, non-"Other" tickets),
+// so when two nodes score similarly on keywords, prefer the one that's
+// actually common. Log-scaled and capped low (+0.03 max) so it can nudge a
+// close call but never outweighs an actual keyword/name mismatch.
+function volumePrior(node: TicketCategory): number {
+  const count = node.ticket_count ?? 0;
+  if (count <= 0) return 0;
+  return 0.03 * Math.min(1, Math.log10(1 + count) / 3);
+}
+
 // ---- Combined scoring -------------------------------------------------------
 
 function combinedScore(
@@ -115,8 +127,9 @@ function combinedScore(
 ): number {
   const kwScore = scoreNode(tokens, node.keywords);
   const nmScore = nameScore(tokens, node.name);
-  // 70% keyword TF-IDF + 30% name match — name acts as a strong prior
-  return kwScore * 0.7 + nmScore * 0.3;
+  // 70% keyword TF-IDF + 30% name match — name acts as a strong prior — plus
+  // a small real-world-frequency nudge on top.
+  return kwScore * 0.7 + nmScore * 0.3 + volumePrior(node);
 }
 
 function bestMatch(
