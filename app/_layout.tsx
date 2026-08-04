@@ -210,6 +210,11 @@ export default function RootLayout() {
     'BricolageGrotesque-Bold': require('../assets/fonts/BricolageGrotesque-Bold.ttf'),
     'BricolageGrotesque-ExtraBold': require('../assets/fonts/BricolageGrotesque-ExtraBold.ttf'),
     InterNumeric: require('../assets/fonts/Inter-SemiBold.ttf'),
+    // Indriya's own brand typeface (pulled from indriya.com), used only for
+    // the same kind of prominent headline text it's used for on the site
+    // (screen title bar, home greeting) — everything else stays Bricolage.
+    BegumSans: require('../assets/fonts/BegumSans-Regular.otf'),
+    'BegumSans-Medium': require('../assets/fonts/BegumSans-Medium.otf'),
   });
 
   useEffect(() => {

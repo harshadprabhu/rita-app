@@ -112,7 +112,7 @@ function StatCard({ label, filters, color, icon, href }: StatDef) {
 const styles = StyleSheet.create({
   body: { padding: theme.spacing.lg },
   topRow: { marginBottom: theme.spacing.lg },
-  greeting: { fontSize: 26, fontWeight: '600', color: theme.colors.textPrimary, letterSpacing: 0.2 },
+  greeting: { fontSize: 26, fontFamily: 'BegumSans-Medium', color: theme.colors.textPrimary, letterSpacing: 0.2 },
   greetingSubtitle: { fontSize: 12, color: theme.colors.textSecondary, marginTop: 3, fontWeight: '500' },
   quickActionsRow: { flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.md },
   quickActionBtn: {

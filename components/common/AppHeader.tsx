@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#fff',
     fontSize: 19,
-    fontWeight: '600',
+    fontFamily: 'BegumSans-Medium',
     letterSpacing: 0.2,
   },
   subtitle: {
