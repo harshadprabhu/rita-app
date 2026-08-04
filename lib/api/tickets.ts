@@ -69,6 +69,7 @@ export async function createTicket(payload: {
   category?: string | null;
   subcategory?: string | null;
   item?: string | null;
+  contact_number?: string | null;
   source?: DbTicket['source'];
 }): Promise<DbTicket> {
   const sla_due_at = computeSlaDueAt(payload.priority).toISOString();

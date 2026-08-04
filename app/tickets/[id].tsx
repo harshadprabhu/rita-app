@@ -107,6 +107,20 @@ export default function TicketDetail() {
             <Text style={styles.metaLabel}>Assignee</Text>
             <Text style={styles.metaValue}>{ticket.assignee?.display_name ?? 'Unassigned'}</Text>
           </View>
+          {ticket.category ? (
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Category</Text>
+              <Text style={styles.metaValue}>
+                {[ticket.category, ticket.subcategory, ticket.item].filter(Boolean).join(' › ')}
+              </Text>
+            </View>
+          ) : null}
+          {ticket.contact_number ? (
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Contact</Text>
+              <Text style={styles.metaValue}>{ticket.contact_number}</Text>
+            </View>
+          ) : null}
           {ticket.sla_breached && <Text style={styles.slaBreach}>⚠ SLA breached</Text>}
 
           <Text style={styles.sectionLabel}>Attachments</Text>

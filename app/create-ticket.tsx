@@ -34,6 +34,7 @@ export default function CreateTicket() {
   const [images, setImages] = useState<{ uri: string; name: string }[]>([]);
   // Validation warnings only appear once the user has tried to submit.
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [contactNumber, setContactNumber] = useState('');
 
   // Category / subcategory / item are auto-detected but fully overridable —
   // all three are Sampark taxonomy values (from ticket_categories), matched by
@@ -117,6 +118,7 @@ export default function CreateTicket() {
         category,
         subcategory,
         item,
+        contact_number: contactNumber.trim() || null,
         source: 'form',
       });
       for (const img of images) {
@@ -234,6 +236,17 @@ export default function CreateTicket() {
             </TouchableOpacity>
           </>
         )}
+
+        <Text style={[styles.label, styles.spaced]}>Contact Number</Text>
+        <TextInput
+          style={styles.contactInput}
+          value={contactNumber}
+          onChangeText={setContactNumber}
+          placeholder="Phone number for this ticket"
+          placeholderTextColor={theme.colors.textTertiary}
+          keyboardType="phone-pad"
+          autoComplete="tel"
+        />
 
         <Text style={[styles.label, styles.spaced]}>Priority</Text>
         <View style={styles.pillRow}>
@@ -354,6 +367,11 @@ const styles = StyleSheet.create({
     borderWidth: 1, backgroundColor: theme.colors.surface, borderColor: theme.colors.border,
   },
   pillText: { fontSize: 11, fontWeight: '700', color: theme.colors.textTertiary, textTransform: 'capitalize' },
+  contactInput: {
+    backgroundColor: theme.colors.surface2, borderWidth: 1.5, borderColor: theme.colors.border,
+    borderRadius: theme.radius.md, paddingHorizontal: theme.spacing.md, height: 48,
+    color: theme.colors.textPrimary, fontSize: 14,
+  },
   selectRow: {
     flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
     backgroundColor: theme.colors.surface2, borderWidth: 1.5, borderColor: theme.colors.border,

@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
     const { ticket_id, ticket_number } = payload as { ticket_id?: string; ticket_number?: string };
 
     // Load the ticket + requester email.
-    let q = supabase.from('tickets').select('id, ticket_number, description, long_description, category, subcategory, item, priority, requester_id, sampark_request_id');
+    let q = supabase.from('tickets').select('id, ticket_number, description, long_description, category, subcategory, item, priority, requester_id, sampark_request_id, contact_number');
     q = ticket_id ? q.eq('id', ticket_id) : q.eq('ticket_number', ticket_number ?? '');
     const { data: ticket, error: tErr } = await q.maybeSingle();
     if (tErr) throw tErr;
@@ -88,7 +88,11 @@ Deno.serve(async (req) => {
       description: desc,
       priority: { name: PRIORITY_MAP[String((ticket as any).priority)] ?? 'Medium' },
     };
-    if (email) request.requester = { email_id: email };
+    if (email) {
+      const requester: Record<string, string> = { email_id: email };
+      if ((ticket as any).contact_number) requester.phone = (ticket as any).contact_number;
+      request.requester = requester;
+    }
     if ((ticket as any).category) request.category = { name: (ticket as any).category };
     if ((ticket as any).subcategory) request.subcategory = { name: (ticket as any).subcategory };
     if ((ticket as any).item) request.item = { name: (ticket as any).item };
