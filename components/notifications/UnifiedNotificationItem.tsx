@@ -6,7 +6,6 @@ import {
 import { Portal } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SoftPress } from '../common/SoftPress';
 import { FeedItem } from '../../hooks/useUnifiedNotifications';
 import { NotificationType } from '../../types';
@@ -19,26 +18,36 @@ interface Props {
   onReadAnnouncement?: (broadcastId: string) => void;
 }
 
-// ─── A) Announcement card ────────────────────────────────────────────────────
+// ─── Shared popup modal ─────────────────────────────────────────────────────
 
-function AnnouncementModal({ item, onClose }: { item: FeedItem; onClose: () => void }) {
-  const insets = useSafeAreaInsets();
-  const slideAnim = useRef(new Animated.Value(400)).current;
+function DetailModal({
+  item,
+  icon,
+  iconColor,
+  iconBg,
+  onClose,
+}: {
+  item: FeedItem;
+  icon: keyof typeof Ionicons.glyphMap;
+  iconColor: string;
+  iconBg: string;
+  onClose: () => void;
+}) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
 
   useEffect(() => {
-    Animated.timing(slideAnim, {
-      toValue: 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [slideAnim]);
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
+  }, [fadeAnim, scaleAnim]);
 
   const dismiss = () => {
-    Animated.timing(slideAnim, {
-      toValue: 400,
-      duration: 250,
-      useNativeDriver: true,
-    }).start(onClose);
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(scaleAnim, { toValue: 0.9, duration: 150, useNativeDriver: true }),
+    ]).start(onClose);
   };
 
   useEffect(() => {
@@ -49,21 +58,28 @@ function AnnouncementModal({ item, onClose }: { item: FeedItem; onClose: () => v
     return () => sub.remove();
   }, []);
 
+  const handleViewTicket = () => {
+    dismiss();
+    setTimeout(() => {
+      if (item.ticket_id) router.push(`/tickets/${item.ticket_id}`);
+    }, 180);
+  };
+
   return (
     <Portal>
-      <View style={RNStyleSheet.absoluteFill}>
+      <View style={styles.modalOverlay}>
         <TouchableWithoutFeedback onPress={dismiss}>
-          <View style={styles.modalBackdrop} />
+          <Animated.View style={[styles.modalBackdrop, { opacity: fadeAnim }]} />
         </TouchableWithoutFeedback>
         <Animated.View
           style={[
-            styles.modalSheet,
-            { paddingBottom: Math.max(insets.bottom, theme.spacing.xxl), transform: [{ translateY: slideAnim }] },
+            styles.modalPopup,
+            { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
           ]}
         >
           <View style={styles.modalHeader}>
-            <View style={styles.modalIconWrap}>
-              <Ionicons name="megaphone" size={18} color="rgba(201,168,76,0.9)" />
+            <View style={[styles.modalIconWrap, { backgroundColor: iconBg }]}>
+              <Ionicons name={icon} size={18} color={iconColor} />
             </View>
             <View style={styles.modalHeaderText}>
               <Text style={styles.modalTitle}>{item.title}</Text>
@@ -79,13 +95,30 @@ function AnnouncementModal({ item, onClose }: { item: FeedItem; onClose: () => v
             contentContainerStyle={styles.modalScrollContent}
             showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.modalBody}>{item.body}</Text>
+            {item.body ? (
+              <Text style={styles.modalBody}>{item.body}</Text>
+            ) : (
+              <Text style={styles.modalBodyEmpty}>No additional details</Text>
+            )}
           </ScrollView>
+          {item.ticket_id ? (
+            <>
+              <View style={styles.modalDivider} />
+              <View style={styles.modalFooter}>
+                <TouchableOpacity style={styles.viewTicketBtn} onPress={handleViewTicket} activeOpacity={0.7}>
+                  <Ionicons name="open-outline" size={15} color="#fff" />
+                  <Text style={styles.viewTicketText}>View Ticket</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : null}
         </Animated.View>
       </View>
     </Portal>
   );
 }
+
+// ─── A) Announcement card ───────────────────────────────────────────────────
 
 function AnnouncementCard({
   item, onReadAnnouncement, onMarkRead,
@@ -98,8 +131,6 @@ function AnnouncementCard({
   const isUnread = !item.is_read;
 
   const handleOpen = () => {
-    // Reading an announcement marks it read (clears its dot + the tab badge).
-    // Broadcasts read via broadcast_reads; legacy notification rows via markOne.
     if (isUnread) {
       if (item.broadcastId && onReadAnnouncement) onReadAnnouncement(item.broadcastId);
       else if (item.notificationId && onMarkRead) onMarkRead(item.notificationId);
@@ -122,17 +153,25 @@ function AnnouncementCard({
               ) : null}
               <Text style={styles.announceTime}>{timeAgo(item.created_at)}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.35)" style={styles.announceChevron} />
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} style={styles.chevron} />
           </View>
           {isUnread && <View style={styles.announceUnreadDot} />}
         </View>
       </SoftPress>
-      {open && <AnnouncementModal item={item} onClose={() => setOpen(false)} />}
+      {open && (
+        <DetailModal
+          item={item}
+          icon="megaphone"
+          iconColor="rgba(201,168,76,0.9)"
+          iconBg="rgba(201,168,76,0.15)"
+          onClose={() => setOpen(false)}
+        />
+      )}
     </>
   );
 }
 
-// ─── B) Ticket card ──────────────────────────────────────────────────────────
+// ─── B) Ticket / alert card ─────────────────────────────────────────────────
 
 type TicketIconCfg = {
   icon: keyof typeof Ionicons.glyphMap;
@@ -160,6 +199,7 @@ function getTicketIconCfg(type?: NotificationType | null): TicketIconCfg {
 }
 
 function TicketCard({ item, onMarkRead }: { item: FeedItem; onMarkRead?: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
   const isUnread = !item.is_read;
   const { icon, color, bg } = getTicketIconCfg(item.notificationType);
 
@@ -167,35 +207,45 @@ function TicketCard({ item, onMarkRead }: { item: FeedItem; onMarkRead?: (id: st
     if (!item.is_read && item.notificationId && onMarkRead) {
       onMarkRead(item.notificationId);
     }
-    if (item.ticket_id) {
-      router.push(`/tickets/${item.ticket_id}`);
-    }
+    setOpen(true);
   };
 
   return (
-    <SoftPress
-      style={[styles.ticketCard, isUnread ? styles.ticketUnread : styles.ticketRead]}
-      onPress={handlePress}
-      scaleTo={0.97}
-    >
-      <View style={styles.baseRow}>
-        <View style={[styles.iconBox, { backgroundColor: bg }]}>
-          <Ionicons name={icon} size={20} color={color} />
+    <>
+      <SoftPress
+        style={[styles.ticketCard, isUnread ? styles.ticketUnread : styles.ticketRead]}
+        onPress={handlePress}
+        scaleTo={0.97}
+      >
+        <View style={styles.baseRow}>
+          <View style={[styles.iconBox, { backgroundColor: bg }]}>
+            <Ionicons name={icon} size={20} color={color} />
+          </View>
+          <View style={styles.content}>
+            <Text style={styles.ticketTitle} numberOfLines={2}>{item.title}</Text>
+            {item.body ? (
+              <Text style={styles.ticketBody} numberOfLines={2}>{item.body}</Text>
+            ) : null}
+            <Text style={styles.ticketTime}>{timeAgo(item.created_at)}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} style={styles.chevron} />
         </View>
-        <View style={styles.content}>
-          <Text style={styles.ticketTitle} numberOfLines={2}>{item.title}</Text>
-          {item.body ? (
-            <Text style={styles.ticketBody} numberOfLines={2}>{item.body}</Text>
-          ) : null}
-          <Text style={styles.ticketTime}>{timeAgo(item.created_at)}</Text>
-        </View>
-      </View>
-      {isUnread && <View style={styles.unreadDot} />}
-    </SoftPress>
+        {isUnread && <View style={styles.unreadDot} />}
+      </SoftPress>
+      {open && (
+        <DetailModal
+          item={item}
+          icon={icon}
+          iconColor={color}
+          iconBg={bg}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
-// ─── Main export ─────────────────────────────────────────────────────────────
+// ─── Main export ────────────────────────────────────────────────────────────
 
 export function UnifiedNotificationItem({ item, onMarkRead, onReadAnnouncement }: Props) {
   if (item.kind === 'announcement') {
@@ -204,7 +254,7 @@ export function UnifiedNotificationItem({ item, onMarkRead, onReadAnnouncement }
   return <TicketCard item={item} onMarkRead={onMarkRead} />;
 }
 
-// ─── Styles ──────────────────────────────────────────────────────────────────
+// ─── Styles ─────────────────────────────────────────────────────────────────
 
 const ICON_SIZE = 38;
 
@@ -227,42 +277,44 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
+  chevron: {
+    alignSelf: 'center',
+    flexShrink: 0,
+  },
 
   // ── A) Announcement ───────────────────────────────────────────────────────
   announceCard: {
-    backgroundColor: theme.colors.brand,
+    backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.md,
     padding: theme.spacing.md,
-    ...theme.shadows.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    ...theme.shadows.sm,
   },
   announceIconBox: {
     width: ICON_SIZE,
     height: ICON_SIZE,
     borderRadius: theme.radius.sm,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: 'rgba(201,168,76,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   announceTitle: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontWeight: '700',
     fontSize: 14,
     lineHeight: 20,
   },
   announceBody: {
-    color: 'rgba(255,255,255,0.6)',
+    color: theme.colors.textSecondary,
     fontSize: 13,
     lineHeight: 18,
   },
   announceTime: {
-    color: 'rgba(255,255,255,0.35)',
+    color: theme.colors.textTertiary,
     fontSize: 11,
     marginTop: theme.spacing.xs,
-  },
-  announceChevron: {
-    alignSelf: 'center',
-    flexShrink: 0,
   },
   announceUnreadDot: {
     position: 'absolute',
@@ -274,20 +326,24 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.accent,
   },
 
-  // ── Modal ─────────────────────────────────────────────────────────────────
+  // ── Popup modal ──────────────────────────────────────────────────────────
+  modalOverlay: {
+    ...RNStyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing.xl,
+  },
   modalBackdrop: {
     ...RNStyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
   },
-  modalSheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+  modalPopup: {
     backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: theme.radius.lg,
-    borderTopRightRadius: theme.radius.lg,
+    borderRadius: theme.radius.lg,
     maxHeight: '80%',
+    width: '100%',
+    maxWidth: 480,
+    ...theme.shadows.lg,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -300,7 +356,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: theme.radius.full,
-    backgroundColor: theme.colors.brand,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -344,6 +399,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.textPrimary,
     lineHeight: 22,
+  },
+  modalBodyEmpty: {
+    fontSize: 14,
+    color: theme.colors.textTertiary,
+    lineHeight: 22,
+    fontStyle: 'italic',
+  },
+  modalFooter: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+  },
+  viewTicketBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: theme.colors.brand,
+    borderRadius: theme.radius.md,
+    paddingVertical: theme.spacing.sm + 2,
+  },
+  viewTicketText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
   },
 
   // ── B) Ticket ─────────────────────────────────────────────────────────────
