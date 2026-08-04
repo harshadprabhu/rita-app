@@ -102,14 +102,15 @@ export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: Go
               })}
             </>
           )}
-          {/* Special-offer banner — only when a promotion is active. */}
+          {/* Special-offer text — no background box; golden gradient text
+              directly on the dark poster bottom. */}
           {rates && promo?.trim() ? (
             <View style={[styles.offer, {
               left: OFFER.left * W, top: OFFER.top * H, width: OFFER.width * W, height: OFFER.height * H,
             }]}>
-              <Text style={[styles.offerKicker, { fontSize: Math.round(W * 0.021) }]}>S P E C I A L   O F F E R</Text>
+              <Text style={[styles.offerKicker, { fontSize: Math.round(W * 0.024) }]}>✦  S P E C I A L   O F F E R  ✦</Text>
               <View style={styles.offerTextWrap}>
-                <Text numberOfLines={3} style={[styles.offerText, { fontSize: Math.round(W * 0.026) }]}>{promo.trim()}</Text>
+                <Text numberOfLines={3} style={[styles.offerText, { fontSize: Math.round(W * 0.024) }]}>{promo.trim()}</Text>
               </View>
             </View>
           ) : null}
@@ -137,14 +138,12 @@ const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', padding: theme.spacing.lg },
   anchor: { position: 'absolute', alignItems: 'center' },
   offer: {
-    position: 'absolute', borderRadius: 14, backgroundColor: '#E0B55A',
+    position: 'absolute',
     alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10,
   },
-  offerKicker: { color: '#5A3D12', fontWeight: '800', letterSpacing: 0.5 },
-  // Kicker sits at the top of the box (justifyContent: space-between above);
-  // this wrap pins the offer text to the bottom, centered horizontally.
+  offerKicker: { color: '#F2D98A', fontWeight: '800', letterSpacing: 0.5 },
   offerTextWrap: { width: '100%', alignItems: 'center', justifyContent: 'flex-end' },
-  offerText: { color: '#1A1614', fontWeight: '800', textAlign: 'center' },
+  offerText: { color: '#E0B55A', fontWeight: '800', textAlign: 'center' },
   actions: { flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.xl, alignItems: 'center' },
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm, paddingVertical: theme.spacing.md, paddingHorizontal: theme.spacing.xl, borderRadius: theme.radius.full },
   shareBtn: { backgroundColor: theme.colors.accent },

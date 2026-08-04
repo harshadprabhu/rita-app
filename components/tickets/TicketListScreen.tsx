@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { FlatList, RefreshControl, View, StyleSheet, TextInput, ScrollView, Text } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+// LinearGradient removed — solid-color pills work reliably on native
 import { useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
@@ -192,21 +192,15 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
   );
 }
 
-// Status pill: metallic-navy gradient when active (mockup), white otherwise.
 function StatusPill({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  if (active) {
-    return (
-      <SoftPress onPress={onPress} style={styles.pillWrap}>
-        <LinearGradient colors={theme.gradients.navyMetal} locations={theme.gradients.navyMetalLocations} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.pillActive}>
-          <Text style={styles.pillTextActive}>{label}</Text>
-        </LinearGradient>
-      </SoftPress>
-    );
-  }
   return (
-    <SoftPress onPress={onPress} style={styles.pill}>
-      <Text style={styles.pillText}>{label}</Text>
-    </SoftPress>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      style={[styles.pill, active && styles.pillActive]}
+    >
+      <Text style={[styles.pillText, active && styles.pillTextActive]}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -247,14 +241,15 @@ const styles = StyleSheet.create({
   },
   compactChipText: { fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary },
   compactChipTextActive: { color: '#fff' },
-  pillWrap: { borderRadius: theme.radius.full, overflow: 'hidden' },
   pill: {
     borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.full, paddingHorizontal: 14, paddingVertical: 7,
+    borderRadius: 16, paddingHorizontal: 14, height: 32, justifyContent: 'center' as const,
   },
-  pillActive: { borderRadius: theme.radius.full, paddingHorizontal: 14, paddingVertical: 8 },
-  pillText: { fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary },
-  pillTextActive: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  pillActive: {
+    backgroundColor: theme.colors.brand, borderColor: theme.colors.brand,
+  },
+  pillText: { fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary },
+  pillTextActive: { color: '#fff' },
   railRow: { flex: 1, flexDirection: 'row' },
   rail: { width: 66, paddingLeft: theme.spacing.lg, paddingRight: theme.spacing.sm, paddingTop: theme.spacing.xs, gap: 6 },
   railHeader: { fontSize: 8, fontWeight: '800', color: theme.colors.textTertiary, letterSpacing: 1, marginBottom: 2, marginLeft: 2 },

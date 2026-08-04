@@ -103,7 +103,7 @@ export function useUnifiedNotifications(userId: string, storeId: string | null) 
     const broadcastItems: FeedItem[] = (broadcastQuery.data ?? []).map(
       (b: DbBroadcast) => ({
         id: 'b-' + b.id,
-        kind: 'announcement' as NotificationKind,
+        kind: (b.kind === 'gold_rate' ? 'ticket' : 'announcement') as NotificationKind,
         title: b.title,
         body: b.body,
         created_at: b.created_at,

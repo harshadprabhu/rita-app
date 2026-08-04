@@ -224,41 +224,33 @@ function renderPosterCanvas(img: HTMLImageElement, rates: PosterRates, date: Dat
   }
   ctx.restore();
 
-  // 4. Special-offer banner (only when a promotion is active).
+  // 4. Special-offer text — no background box; golden gradient text directly
+  //    on the template, clearly visible against the dark poster bottom.
   const offer = promo?.trim();
   if (offer) {
     ctx.save();
-    const x = OFFER.x * scale, y = OFFER.y * scale, w = OFFER.w * scale, h = OFFER.h * scale, r = OFFER.r * scale;
-    const grad = ctx.createLinearGradient(x, y, x + w, y + h);
-    grad.addColorStop(0, '#E0B55A');
-    grad.addColorStop(1, '#C8963E');
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.arcTo(x + w, y, x + w, y + h, r);
-    ctx.arcTo(x + w, y + h, x, y + h, r);
-    ctx.arcTo(x, y + h, x, y, r);
-    ctx.arcTo(x, y, x + w, y, r);
-    ctx.closePath();
-    ctx.fillStyle = grad;
-    ctx.fill();
+    const x = OFFER.x * scale, y = OFFER.y * scale, w = OFFER.w * scale, h = OFFER.h * scale;
     const centerX = x + w / 2;
-    const innerPad = 36 * scale;
+    const innerPad = 24 * scale;
 
-    // "SPECIAL OFFER" kicker — anchored to the top of the box.
+    // Golden gradient used for all promo text
+    const goldGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+    goldGrad.addColorStop(0, '#F2D98A');
+    goldGrad.addColorStop(0.5, '#E0B55A');
+    goldGrad.addColorStop(1, '#C8963E');
+
+    // "SPECIAL OFFER" kicker
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#5A3D12';
-    ctx.font = `700 ${Math.round(16 * scale)}px Arial, sans-serif`;
-    ctx.fillText('S P E C I A L   O F F E R', centerX, y + 24 * scale);
+    ctx.fillStyle = goldGrad;
+    ctx.font = `800 ${Math.round(18 * scale)}px Arial, sans-serif`;
+    ctx.fillText('✦  S P E C I A L   O F F E R  ✦', centerX, y + 20 * scale);
 
-    // Offer text — centered horizontally, wrapped to up to 2 lines, and the
-    // whole text block bottom-aligned within the box (grows upward from the
-    // bottom edge rather than overflowing it).
-    ctx.fillStyle = '#1A1614';
-    ctx.font = `700 ${Math.round(18 * scale)}px Arial, sans-serif`;
+    // Promo body — smaller font, up to 3 lines, bottom-aligned
+    ctx.font = `700 ${Math.round(16 * scale)}px Arial, sans-serif`;
     const lines = wrapText(ctx, offer, w - innerPad * 2, 3);
-    const lineHeight = 22 * scale;
-    const blockBottom = y + h - 20 * scale;
+    const lineHeight = 20 * scale;
+    const blockBottom = y + h - 16 * scale;
     const firstLineY = blockBottom - lineHeight * (lines.length - 1);
     lines.forEach((ln, i) => ctx.fillText(ln, centerX, firstLineY + i * lineHeight));
     ctx.restore();
