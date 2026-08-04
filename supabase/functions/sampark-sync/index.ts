@@ -161,9 +161,14 @@ Deno.serve(async (req) => {
 
     const addKeywords = (key: string, subject: string) => {
       const bucket = kw.get(key) ?? new Map<string, number>();
-      for (const w of subject.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/)) {
-        if (w.length < 3 || STOP.has(w)) continue;
+      const words = subject.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length >= 3 && !STOP.has(w));
+      for (const w of words) {
         bucket.set(w, (bucket.get(w) ?? 0) + 1);
+      }
+      // Bigrams — capture two-word phrases for more precise matching
+      for (let i = 0; i < words.length - 1; i++) {
+        const bg = `${words[i]} ${words[i + 1]}`;
+        bucket.set(bg, (bucket.get(bg) ?? 0) + 1);
       }
       kw.set(key, bucket);
     };
@@ -212,7 +217,7 @@ Deno.serve(async (req) => {
     for (const bucket of kw.values()) {
       for (const w of bucket.keys()) df.set(w, (df.get(w) ?? 0) + 1);
     }
-    const topKeywords = (bucket: Map<string, number>, n = 12): string[] => {
+    const topKeywords = (bucket: Map<string, number>, n = 20): string[] => {
       const scored = [...bucket.entries()].map(([w, tf]) => {
         const idf = Math.log((totalNodes + 1) / ((df.get(w) ?? 1) + 1)) + 1;
         return [w, tf * idf] as const;

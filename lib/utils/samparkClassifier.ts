@@ -1,17 +1,5 @@
 import { TicketCategory } from '../api/categories';
 
-// Auto-parse engine for Category / Subcategory / Item — the same 3-level
-// classification Sampark itself uses. Unlike a hand-typed keyword list, this
-// engine is DATA-DRIVEN: it scores a description against the `keywords` field
-// on each ticket_categories row, which the sampark-sync edge function
-// re-learns on every run via TF-IDF over real historical ticket subjects
-// (currently ~4,000 tickets across 35 categories / 145 subcategories / 301
-// items). A word that appears in most nodes ("issue", "not working") scores
-// low everywhere; a word concentrated in a few nodes ("saksham", "grn",
-// "zscaler", even real staff typos like "slowness") scores high exactly where
-// it should. Accuracy improves automatically as Sampark accumulates more
-// tickets and sampark-sync re-runs — no code change needed.
-
 export interface ClassifyResult {
   category: string | null;
   categoryId: string | null;
@@ -19,8 +7,6 @@ export interface ClassifyResult {
   subcategoryId: string | null;
   item: string | null;
   itemId: string | null;
-  /** 0..1 per level — how strongly the description matched the winning node.
-   *  Below MIN_CONFIDENCE a level is left unset rather than guessed. */
   confidence: { category: number; subcategory: number; item: number };
 }
 
@@ -31,62 +17,148 @@ const EMPTY: ClassifyResult = {
   confidence: { category: 0, subcategory: 0, item: 0 },
 };
 
-// Below this score a match is considered too weak to trust — better to leave
-// the field for the user to pick than to confidently guess wrong.
-const MIN_CONFIDENCE = 0.12;
+const MIN_CONFIDENCE = 0.15;
 
-function tokenize(text: string): Set<string> {
-  return new Set(
-    text.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length >= 3),
-  );
+// ---- Stemming (lightweight suffix stripping for IT-helpdesk English) ---------
+
+const SUFFIX_RE = /(ies|ies|ing|tion|sion|ment|ness|ers|er|ed|ly|es|s)$/;
+
+function stem(word: string): string {
+  if (word.length <= 4) return word;
+  const stripped = word.replace(SUFFIX_RE, '');
+  return stripped.length >= 3 ? stripped : word;
 }
 
-// `keywords` is already ranked most → least discriminative (TF-IDF order), so
-// weight by rank: the top keyword counts more than the twelfth. Normalizing by
-// the node's own max possible score keeps nodes with short vs. long keyword
-// lists comparable on the same 0..1 scale.
-function scoreNode(tokens: Set<string>, keywords: string[] | null): number {
+// ---- Tokenisation -----------------------------------------------------------
+
+const STOP = new Set(
+  'the a an of to for in on at is are be not no and or with without your you it its this that from into request please issue problem unable able cannot can get getting got need needs error working help kindly regarding as we our am has have had will shall been being also but was were they them their there here some very much many all any most more other than same'.split(' '),
+);
+
+function tokenize(text: string): { unigrams: Set<string>; bigrams: Set<string> } {
+  const words = text
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length >= 2);
+
+  const unigrams = new Set<string>();
+  const bigrams = new Set<string>();
+
+  const meaningful: string[] = [];
+  for (const w of words) {
+    if (STOP.has(w)) continue;
+    const s = stem(w);
+    unigrams.add(w);
+    if (s !== w) unigrams.add(s);
+    meaningful.push(w);
+  }
+
+  for (let i = 0; i < meaningful.length - 1; i++) {
+    bigrams.add(`${meaningful[i]} ${meaningful[i + 1]}`);
+  }
+
+  return { unigrams, bigrams };
+}
+
+// ---- Name-based bonus scoring -----------------------------------------------
+// The category/subcategory/item name itself is a strong signal — "hardware
+// problem" should boost "Hardware Issue" even when "hardware" isn't in the
+// TF-IDF keywords.
+
+function nameScore(tokens: { unigrams: Set<string>; bigrams: Set<string> }, name: string): number {
+  const nameWords = name
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length >= 2 && !STOP.has(w));
+  if (!nameWords.length) return 0;
+  let hits = 0;
+  for (const nw of nameWords) {
+    if (tokens.unigrams.has(nw) || tokens.unigrams.has(stem(nw))) hits++;
+  }
+  return hits / nameWords.length;
+}
+
+// ---- TF-IDF keyword scoring -------------------------------------------------
+
+function scoreNode(
+  tokens: { unigrams: Set<string>; bigrams: Set<string> },
+  keywords: string[] | null,
+): number {
   if (!keywords?.length) return 0;
   let hit = 0;
   let max = 0;
-  keywords.forEach((kw, i) => {
+  for (let i = 0; i < keywords.length; i++) {
     const weight = keywords.length - i;
     max += weight;
-    if (tokens.has(kw)) hit += weight;
-  });
+    const kw = keywords[i];
+    if (tokens.unigrams.has(kw) || tokens.unigrams.has(stem(kw))) {
+      hit += weight;
+    } else if (kw.includes(' ') && tokens.bigrams.has(kw)) {
+      hit += weight;
+    } else {
+      const kwStem = stem(kw);
+      for (const tok of tokens.unigrams) {
+        if (stem(tok) === kwStem) { hit += weight * 0.8; break; }
+      }
+    }
+  }
   return max ? hit / max : 0;
 }
 
-function bestMatch(tokens: Set<string>, candidates: TicketCategory[]): { node: TicketCategory; confidence: number } | null {
-  let best: { node: TicketCategory; confidence: number } | null = null;
-  for (const node of candidates) {
-    const s = scoreNode(tokens, node.keywords);
-    if (s > 0 && (!best || s > best.confidence)) best = { node, confidence: s };
-  }
-  return best && best.confidence >= MIN_CONFIDENCE ? best : null;
+// ---- Combined scoring -------------------------------------------------------
+
+function combinedScore(
+  tokens: { unigrams: Set<string>; bigrams: Set<string> },
+  node: TicketCategory,
+): number {
+  const kwScore = scoreNode(tokens, node.keywords);
+  const nmScore = nameScore(tokens, node.name);
+  // 70% keyword TF-IDF + 30% name match — name acts as a strong prior
+  return kwScore * 0.7 + nmScore * 0.3;
 }
 
-/**
- * Classify a ticket description into Sampark's live Category → Subcategory →
- * Item taxonomy. Each level is only filled when confidently matched; an
- * unmatched level returns null so the UI shows "pick manually" instead of a
- * wrong forced guess.
- */
+function bestMatch(
+  tokens: { unigrams: Set<string>; bigrams: Set<string> },
+  candidates: TicketCategory[],
+  threshold = MIN_CONFIDENCE,
+): { node: TicketCategory; confidence: number } | null {
+  let best: { node: TicketCategory; confidence: number } | null = null;
+  for (const node of candidates) {
+    const s = combinedScore(tokens, node);
+    if (s > 0 && (!best || s > best.confidence)) best = { node, confidence: s };
+  }
+  return best && best.confidence >= threshold ? best : null;
+}
+
+// ---- Main classifier --------------------------------------------------------
+
 export function classifySamparkTicket(description: string, allNodes: TicketCategory[]): ClassifyResult {
   const tokens = tokenize(description);
-  if (!tokens.size || !allNodes.length) return EMPTY;
+  if (!tokens.unigrams.size || !allNodes.length) return EMPTY;
 
   const categories = allNodes.filter((n) => !n.is_subcategory);
   const bestCategory = bestMatch(tokens, categories);
   if (!bestCategory) return EMPTY;
 
-  const subcategories = allNodes.filter((n) => n.is_subcategory && !n.is_item && n.parent_id === bestCategory.node.id);
-  const bestSubcategory = bestMatch(tokens, subcategories);
+  const subcategories = allNodes.filter(
+    (n) => n.is_subcategory && !n.is_item && n.parent_id === bestCategory.node.id,
+  );
+  // Use a slightly lower threshold for subcategory/item — the category context
+  // already narrows the search space, so weaker matches are more trustworthy.
+  const bestSubcategory = bestMatch(tokens, subcategories, MIN_CONFIDENCE * 0.8);
+
+  // Hierarchical boost: when subcategory also matches, raise category confidence
+  // slightly — matching at two levels is stronger evidence.
+  const catConfidence = bestSubcategory
+    ? Math.min(1, bestCategory.confidence * 1.1)
+    : bestCategory.confidence;
 
   const items = bestSubcategory
     ? allNodes.filter((n) => n.is_item && n.parent_id === bestSubcategory.node.id)
     : [];
-  const bestItem = bestMatch(tokens, items);
+  const bestItem = bestMatch(tokens, items, MIN_CONFIDENCE * 0.7);
 
   return {
     category: bestCategory.node.name,
@@ -96,7 +168,7 @@ export function classifySamparkTicket(description: string, allNodes: TicketCateg
     item: bestItem?.node.name ?? null,
     itemId: bestItem?.node.id ?? null,
     confidence: {
-      category: bestCategory.confidence,
+      category: catConfidence,
       subcategory: bestSubcategory?.confidence ?? 0,
       item: bestItem?.confidence ?? 0,
     },
