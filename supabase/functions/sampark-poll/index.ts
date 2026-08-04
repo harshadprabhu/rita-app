@@ -55,33 +55,72 @@ async function sdpGet(cfg: Cfg, token: string, path: string): Promise<any> {
 
 async function syncOne(
   supabase: ReturnType<typeof createClient>, cfg: Cfg, token: string,
-  ticket: { id: string; status: string; sampark_request_id: string; requester_id: string | null; ticket_number: string },
-): Promise<{ statusChanged: boolean; notesAdded: number }> {
+  ticket: { id: string; status: string; sampark_request_id: string; requester_id: string | null; ticket_number: string; assignee_id: string | null },
+): Promise<{ statusChanged: boolean; assigneeChanged: boolean; notesAdded: number }> {
   const reqId = ticket.sampark_request_id;
   const detail = await sdpGet(cfg, token, `/requests/${reqId}`);
   const statusName = detail.request?.status?.name as string | undefined;
-  let statusChanged = false;
+  let newStatus = ticket.status;
+  let newLifecycle: string | null = null;
   if (statusName) {
     const mapped = mapStatus(statusName);
-    if (mapped && mapped.status !== ticket.status) {
-      await supabase.from('tickets').update({
-        status: mapped.status, lifecycle: mapped.lifecycle,
-        ...(mapped.status === 'resolved' ? { resolved_at: new Date().toISOString() } : {}),
-      }).eq('id', ticket.id);
-      statusChanged = true;
+    if (mapped) { newStatus = mapped.status; newLifecycle = mapped.lifecycle; }
+  }
 
-      // Same Daily Alerts notification the real-time webhook creates — this
-      // poll is a fallback for a dropped/misfired trigger, so a ticket caught
-      // here should alert the requester exactly like the webhook path does.
-      if (ticket.requester_id) {
-        await supabase.from('notifications').insert({
-          recipient_id: ticket.requester_id,
-          ticket_id: ticket.id,
-          title: mapped.status === 'resolved' ? 'Ticket resolved' : 'Ticket status updated',
-          body: `${ticket.ticket_number}: moved to ${mapped.status.replace(/_/g, ' ')}`,
-          type: mapped.status === 'resolved' ? 'ticket_resolved' : 'ticket_updated',
-        }).catch((e: unknown) => console.warn('[sampark-poll] notification insert failed:', e));
-      }
+  // Match the Sampark technician (name, normalized) against a RITA staff
+  // profile — same as the webhook, not restricted to role='technician'
+  // since admins/managers/ops managers routinely pick up tickets too.
+  let assigneeChanged = false;
+  let newAssigneeId = ticket.assignee_id;
+  let assigneeName: string | null = null;
+  const techName = String(detail.request?.technician?.name ?? '').trim();
+  if (techName) {
+    const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+    const { data: techs } = await supabase.from('profiles')
+      .select('id, display_name').in('role', ['technician', 'admin', 'manager', 'ops_manager']).eq('is_active', true);
+    const match = (techs as { id: string; display_name: string }[] | null)?.find(
+      (p) => norm(p.display_name) === norm(techName),
+    );
+    if (match && match.id !== ticket.assignee_id) {
+      newAssigneeId = match.id;
+      assigneeName = match.display_name;
+      assigneeChanged = true;
+    }
+  }
+
+  // A ticket with an owner in Sampark is work starting, even if Sampark's own
+  // status field is still "Open" (technicians don't always flip it right
+  // away). Applied every pass against the FINAL resolved assignee — not just
+  // on the pass that detects a new assignment — so a later poll re-pulling
+  // Sampark's raw "Open" status can't silently revert an earlier bump.
+  if (newAssigneeId && newStatus === 'open') {
+    newStatus = 'in_progress';
+    newLifecycle = 'being_worked_on';
+  }
+  const statusChanged = newStatus !== ticket.status;
+
+  if (statusChanged || assigneeChanged) {
+    await supabase.from('tickets').update({
+      ...(statusChanged ? { status: newStatus, lifecycle: newLifecycle } : {}),
+      ...(newStatus === 'resolved' && ticket.status !== 'resolved' ? { resolved_at: new Date().toISOString() } : {}),
+      ...(assigneeChanged ? { assignee_id: newAssigneeId } : {}),
+    }).eq('id', ticket.id);
+
+    // Same Daily Alerts notification the real-time webhook creates — this
+    // poll is a fallback for a dropped/misfired trigger, so a ticket caught
+    // here should alert the requester exactly like the webhook path does.
+    if (ticket.requester_id) {
+      const title = assigneeChanged ? 'Technician assigned' : (newStatus === 'resolved' ? 'Ticket resolved' : 'Ticket status updated');
+      const body = assigneeChanged
+        ? `${ticket.ticket_number}: picked up by ${assigneeName}`
+        : `${ticket.ticket_number}: moved to ${newStatus.replace(/_/g, ' ')}`;
+      const { error: notifErr } = await supabase.from('notifications').insert({
+        recipient_id: ticket.requester_id,
+        ticket_id: ticket.id,
+        title, body,
+        type: assigneeChanged ? 'ticket_assigned' : (newStatus === 'resolved' ? 'ticket_resolved' : 'ticket_updated'),
+      });
+      if (notifErr) console.warn('[sampark-poll] notification insert failed:', notifErr);
     }
   }
   let notesAdded = 0;
@@ -101,7 +140,7 @@ async function syncOne(
       if (!error) notesAdded++;
     }
   } catch { /* notes optional */ }
-  return { statusChanged, notesAdded };
+  return { statusChanged, assigneeChanged, notesAdded };
 }
 
 Deno.serve(async (req) => {
@@ -117,12 +156,12 @@ Deno.serve(async (req) => {
     // to bound the API calls.
     const { data: tickets, error } = await supabase
       .from('tickets')
-      .select('id, status, sampark_request_id, requester_id, ticket_number')
+      .select('id, status, sampark_request_id, requester_id, ticket_number, assignee_id')
       .not('sampark_request_id', 'is', null)
       .in('status', ['open', 'in_progress'])
       .limit(500);
     if (error) throw error;
-    const list = (tickets ?? []) as { id: string; status: string; sampark_request_id: string; requester_id: string | null; ticket_number: string }[];
+    const list = (tickets ?? []) as { id: string; status: string; sampark_request_id: string; requester_id: string | null; ticket_number: string; assignee_id: string | null }[];
     if (!list.length) {
       return new Response(JSON.stringify({ ok: true, polled: 0 }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
@@ -130,16 +169,17 @@ Deno.serve(async (req) => {
     const cfg = await loadCfg(supabase);
     const token = await getToken(cfg);
 
-    let statusChanges = 0, notes = 0, errors = 0;
+    let statusChanges = 0, assigneeChanges = 0, notes = 0, errors = 0;
     for (const t of list) {
       try {
         const r = await syncOne(supabase, cfg, token, t);
         if (r.statusChanged) statusChanges++;
+        if (r.assigneeChanged) assigneeChanges++;
         notes += r.notesAdded;
       } catch { errors++; }
     }
 
-    return new Response(JSON.stringify({ ok: true, polled: list.length, statusChanges, notesAdded: notes, errors }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ ok: true, polled: list.length, statusChanges, assigneeChanges, notesAdded: notes, errors }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
   } catch (err) {
     console.error('[sampark-poll]', err);
     return new Response(JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });

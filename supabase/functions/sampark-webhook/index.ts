@@ -96,18 +96,16 @@ Deno.serve(async (req) => {
 
     let newStatus = t.status;
     let newLifecycle = t.lifecycle;
-    let statusChanged = false;
     if (statusName) {
       const mapped = mapStatus(statusName);
-      if (mapped && mapped.status !== t.status) {
-        newStatus = mapped.status;
-        newLifecycle = mapped.lifecycle;
-        statusChanged = true;
-      }
+      if (mapped) { newStatus = mapped.status; newLifecycle = mapped.lifecycle; }
     }
 
-    // Match the Sampark technician (name, normalized) against a RITA technician
+    // Match the Sampark technician (name, normalized) against a RITA staff
     // profile, so self-assignment in Sampark reflects who owns the ticket here.
+    // Not restricted to role='technician' — admins/managers/ops managers
+    // routinely pick up tickets in Sampark too (confirmed live: an admin
+    // self-assigning never matched under the technician-only filter).
     let assigneeChanged = false;
     let newAssigneeId = t.assignee_id;
     let assigneeName: string | null = null;
@@ -115,7 +113,7 @@ Deno.serve(async (req) => {
     if (techName) {
       const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
       const { data: techs } = await supabase.from('profiles')
-        .select('id, display_name').eq('role', 'technician').eq('is_active', true);
+        .select('id, display_name').in('role', ['technician', 'admin', 'manager', 'ops_manager']).eq('is_active', true);
       const match = (techs as { id: string; display_name: string }[] | null)?.find(
         (p) => norm(p.display_name) === norm(techName),
       );
@@ -123,15 +121,19 @@ Deno.serve(async (req) => {
         newAssigneeId = match.id;
         assigneeName = match.display_name;
         assigneeChanged = true;
-        // A technician taking ownership in Sampark is work starting — reflect
-        // that in RITA even if Sampark's own status field hasn't moved yet.
-        if (newStatus === 'open') {
-          newStatus = 'in_progress';
-          newLifecycle = 'being_worked_on';
-          statusChanged = true;
-        }
       }
     }
+
+    // A ticket with an owner in Sampark is work starting, even if Sampark's
+    // own status field is still "Open". Applied every pass against the FINAL
+    // resolved assignee — not just on the pass that detects a new assignment
+    // — so a later poll/webhook re-pulling Sampark's raw "Open" status can't
+    // silently revert an earlier bump.
+    if (newAssigneeId && newStatus === 'open') {
+      newStatus = 'in_progress';
+      newLifecycle = 'being_worked_on';
+    }
+    const statusChanged = newStatus !== t.status;
 
     if (statusChanged || assigneeChanged) {
       await supabase.from('tickets').update({
@@ -147,13 +149,14 @@ Deno.serve(async (req) => {
         const body = assigneeChanged
           ? `${t.ticket_number}: picked up by ${assigneeName}`
           : `${t.ticket_number}: moved to ${newStatus.replace(/_/g, ' ')}`;
-        await supabase.from('notifications').insert({
+        const { error: notifErr } = await supabase.from('notifications').insert({
           recipient_id: t.requester_id,
           ticket_id: ticketId,
           title,
           body,
           type: assigneeChanged ? 'ticket_assigned' : (newStatus === 'resolved' ? 'ticket_resolved' : 'ticket_updated'),
-        }).catch((e) => console.warn('[sampark-webhook] notification insert failed:', e));
+        });
+        if (notifErr) console.warn('[sampark-webhook] notification insert failed:', notifErr);
       }
     }
 
