@@ -12,6 +12,7 @@ import { getTechnicians } from '../../lib/api/profiles';
 import { updateTicket, reassignTicket, deleteTicket } from '../../lib/api/tickets';
 import { QUERY_KEYS } from '../../constants/queryKeys';
 import { theme } from '../../constants/theme';
+import { NumericText } from '../common/NumericText';
 
 interface Props {
   ticket: TicketWithRelations;
@@ -90,9 +91,9 @@ export function TicketCard({ ticket }: Props) {
           {/* Row 2: lifecycle pill · id · category ........ time */}
           <View style={styles.metaRow}>
             <LifecycleChip lifecycle={ticket.lifecycle} small />
-            <Text style={styles.ticketNumber} numberOfLines={1}>
+            <NumericText style={styles.ticketNumber} numberOfLines={1}>
               {ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : ticket.ticket_number}
-            </Text>
+            </NumericText>
             {categoryLabel && <Text style={styles.metaDot}>·</Text>}
             {categoryLabel && <Text style={styles.metaText} numberOfLines={1}>{categoryLabel}</Text>}
             <View style={{ flex: 1 }} />

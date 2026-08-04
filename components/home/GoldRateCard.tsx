@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useGoldRate, useGoldRateTrend } from '../../hooks/useGoldRate';
+import { NumericText } from '../common/NumericText';
 import { getActivePromotionForStore } from '../../lib/api/promotions';
 import { useAuthStore } from '../../stores/authStore';
 import { timeAgo } from '../../lib/utils/date';
@@ -126,9 +127,9 @@ export function GoldRateCard() {
         <View style={styles.headerRight}>
           {delta !== null && (
             <View style={[styles.deltaPill, delta < 0 ? styles.deltaPillDown : styles.deltaPillUp]}>
-              <Text style={[styles.deltaText, delta < 0 ? styles.deltaTextDown : styles.deltaTextUp]}>
+              <NumericText style={[styles.deltaText, delta < 0 ? styles.deltaTextDown : styles.deltaTextUp]}>
                 {delta >= 0 ? '▲' : '▼'} {Math.abs(delta).toFixed(2)}%
-              </Text>
+              </NumericText>
             </View>
           )}
           <TouchableOpacity onPress={() => refetch()} disabled={isRefetching} hitSlop={8}>
@@ -155,9 +156,9 @@ export function GoldRateCard() {
                 style={[styles.gridCell, { backgroundColor: i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.038)' }]}
               >
                 <Text style={styles.karatLabel}>{col.label}</Text>
-                <Text style={styles.rateValue}>
+                <NumericText style={styles.rateValue}>
                   {RUPEE}{col.rate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </Text>
+                </NumericText>
               </View>
             ))}
           </View>

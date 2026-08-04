@@ -7,6 +7,7 @@ import { LoadingOverlay } from '../../components/common/LoadingOverlay';
 import { getTickets } from '../../lib/api/tickets';
 import { QUERY_KEYS } from '../../constants/queryKeys';
 import { theme } from '../../constants/theme';
+import { NumericText } from '../../components/common/NumericText';
 
 export default function Analytics() {
   const { data: tickets, isLoading } = useQuery({ queryKey: QUERY_KEYS.tickets({}), queryFn: () => getTickets({}) });
@@ -56,7 +57,7 @@ export default function Analytics() {
                 <View style={styles.barTrack}>
                   <View style={[styles.barFill, { width: `${Math.max(4, (c.value / maxCat) * 100)}%` }]} />
                 </View>
-                <Text style={styles.barValue}>{c.value}</Text>
+                <NumericText style={styles.barValue}>{c.value}</NumericText>
               </View>
             ))}
           </View>
@@ -71,7 +72,7 @@ export default function Analytics() {
 function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <View style={[styles.statCard, theme.shadows.sm]}>
-      <Text style={[styles.statValue, color ? { color } : null]}>{value}</Text>
+      <NumericText style={[styles.statValue, color ? { color } : null]}>{value}</NumericText>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );

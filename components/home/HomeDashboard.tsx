@@ -13,6 +13,7 @@ import { getTickets } from '../../lib/api/tickets';
 import { useAuthStore } from '../../stores/authStore';
 import { SoftPress } from '../common/SoftPress';
 import { QUERY_KEYS } from '../../constants/queryKeys';
+import { NumericText } from '../common/NumericText';
 import { theme } from '../../constants/theme';
 
 interface StatDef {
@@ -72,7 +73,7 @@ function StatCard({ label, filters, color, icon, href }: StatDef) {
         <Ionicons name={icon} size={15} color={color} />
       </View>
       <View style={styles.statText}>
-        <Text style={styles.statValue}>{data?.length ?? '–'}</Text>
+        <NumericText style={styles.statValue}>{data?.length ?? '–'}</NumericText>
         <Text style={styles.statLabel} numberOfLines={1}>{label}</Text>
       </View>
     </>

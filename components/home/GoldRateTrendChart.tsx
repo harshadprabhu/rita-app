@@ -4,6 +4,7 @@ import Svg, { Polyline, Polygon, Circle, Line, Text as SvgText } from 'react-nat
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../constants/theme';
+import { NumericText } from '../common/NumericText';
 import type { GoldRateTrendPoint } from '../../lib/api/goldRate';
 
 // Chart geometry (viewBox units). The SVG scales to the container width.
@@ -120,14 +121,14 @@ export function GoldRateTrendChart({ points }: Props) {
         {points.length > 1 && (
           <View style={styles.deltaPill}>
             <Ionicons name={up ? 'arrow-up-outline' : 'arrow-down-outline'} size={11} color={deltaColor} />
-            <Text style={[styles.deltaText, { color: deltaColor }]}>{Math.abs(deltaPct).toFixed(1)}%</Text>
+            <NumericText style={[styles.deltaText, { color: deltaColor }]}>{Math.abs(deltaPct).toFixed(1)}%</NumericText>
           </View>
         )}
       </View>
 
       {/* Readout — one value at a time, driven by the scrubber. */}
       <View style={styles.readout}>
-        <Text style={styles.readValue}>{RUPEE}{formatRate(selPoint.rate)}</Text>
+        <NumericText style={styles.readValue}>{RUPEE}{formatRate(selPoint.rate)}</NumericText>
         <Text style={styles.readDate}>{longDate(selPoint.entry_date)}</Text>
       </View>
 

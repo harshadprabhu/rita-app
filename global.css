@@ -2,7 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Bricolage Grotesque — web only (loaded via app/+html.tsx Google Fonts link) */
+/* Bricolage Grotesque for text, Inter for numericals — both loaded via DOM injection in _layout.tsx */
 body, input, textarea, button, select {
   font-family: 'Bricolage Grotesque', system-ui, -apple-system, sans-serif;
 }
+/* Font-variant for tabular (fixed-width) digits where Inter is used */
+.numeric { font-variant-numeric: tabular-nums; }

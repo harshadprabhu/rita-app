@@ -23,13 +23,14 @@ import { LoadingOverlay } from '../components/common/LoadingOverlay';
 import { ToastHost } from '../components/common/ToastHost';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
 
-// Bricolage Grotesque — the app's brand typeface.
-// Web: loaded from Google Fonts CDN (faster than bundling) via DOM injection.
+// Bricolage Grotesque — the app's brand typeface for all text.
+// Inter — used only for numerical values (gold rates, ticket numbers, etc.).
+// Web: both loaded from Google Fonts CDN via DOM injection.
 // Native: bundled TTFs loaded by expo-font (useFonts in RootLayout below).
 const FONT_FAMILY = 'BricolageGrotesque';
 
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
-  const id = 'bricolage-grotesque';
+  const id = 'app-fonts';
   if (!document.getElementById(id)) {
     const pre1 = document.createElement('link');
     pre1.rel = 'preconnect';
@@ -41,7 +42,7 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
     const link = document.createElement('link');
     link.id = id;
     link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&display=swap';
+    link.href = 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=Inter:wght@400;600;700;800&display=swap';
     const style = document.createElement('style');
     style.textContent = `body, input, textarea, button, select { font-family: 'Bricolage Grotesque', system-ui, -apple-system, sans-serif; }`;
     document.head.append(pre1, pre2, link, style);
@@ -49,8 +50,7 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
 }
 
 // Set Bricolage Grotesque as the default font for all Text and TextInput.
-// On web this also prevents the `* !important` CSS from being needed — each
-// Text element gets fontFamily inline, which won't interfere with icon fonts
+// Each element gets fontFamily inline, which won't interfere with icon fonts
 // (Ionicons etc.) that set their own fontFamily inline.
 const textProps = (RNText as any).defaultProps || {};
 (RNText as any).defaultProps = { ...textProps, style: [{ fontFamily: FONT_FAMILY }, textProps.style] };
@@ -209,6 +209,7 @@ export default function RootLayout() {
     'BricolageGrotesque-SemiBold': require('../assets/fonts/BricolageGrotesque-SemiBold.ttf'),
     'BricolageGrotesque-Bold': require('../assets/fonts/BricolageGrotesque-Bold.ttf'),
     'BricolageGrotesque-ExtraBold': require('../assets/fonts/BricolageGrotesque-ExtraBold.ttf'),
+    InterNumeric: require('../assets/fonts/Inter-SemiBold.ttf'),
   });
 
   useEffect(() => {

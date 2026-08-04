@@ -20,6 +20,7 @@ import { QUERY_KEYS } from '../../constants/queryKeys';
 import { ALL_PRIORITIES } from '../../constants/ticket';
 import { TicketPriority } from '../../types';
 import { theme, webNoOutline } from '../../constants/theme';
+import { NumericText } from '../common/NumericText';
 
 interface Props {
   title: string;

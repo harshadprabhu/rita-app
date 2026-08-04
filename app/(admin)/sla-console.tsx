@@ -11,6 +11,7 @@ import { getBreachedTickets } from '../../lib/api/sla';
 import { exportTicketsToPdf, exportTicketsToSpreadsheet } from '../../lib/utils/export';
 import { QUERY_KEYS } from '../../constants/queryKeys';
 import { theme } from '../../constants/theme';
+import { NumericText } from '../../components/common/NumericText';
 
 export default function SlaConsole() {
   const { data: tickets, isLoading, refetch, isRefetching } = useQuery({
@@ -49,7 +50,7 @@ export default function SlaConsole() {
                 { label: 'On Track', count: (tickets ?? []).filter((x) => !x.sla_breached && x.priority !== 'high').length, color: '#10B981', bg: '#ECFDF5' },
               ].map((tile) => (
                 <View key={tile.label} style={[styles.tile, { backgroundColor: tile.bg }]}>
-                  <Text style={[styles.tileCount, { color: tile.color }]}>{tile.count}</Text>
+                  <NumericText style={[styles.tileCount, { color: tile.color }]}>{tile.count}</NumericText>
                   <Text style={styles.tileLabel}>{tile.label}</Text>
                 </View>
               ))}
