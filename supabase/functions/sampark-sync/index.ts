@@ -111,10 +111,10 @@ Deno.serve(async (req) => {
       }
       try {
         const reqs = await sdpGet(cfg, token, '/requests', {
-          row_count: 3,
+          row_count: 10,
           sort_field: 'created_time',
           sort_order: 'desc',
-          fields_required: ['subject', 'category', 'subcategory', 'item', 'status', 'created_time'],
+          fields_required: ['subject', 'category', 'subcategory', 'item', 'status', 'created_time', 'priority'],
         });
         const list = (reqs.requests ?? []) as Record<string, unknown>[];
         report.requestSample = list.map((r) => ({
@@ -123,9 +123,17 @@ Deno.serve(async (req) => {
           category: r.category,
           subcategory: r.subcategory,
           item: r.item,
+          priority: r.priority,
         }));
       } catch (e) {
         report.requestsError = e instanceof Error ? e.message : String(e);
+      }
+      try {
+        const prios = await sdpGet(cfg, token, '/priorities', { row_count: 50 });
+        const list = (prios.priorities ?? []) as Record<string, unknown>[];
+        report.prioritySample = list.map((p) => ({ id: p.id, name: p.name }));
+      } catch (e) {
+        report.prioritiesError = e instanceof Error ? e.message : String(e);
       }
       return new Response(JSON.stringify(report, null, 2), {
         headers: { ...CORS, 'Content-Type': 'application/json' },

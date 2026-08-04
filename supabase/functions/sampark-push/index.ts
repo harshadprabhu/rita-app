@@ -11,9 +11,12 @@ const CORS = {
 };
 const SDP_ACCEPT = 'application/vnd.manageengine.sdp.v3+json';
 
-// RITA priority → Sampark priority name.
+// RITA priority → Sampark priority name. Sampark's actual picklist (confirmed
+// live via sampark-sync's ?probe=1 against real historical requests) is
+// Low/Medium/High/Critical — no "Urgent" tier exists, so that guess silently
+// rejected every critical-priority push with a 400 (field: priority, failed).
 const PRIORITY_MAP: Record<string, string> = {
-  low: 'Low', medium: 'Medium', high: 'High', critical: 'Urgent',
+  low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical',
 };
 
 interface Cfg {
