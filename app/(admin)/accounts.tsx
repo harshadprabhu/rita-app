@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Switch, RefreshControl, TouchableOpacity, Modal, Pressable } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, FlatList, StyleSheet, Switch, RefreshControl, TouchableOpacity, Modal, Pressable, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Screen } from '../../components/common/Screen';
@@ -13,7 +13,7 @@ import { ROLE_LABELS } from '../../constants/roles';
 import { QUERY_KEYS } from '../../constants/queryKeys';
 import { extractErrorMessage } from '../../lib/utils/error';
 import { UserRole, DbProfile } from '../../types';
-import { theme } from '../../constants/theme';
+import { theme, webNoOutline } from '../../constants/theme';
 
 const ASSIGNABLE_ROLES: UserRole[] = ['user', 'in_store_manager', 'technician', 'manager', 'ops_manager', 'admin'];
 
@@ -22,11 +22,20 @@ export default function Accounts() {
   const showToast = useUiStore((s) => s.showToast);
   const queryClient = useQueryClient();
   const [roleTarget, setRoleTarget] = useState<DbProfile | null>(null);
+  const [search, setSearch] = useState('');
 
   const { data: accounts, isLoading, refetch, isRefetching } = useQuery({
     queryKey: QUERY_KEYS.accounts(),
     queryFn: () => getAccounts(),
   });
+
+  const filteredAccounts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return accounts ?? [];
+    return (accounts ?? []).filter(
+      (a) => a.display_name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q),
+    );
+  }, [accounts, search]);
 
   const toggleActive = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => setAccountActive(id, isActive, profile!.id),
@@ -46,11 +55,28 @@ export default function Accounts() {
   return (
     <Screen edges={['top', 'left', 'right']}>
       <AppHeader title="Accounts" showBack />
+      <View style={styles.searchBox}>
+        <Ionicons name="search" size={16} color={theme.colors.textTertiary} />
+        <TextInput
+          style={[styles.searchInput, webNoOutline]}
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search by name or user ID…"
+          placeholderTextColor={theme.colors.textTertiary}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+        {search.length > 0 && (
+          <TouchableOpacity onPress={() => setSearch('')} hitSlop={8}>
+            <Ionicons name="close-circle" size={16} color={theme.colors.textTertiary} />
+          </TouchableOpacity>
+        )}
+      </View>
       {isLoading ? (
         <LoadingOverlay />
       ) : (
         <FlatList
-          data={accounts ?? []}
+          data={filteredAccounts}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
@@ -76,7 +102,12 @@ export default function Accounts() {
               />
             </View>
           )}
-          ListEmptyComponent={<EmptyState icon="people-outline" title="No accounts yet" />}
+          ListEmptyComponent={
+            <EmptyState
+              icon="people-outline"
+              title={search ? 'No matching accounts' : 'No accounts yet'}
+            />
+          }
         />
       )}
 
@@ -116,6 +147,13 @@ export default function Accounts() {
 }
 
 const styles = StyleSheet.create({
+  searchBox: {
+    flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
+    backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border,
+    borderRadius: 12, paddingHorizontal: theme.spacing.md, height: 42, ...theme.shadows.xs,
+    marginHorizontal: theme.spacing.lg, marginTop: theme.spacing.sm,
+  },
+  searchInput: { flex: 1, color: theme.colors.textPrimary, fontSize: 13, paddingVertical: 0 },
   list: { padding: theme.spacing.lg },
   row: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
