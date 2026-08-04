@@ -132,6 +132,41 @@ function bestMatch(
   return best && best.confidence >= threshold ? best : null;
 }
 
+// ---- Bottom-up rescue ---------------------------------------------------
+// A top-level category's keyword list is TF-IDF'd across every ticket filed
+// under it, so it's necessarily generic/diluted — a description built almost
+// entirely from leaf-specific vocabulary (an exact POS error string, a
+// terminal ID) can score below MIN_CONFIDENCE at the category level even
+// though one specific item matches it almost exactly. Rather than give up,
+// search every item in the tree directly and walk up its parent chain.
+
+function rescueFromItems(
+  tokens: { unigrams: Set<string>; bigrams: Set<string> },
+  allNodes: TicketCategory[],
+): ClassifyResult {
+  const items = allNodes.filter((n) => n.is_item);
+  const bestItem = bestMatch(tokens, items, MIN_CONFIDENCE * 0.7);
+  if (!bestItem) return EMPTY;
+
+  const subNode = allNodes.find((n) => n.id === bestItem.node.parent_id) ?? null;
+  const catNode = subNode ? allNodes.find((n) => n.id === subNode.parent_id) ?? null : null;
+  if (!catNode) return EMPTY;
+
+  return {
+    category: catNode.name,
+    categoryId: catNode.id,
+    subcategory: subNode?.name ?? null,
+    subcategoryId: subNode?.id ?? null,
+    item: bestItem.node.name,
+    itemId: bestItem.node.id,
+    confidence: {
+      category: combinedScore(tokens, catNode),
+      subcategory: subNode ? combinedScore(tokens, subNode) : 0,
+      item: bestItem.confidence,
+    },
+  };
+}
+
 // ---- Main classifier --------------------------------------------------------
 
 export function classifySamparkTicket(description: string, allNodes: TicketCategory[]): ClassifyResult {
@@ -140,7 +175,7 @@ export function classifySamparkTicket(description: string, allNodes: TicketCateg
 
   const categories = allNodes.filter((n) => !n.is_subcategory);
   const bestCategory = bestMatch(tokens, categories);
-  if (!bestCategory) return EMPTY;
+  if (!bestCategory) return rescueFromItems(tokens, allNodes);
 
   const subcategories = allNodes.filter(
     (n) => n.is_subcategory && !n.is_item && n.parent_id === bestCategory.node.id,
