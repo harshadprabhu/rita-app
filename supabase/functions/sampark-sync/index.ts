@@ -100,6 +100,22 @@ Deno.serve(async (req) => {
 
     // --- Probe: confirm auth + reveal categories and a sample request shape. ---
     if (probe) {
+      const inspectId = new URL(req.url).searchParams.get('inspectId');
+      if (inspectId) {
+        // Ad-hoc single-request lookup (full detail, not the trimmed
+        // fields_required list) — for diagnosing a specific ticket's fields
+        // as Sampark actually stored them (e.g. who it shows as requester).
+        try {
+          const detail = await sdpGet(cfg, token, `/requests/${inspectId}`);
+          return new Response(JSON.stringify(detail.request ?? detail, null, 2), {
+            headers: { ...CORS, 'Content-Type': 'application/json' },
+          });
+        } catch (e) {
+          return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), {
+            status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
+          });
+        }
+      }
       const report: Record<string, unknown> = { tokenOk: true, apiBase: apiBase(cfg) };
       try {
         const cats = await sdpGet(cfg, token, '/categories', { row_count: 100 });
