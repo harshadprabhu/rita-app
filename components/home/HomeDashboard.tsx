@@ -25,14 +25,24 @@ interface StatDef {
   href?: Parameters<typeof router.push>[0];
 }
 
+interface QuickAction {
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+  bg: string;
+  onPress: () => void;
+}
+
 interface Props {
   stats: StatDef[];
   showCreateButton?: boolean;
   /** Store-facing roles (user/manager) see the gold rate card; admin doesn't. */
   showGoldRate?: boolean;
+  /** Manager-only shortcuts (Broadcasts, Promotions) shown as a row below the gold rate card. */
+  quickActions?: QuickAction[];
 }
 
-export function HomeDashboard({ stats, showGoldRate }: Props) {
+export function HomeDashboard({ stats, showGoldRate, quickActions }: Props) {
   const { t } = useTranslation();
   const profile = useAuthStore((s) => s.profile);
 
@@ -54,6 +64,19 @@ export function HomeDashboard({ stats, showGoldRate }: Props) {
         )}
 
         {showGoldRate && <GoldRateCard />}
+
+        {quickActions && quickActions.length > 0 && (
+          <View style={styles.quickActionsRow}>
+            {quickActions.map((qa) => (
+              <SoftPress key={qa.label} style={[styles.quickActionBtn, theme.shadows.xs]} onPress={qa.onPress}>
+                <View style={[styles.quickActionIcon, { backgroundColor: qa.bg }]}>
+                  <Ionicons name={qa.icon} size={17} color={qa.color} />
+                </View>
+                <Text style={styles.quickActionLabel} numberOfLines={1}>{qa.label}</Text>
+              </SoftPress>
+            ))}
+          </View>
+        )}
 
         <View style={styles.statsGrid}>
           {stats.map((stat) => (
@@ -91,6 +114,17 @@ const styles = StyleSheet.create({
   topRow: { marginBottom: theme.spacing.lg },
   greeting: { fontSize: 26, fontWeight: '600', color: theme.colors.textPrimary, letterSpacing: 0.2 },
   greetingSubtitle: { fontSize: 12, color: theme.colors.textSecondary, marginTop: 3, fontWeight: '500' },
+  quickActionsRow: { flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.md },
+  quickActionBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
+    backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg,
+    borderWidth: 1, borderColor: theme.colors.border, paddingVertical: 13, paddingHorizontal: theme.spacing.md,
+  },
+  quickActionIcon: {
+    width: 32, height: 32, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  },
+  quickActionLabel: { fontSize: 12.5, fontWeight: '700', color: theme.colors.textPrimary, flexShrink: 1 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
   statCard: {
     flexBasis: '47%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
