@@ -224,18 +224,19 @@ export default function CreateTicket() {
         </TouchableOpacity>
         {submitAttempted && subcategoryMissing && <Text style={styles.micError}>Please choose a subcategory.</Text>}
 
-        {items.length > 0 && (
-          <>
-            <Text style={[styles.label, styles.spaced]}>Item (optional)</Text>
-            <TouchableOpacity style={styles.selectRow} onPress={() => openPicker('item')} activeOpacity={0.7}>
-              <Ionicons name="pricetags-outline" size={16} color={theme.colors.brand} />
-              <Text style={[styles.selectValue, !item && styles.selectPlaceholder]}>
-                {item ?? 'Select an item'}
-              </Text>
-              <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
-            </TouchableOpacity>
-          </>
-        )}
+        <Text style={[styles.label, styles.spaced]}>Item</Text>
+        <TouchableOpacity
+          style={styles.selectRow}
+          onPress={() => openPicker('item')}
+          activeOpacity={0.7}
+          disabled={items.length === 0}
+        >
+          <Ionicons name="pricetags-outline" size={16} color={items.length ? theme.colors.brand : theme.colors.textTertiary} />
+          <Text style={[styles.selectValue, !item && styles.selectPlaceholder]}>
+            {item ?? (items.length ? 'Select an item' : 'None available')}
+          </Text>
+          {items.length > 0 && <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />}
+        </TouchableOpacity>
 
         <Text style={[styles.label, styles.spaced]}>Contact Number</Text>
         <TextInput
