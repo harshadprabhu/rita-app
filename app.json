@@ -68,7 +68,14 @@
       ],
       "expo-document-picker",
       "expo-localization",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "RITA uses the microphone to let you dictate a ticket description.",
+          "speechRecognitionPermission": "RITA uses speech recognition to convert your dictation into text."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
