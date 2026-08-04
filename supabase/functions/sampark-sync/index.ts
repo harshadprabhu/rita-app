@@ -101,6 +101,7 @@ Deno.serve(async (req) => {
     // --- Probe: confirm auth + reveal categories and a sample request shape. ---
     if (probe) {
       const inspectId = new URL(req.url).searchParams.get('inspectId');
+      const inspectPath = new URL(req.url).searchParams.get('path');
       if (inspectId) {
         // Ad-hoc single-request lookup (full detail, not the trimmed
         // fields_required list) — for diagnosing a specific ticket's fields
@@ -108,6 +109,20 @@ Deno.serve(async (req) => {
         try {
           const detail = await sdpGet(cfg, token, `/requests/${inspectId}`);
           return new Response(JSON.stringify(detail.request ?? detail, null, 2), {
+            headers: { ...CORS, 'Content-Type': 'application/json' },
+          });
+        } catch (e) {
+          return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), {
+            status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+      if (inspectPath) {
+        // Ad-hoc arbitrary-path GET (e.g. ?path=/technicians) for one-off
+        // diagnostics against endpoints not otherwise wired up.
+        try {
+          const detail = await sdpGet(cfg, token, inspectPath, { row_count: 100 });
+          return new Response(JSON.stringify(detail, null, 2), {
             headers: { ...CORS, 'Content-Type': 'application/json' },
           });
         } catch (e) {

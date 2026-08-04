@@ -55,7 +55,7 @@ async function sdpGet(cfg: Cfg, token: string, path: string): Promise<any> {
 
 async function syncOne(
   supabase: ReturnType<typeof createClient>, cfg: Cfg, token: string,
-  ticket: { id: string; status: string; sampark_request_id: string },
+  ticket: { id: string; status: string; sampark_request_id: string; requester_id: string | null; ticket_number: string },
 ): Promise<{ statusChanged: boolean; notesAdded: number }> {
   const reqId = ticket.sampark_request_id;
   const detail = await sdpGet(cfg, token, `/requests/${reqId}`);
@@ -69,6 +69,19 @@ async function syncOne(
         ...(mapped.status === 'resolved' ? { resolved_at: new Date().toISOString() } : {}),
       }).eq('id', ticket.id);
       statusChanged = true;
+
+      // Same Daily Alerts notification the real-time webhook creates — this
+      // poll is a fallback for a dropped/misfired trigger, so a ticket caught
+      // here should alert the requester exactly like the webhook path does.
+      if (ticket.requester_id) {
+        await supabase.from('notifications').insert({
+          recipient_id: ticket.requester_id,
+          ticket_id: ticket.id,
+          title: mapped.status === 'resolved' ? 'Ticket resolved' : 'Ticket status updated',
+          body: `${ticket.ticket_number}: moved to ${mapped.status.replace(/_/g, ' ')}`,
+          type: mapped.status === 'resolved' ? 'ticket_resolved' : 'ticket_updated',
+        }).catch((e: unknown) => console.warn('[sampark-poll] notification insert failed:', e));
+      }
     }
   }
   let notesAdded = 0;
@@ -104,12 +117,12 @@ Deno.serve(async (req) => {
     // to bound the API calls.
     const { data: tickets, error } = await supabase
       .from('tickets')
-      .select('id, status, sampark_request_id')
+      .select('id, status, sampark_request_id, requester_id, ticket_number')
       .not('sampark_request_id', 'is', null)
       .in('status', ['open', 'in_progress'])
       .limit(500);
     if (error) throw error;
-    const list = (tickets ?? []) as { id: string; status: string; sampark_request_id: string }[];
+    const list = (tickets ?? []) as { id: string; status: string; sampark_request_id: string; requester_id: string | null; ticket_number: string }[];
     if (!list.length) {
       return new Response(JSON.stringify({ ok: true, polled: 0 }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
