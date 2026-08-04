@@ -60,7 +60,11 @@ export default function CreateTicket() {
   const classified = useMemo(() => classifySamparkTicket(description, allCategories ?? []), [description, allCategories]);
   const autoPriority = useMemo(() => parsePriority(description), [description]);
   const priority = priorityOverride ?? autoPriority;
-  const category = categoryOverride ?? classified.category ?? categories[0]?.name ?? 'Other Issue';
+  // No silent default to the first category anymore — if the classifier
+  // didn't confidently detect one, it stays unset and becomes a required
+  // manual pick (see canSubmit below), rather than quietly filing under
+  // whichever category happens to sort first.
+  const category = categoryOverride ?? classified.category;
 
   // Subcategories belonging to the currently-selected category.
   const subcategories = useMemo(() => {
@@ -85,11 +89,16 @@ export default function CreateTicket() {
   const autoItem = !subcategoryOverride && (!categoryOverride || classified.category === categoryOverride) ? classified.item : null;
   const item = itemOverride ?? autoItem;
 
-  // Can submit once there's a description and — when the category has
-  // subcategories — a subcategory is chosen (auto-parsed or picked). Item is
-  // the finest level and not every subcategory has one, so it's optional.
-  const canSubmit = !!description.trim() && (subcategories.length === 0 || !!subcategory);
+  // Category, subcategory, item, and contact number are all mandatory —
+  // either auto-parsed with confidence or manually picked/typed. A field only
+  // stays optional when there's genuinely nothing to pick from (no
+  // subcategories/items under the current category).
+  const categoryMissing = !category;
   const subcategoryMissing = subcategories.length > 0 && !subcategory;
+  const itemMissing = items.length > 0 && !item;
+  const contactMissing = !contactNumber.trim();
+  const canSubmit =
+    !!description.trim() && !categoryMissing && !subcategoryMissing && !itemMissing && !contactMissing;
 
   // The list shown in the picker modal, filtered by the search box.
   const pickerItems = useMemo(() => {
@@ -198,14 +207,21 @@ export default function CreateTicket() {
         {speech.error ? <Text style={styles.micError}>{speech.error}</Text> : null}
 
         <Text style={[styles.label, styles.spaced]}>
-          Category {categoryOverride ? '' : '(auto-detected)'}
+          Category (required) {categoryOverride ? '' : classified.category ? '· auto-detected' : ''}
         </Text>
-        <TouchableOpacity style={styles.selectRow} onPress={() => openPicker('category')} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={[styles.selectRow, submitAttempted && categoryMissing && styles.selectRowError]}
+          onPress={() => openPicker('category')}
+          activeOpacity={0.7}
+        >
           <Ionicons name="pricetag-outline" size={16} color={theme.colors.brand} />
-          <Text style={styles.selectValue}>{category}</Text>
-          <Text style={styles.selectChange}>Change</Text>
+          <Text style={[styles.selectValue, !category && styles.selectPlaceholder]}>
+            {category ?? 'Select a category'}
+          </Text>
+          <Text style={styles.selectChange}>{category ? 'Change' : ''}</Text>
           <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
         </TouchableOpacity>
+        {submitAttempted && categoryMissing && <Text style={styles.micError}>Please choose a category.</Text>}
 
         <Text style={[styles.label, styles.spaced]}>
           Subcategory {subcategories.length > 0 ? '(required)' : ''}
@@ -224,9 +240,11 @@ export default function CreateTicket() {
         </TouchableOpacity>
         {submitAttempted && subcategoryMissing && <Text style={styles.micError}>Please choose a subcategory.</Text>}
 
-        <Text style={[styles.label, styles.spaced]}>Item</Text>
+        <Text style={[styles.label, styles.spaced]}>
+          Item {items.length > 0 ? '(required)' : ''}
+        </Text>
         <TouchableOpacity
-          style={styles.selectRow}
+          style={[styles.selectRow, submitAttempted && itemMissing && styles.selectRowError]}
           onPress={() => openPicker('item')}
           activeOpacity={0.7}
           disabled={items.length === 0}
@@ -237,10 +255,11 @@ export default function CreateTicket() {
           </Text>
           {items.length > 0 && <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />}
         </TouchableOpacity>
+        {submitAttempted && itemMissing && <Text style={styles.micError}>Please choose an item.</Text>}
 
-        <Text style={[styles.label, styles.spaced]}>Contact Number</Text>
+        <Text style={[styles.label, styles.spaced]}>Contact Number (required)</Text>
         <TextInput
-          style={styles.contactInput}
+          style={[styles.contactInput, submitAttempted && contactMissing && styles.selectRowError]}
           value={contactNumber}
           onChangeText={setContactNumber}
           placeholder="Phone number for this ticket"
@@ -248,6 +267,7 @@ export default function CreateTicket() {
           keyboardType="phone-pad"
           autoComplete="tel"
         />
+        {submitAttempted && contactMissing && <Text style={styles.micError}>Please enter a contact number.</Text>}
 
         <Text style={[styles.label, styles.spaced]}>Priority</Text>
         <View style={styles.pillRow}>
