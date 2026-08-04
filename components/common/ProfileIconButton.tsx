@@ -3,6 +3,7 @@ import { TouchableOpacity, View, StyleSheet } from 'react-native';
 import { Text } from 'react-native-paper';
 import { router } from 'expo-router';
 import { DbProfile } from '../../types';
+import { isManagerLevel } from '../../constants/roles';
 
 interface Props {
   profile: DbProfile;
@@ -11,8 +12,8 @@ interface Props {
 function getRoute(role: DbProfile['role']): string {
   if (role === 'technician') return '/(technician)/profile';
   if (role === 'admin') return '/(admin)/profile';
-  if (role === 'manager') return '/(manager)/profile';
-  return '/(user)/profile';
+  if (isManagerLevel(role)) return '/(manager)/profile'; // manager, ops_manager
+  return '/(user)/profile'; // user, in_store_manager
 }
 
 export function ProfileIconButton({ profile }: Props) {
