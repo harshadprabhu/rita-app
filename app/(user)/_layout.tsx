@@ -3,6 +3,8 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useNotificationStore } from '../../stores/notificationStore';
+import { useAuthStore } from '../../stores/authStore';
+import { canFillChecklists } from '../../constants/roles';
 import { ReportFab } from '../../components/common/ReportFab';
 import { theme } from '../../constants/theme';
 
@@ -11,6 +13,8 @@ export default function UserLayout() {
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   const unreadAnnouncementCount = useNotificationStore((s) => s.unreadAnnouncementCount);
   const totalUnread = unreadCount + unreadAnnouncementCount;
+  const profile = useAuthStore((s) => s.profile);
+  const showChecklists = !!profile && canFillChecklists(profile.role);
 
   return (
     <View style={{ flex: 1 }}>
@@ -24,6 +28,14 @@ export default function UserLayout() {
     >
       <Tabs.Screen name="home" options={{ title: t('tabs.home'), tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} /> }} />
       <Tabs.Screen name="tickets" options={{ title: t('tabs.myTickets'), tabBarIcon: ({ color, size }) => <Ionicons name="ticket-outline" size={size} color={color} /> }} />
+      <Tabs.Screen
+        name="checklists"
+        options={
+          showChecklists
+            ? { title: 'Checklists', tabBarIcon: ({ color, size }) => <Ionicons name="checkbox-outline" size={size} color={color} /> }
+            : { href: null }
+        }
+      />
       <Tabs.Screen
         name="notifications"
         options={{

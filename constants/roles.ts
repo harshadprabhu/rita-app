@@ -23,3 +23,13 @@ export function isUserLevel(role: UserRole): boolean {
 export function canPushPromotions(role: UserRole): boolean {
   return role === 'ops_manager' || role === 'admin';
 }
+
+/** Only In-Store Managers (and admins) fill the Saksham daily checklists. */
+export function canFillChecklists(role: UserRole): boolean {
+  return role === 'in_store_manager' || role === 'admin';
+}
+
+/** Ops Managers (and admins) review checklist submissions across stores. */
+export function canReviewChecklists(role: UserRole): boolean {
+  return role === 'ops_manager' || role === 'admin';
+}

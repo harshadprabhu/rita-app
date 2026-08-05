@@ -17,7 +17,8 @@ export type NotificationType =
   | 'ticket_resolved'
   | 'ticket_comment'
   | 'sla_breach'
-  | 'broadcast';
+  | 'broadcast'
+  | 'checklist_reminder';
 export type ChatChannelType = 'group' | 'dm' | 'bot';
 
 export const RITA_BOT_ID = 'rita_bot';
@@ -172,4 +173,61 @@ export interface DbAccountAuditLog {
   action: 'provisioned' | 'updated' | 'activated' | 'deactivated';
   details: string | null;
   created_at: string;
+}
+
+// ─── Saksham daily checklists ────────────────────────────────────────────
+
+export type ChecklistTemplateKey = 'store_opening' | 'store_closing' | 'sm_checklist' | 'scm_checklist';
+export type ChecklistQuestionType = 'yes_no_na' | 'numeric';
+export type ChecklistCadence = 'daily' | 'weekly';
+export type ChecklistAnswerValue = 'yes' | 'no' | 'na';
+
+export interface DbChecklistTemplate {
+  id: string;
+  key: ChecklistTemplateKey;
+  name: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface DbChecklistQuestion {
+  id: string;
+  template_id: string;
+  seq: number;
+  point_of_observation: string;
+  question_type: ChecklistQuestionType;
+  score_if_yes: number | null;
+  score_if_no: number | null;
+  score_if_na: number | null;
+  /** false = "Not Scored" — a numeric count field or a weekly-cadence reminder that never affects the average. */
+  is_scored: boolean;
+  requires_photo: boolean;
+  cadence: ChecklistCadence;
+  cadence_note: string | null;
+  created_at: string;
+}
+
+export interface DbChecklistSubmission {
+  id: string;
+  template_id: string;
+  store_id: string;
+  submitted_by: string;
+  submission_date: string; // date, store-local (Asia/Kolkata)
+  status: 'in_progress' | 'submitted';
+  total_score: number | null;
+  passed: boolean | null;
+  submitted_at: string | null;
+  created_at: string;
+}
+
+export interface DbChecklistAnswer {
+  id: string;
+  submission_id: string;
+  question_id: string;
+  /** 'yes' | 'no' | 'na', or the numeric value as a string for numeric questions. */
+  answer_value: string | null;
+  photo_path: string | null;
+  resolved_score: number | null;
+  created_at: string;
+  updated_at: string;
 }

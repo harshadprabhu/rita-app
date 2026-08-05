@@ -256,6 +256,7 @@ export default function RootLayout() {
             <Stack.Screen name="(admin)" />
             <Stack.Screen name="tickets/[id]" options={{ presentation: 'card' }} />
             <Stack.Screen name="create-ticket" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="checklist-fill/[templateKey]" options={{ presentation: 'card' }} />
             <Stack.Screen name="pending-approval" />
             <Stack.Screen name="auth/callback" />
           </Stack>

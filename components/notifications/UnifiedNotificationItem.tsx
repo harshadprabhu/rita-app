@@ -193,6 +193,8 @@ function getTicketIconCfg(type?: NotificationType | null): TicketIconCfg {
       return { icon: 'chatbubble-ellipses', color: '#2563EB', bg: '#EFF6FF' };
     case 'sla_breach':
       return { icon: 'alert-circle', color: '#DC2626', bg: '#FEF2F2' };
+    case 'checklist_reminder':
+      return { icon: 'checkbox', color: '#0EA5E9', bg: '#EFF8FF' };
     default:
       return { icon: 'notifications', color: '#2563EB', bg: '#EFF6FF' };
   }
