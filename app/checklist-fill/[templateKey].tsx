@@ -126,9 +126,9 @@ export default function ChecklistFill() {
     mutationFn: async () => {
       if (!submission || !questions) throw new Error('Not ready');
 
-      // Required = every question except weekly-cadence reminders (those are
-      // day-specific and shown daily just as a nudge, not mandatory today).
-      const missing = questions.filter((q) => q.cadence !== 'weekly' && !answers[q.id]?.trim());
+      // Every question is mandatory, including weekly-cadence reminders and
+      // every photo marked as required.
+      const missing = questions.filter((q) => !answers[q.id]?.trim());
       if (missing.length) {
         throw new Error(`Please answer: ${missing[0].point_of_observation.slice(0, 60)}${missing.length > 1 ? ` (+${missing.length - 1} more)` : ''}`);
       }
@@ -244,7 +244,7 @@ function QuestionRow({
         <Text style={styles.qIndex}>{index}</Text>
         <Text style={styles.qText}>{question.point_of_observation}</Text>
       </View>
-      {question.cadence_note && <Text style={styles.qCadence}>{question.cadence_note} · optional</Text>}
+      {question.cadence_note && <Text style={styles.qCadence}>{question.cadence_note}</Text>}
 
       {question.question_type === 'numeric' ? (
         <TextInput
