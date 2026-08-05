@@ -155,6 +155,23 @@ export async function getSubmissionsForDate(params: {
   return (data ?? []) as unknown as ChecklistSubmissionWithRelations[];
 }
 
+/** In-Store Manager's own history for one checklist at their store — every
+ *  past submission (not just today), most recent first. RLS already scopes
+ *  this to the caller's own store. */
+export async function getSubmissionHistoryForStore(
+  storeId: string,
+  templateId: string,
+): Promise<ChecklistSubmissionWithRelations[]> {
+  const { data, error } = await supabase
+    .from('checklist_submissions')
+    .select(SUBMISSION_SELECT)
+    .eq('store_id', storeId)
+    .eq('template_id', templateId)
+    .order('submission_date', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as ChecklistSubmissionWithRelations[];
+}
+
 export async function getSubmissionDetail(submissionId: string): Promise<{
   submission: ChecklistSubmissionWithRelations;
   questions: DbChecklistQuestion[];

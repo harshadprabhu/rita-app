@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -10,7 +10,7 @@ import { SoftPress } from '../../components/common/SoftPress';
 import { LoadingOverlay } from '../../components/common/LoadingOverlay';
 import { EmptyState } from '../../components/common/EmptyState';
 import { NumericText } from '../../components/common/NumericText';
-import { getTemplates, getTodaySubmissionsForStore, TEMPLATE_LABELS } from '../../lib/api/checklists';
+import { getTemplates, getTodaySubmissionsForStore, TEMPLATE_LABELS, todayIST } from '../../lib/api/checklists';
 import { useAuthStore } from '../../stores/authStore';
 import { canFillChecklists } from '../../constants/roles';
 import { DbChecklistSubmission } from '../../types';
@@ -50,6 +50,7 @@ export default function Checklists() {
   }
 
   const isLoading = templatesLoading || submissionsLoading;
+  const todayLabel = new Date(`${todayIST()}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
   return (
     <Screen edges={['top', 'left', 'right']}>
@@ -65,6 +66,7 @@ export default function Checklists() {
           contentContainerStyle={styles.body}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
         >
+          <Text style={styles.dateLabel}>{todayLabel}</Text>
           {!templates?.length ? (
             <EmptyState icon="checkbox-outline" title="No checklists configured" />
           ) : (
@@ -99,6 +101,13 @@ export default function Checklists() {
                       </View>
                     )}
                   </View>
+                  <TouchableOpacity
+                    onPress={(e) => { e.stopPropagation(); router.push(`/checklist-history/${t.key}`); }}
+                    hitSlop={8}
+                    style={styles.historyBtn}
+                  >
+                    <Ionicons name="time-outline" size={18} color={theme.colors.textTertiary} />
+                  </TouchableOpacity>
                   <Ionicons name="chevron-forward" size={18} color={theme.colors.textTertiary} />
                 </SoftPress>
               );
@@ -112,6 +121,8 @@ export default function Checklists() {
 
 const styles = StyleSheet.create({
   body: { padding: theme.spacing.lg, gap: theme.spacing.md },
+  dateLabel: { fontSize: 11, fontWeight: '800', color: theme.colors.textTertiary, letterSpacing: 0.6, marginTop: -theme.spacing.xs },
+  historyBtn: { padding: 4 },
   denied: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm, padding: theme.spacing.xl },
   deniedText: { color: theme.colors.textSecondary, fontSize: 14, textAlign: 'center' },
   card: {

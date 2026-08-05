@@ -17,6 +17,7 @@ import {
   saveAnswer, uploadChecklistPhoto, submitChecklist, TEMPLATE_LABELS,
 } from '../../lib/api/checklists';
 import { useAuthStore } from '../../stores/authStore';
+import { useUiStore } from '../../stores/uiStore';
 import { DbChecklistQuestion, ChecklistTemplateKey } from '../../types';
 import { theme } from '../../constants/theme';
 
@@ -34,6 +35,11 @@ const SM_SIGNOFF_REMINDERS = [
   'Sign & Remark on daily karatmeter & weighing scale calibration register',
 ];
 
+function formatDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+
 function useStagedPhoto() {
   const [photos, setPhotos] = useState<Record<string, { uri: string; name: string }>>({});
   const setPhoto = (questionId: string, uri: string, name: string) =>
@@ -45,6 +51,7 @@ export default function ChecklistFill() {
   const { templateKey } = useLocalSearchParams<{ templateKey: ChecklistTemplateKey }>();
   const profile = useAuthStore((s) => s.profile);
   const qc = useQueryClient();
+  const showToast = useUiStore((s) => s.showToast);
 
   const { data: template } = useQuery({
     queryKey: ['checklistTemplate', templateKey],
@@ -148,15 +155,27 @@ export default function ChecklistFill() {
       return submitChecklist(submission.id);
     },
     onSuccess: (result) => {
+      // Invalidate everything this submission could be read back through —
+      // today's list, this screen's own query, its answers, and history —
+      // so nothing shows stale "in progress" state if the user returns here.
       qc.invalidateQueries({ queryKey: ['checklistSubmissions'] });
+      qc.invalidateQueries({ queryKey: ['checklistSubmission'] });
+      qc.invalidateQueries({ queryKey: ['checklistAnswers'] });
+      qc.invalidateQueries({ queryKey: ['checklistHistory'] });
       const score = result.total_score != null ? Math.round(result.total_score) : null;
-      Alert.alert(
-        result.passed === false ? 'Submitted — below passing' : 'Checklist submitted',
-        score != null ? `Score: ${score}%` : 'Saved.',
-        [{ text: 'OK', onPress: () => router.back() }],
+      showToast(
+        result.passed === false
+          ? `Submitted — below passing${score != null ? ` (${score}%)` : ''}`
+          : `Checklist submitted${score != null ? ` — ${score}%` : ''}`,
+        result.passed === false ? 'error' : 'success',
       );
+      // Alert.alert is a no-op on web (react-native-web never renders it) —
+      // that's what made this screen look frozen after submit: the toast
+      // above is the only user-visible confirmation, so navigate away
+      // directly instead of waiting on an Alert button that never appears.
+      router.back();
     },
-    onError: (e) => Alert.alert('Cannot submit', e instanceof Error ? e.message : String(e)),
+    onError: (e) => showToast(e instanceof Error ? e.message : String(e), 'error'),
   });
 
   const isLoading = submissionLoading || questionsLoading || !template;
@@ -169,11 +188,15 @@ export default function ChecklistFill() {
         <LoadingOverlay />
       ) : (
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+          {submission?.submission_date && (
+            <Text style={styles.dateLabel}>{formatDate(submission.submission_date)}</Text>
+          )}
           {alreadySubmitted && (
             <View style={styles.submittedBanner}>
               <Ionicons name="checkmark-circle" size={16} color="#10B981" />
               <Text style={styles.submittedBannerText}>
-                Already submitted today{submission?.total_score != null ? ` · Score ${Math.round(submission.total_score)}%` : ''}
+                Submitted{submission?.total_score != null ? ` · Score ${Math.round(submission.total_score)}%` : ''}
+                {submission?.submitted_at ? ` · Next submission tomorrow` : ''}
               </Text>
             </View>
           )}
@@ -288,6 +311,7 @@ function QuestionRow({
 
 const styles = StyleSheet.create({
   body: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xxl * 2, gap: theme.spacing.md },
+  dateLabel: { fontSize: 11, fontWeight: '800', color: theme.colors.textTertiary, letterSpacing: 0.6, marginTop: -theme.spacing.xs },
   submittedBanner: {
     flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
     backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#A7F3D0',
