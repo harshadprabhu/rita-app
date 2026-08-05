@@ -1,6 +1,7 @@
 export const QUERY_KEYS = {
   profile: (id: string) => ['profile', id] as const,
   tickets: (filters?: unknown) => ['tickets', filters ?? {}] as const,
+  ticketCount: (filters?: unknown) => ['ticket-count', filters ?? {}] as const,
   ticket: (id: string) => ['ticket', id] as const,
   ticketComments: (ticketId: string) => ['ticket-comments', ticketId] as const,
   ticketAttachments: (ticketId: string) => ['ticket-attachments', ticketId] as const,

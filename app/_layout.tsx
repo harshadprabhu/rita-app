@@ -25,29 +25,17 @@ import { ErrorBoundary } from '../components/common/ErrorBoundary';
 
 // Bricolage Grotesque — the app's brand typeface for all text.
 // Inter — used only for numerical values (gold rates, ticket numbers, etc.).
-// Web: both loaded from Google Fonts CDN via DOM injection.
-// Native: bundled TTFs loaded by expo-font (useFonts in RootLayout below).
+// Loaded locally via expo-font (useFonts in RootLayout below) on every
+// platform, including web. A Google Fonts CDN <link> used to be injected
+// here too, but it registered the family under the CSS name "Bricolage
+// Grotesque" (with a space) while every Text/TextInput below is forced
+// (via defaultProps) to request "BricolageGrotesque" (no space) — the local
+// useFonts name. The two names never matched, so the CDN font was never
+// actually applied to any RN Text component; it just cost two preconnects
+// plus a stylesheet + font fetch on every web load for no visual benefit.
+// RITA is a plain SPA (no SSR/static HTML before hydration), so there was
+// never any pre-JS content for it to style either. Removed.
 const FONT_FAMILY = 'BricolageGrotesque';
-
-if (Platform.OS === 'web' && typeof document !== 'undefined') {
-  const id = 'app-fonts';
-  if (!document.getElementById(id)) {
-    const pre1 = document.createElement('link');
-    pre1.rel = 'preconnect';
-    pre1.href = 'https://fonts.googleapis.com';
-    const pre2 = document.createElement('link');
-    pre2.rel = 'preconnect';
-    pre2.href = 'https://fonts.gstatic.com';
-    pre2.crossOrigin = '';
-    const link = document.createElement('link');
-    link.id = id;
-    link.rel = 'stylesheet';
-    link.href = 'https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&family=Inter:wght@400;600;700;800&display=swap';
-    const style = document.createElement('style');
-    style.textContent = `body, input, textarea, button, select { font-family: 'Bricolage Grotesque', system-ui, -apple-system, sans-serif; }`;
-    document.head.append(pre1, pre2, link, style);
-  }
-}
 
 // Set Bricolage Grotesque as the default font for all Text and TextInput.
 // Each element gets fontFamily inline, which won't interfere with icon fonts
@@ -204,8 +192,15 @@ function AuthGate() {
 
 export default function RootLayout() {
   const [langReady, setLangReady] = useState(false);
-  const [fontsLoaded] = useFonts({
+  // Only the Regular weight blocks first paint — every Text defaults to it
+  // (see defaultProps above). The other weights/families load in the
+  // background and just repaint once ready; gating the loading screen on
+  // all 7 files made every cold start wait for the slowest of them (Inter,
+  // ~325KB) even though 95% of the UI only needs the ~82KB Regular file.
+  const [criticalFontLoaded] = useFonts({
     BricolageGrotesque: require('../assets/fonts/BricolageGrotesque-Regular.ttf'),
+  });
+  useFonts({
     'BricolageGrotesque-SemiBold': require('../assets/fonts/BricolageGrotesque-SemiBold.ttf'),
     'BricolageGrotesque-Bold': require('../assets/fonts/BricolageGrotesque-Bold.ttf'),
     'BricolageGrotesque-ExtraBold': require('../assets/fonts/BricolageGrotesque-ExtraBold.ttf'),
@@ -216,6 +211,7 @@ export default function RootLayout() {
     BegumSans: require('../assets/fonts/BegumSans-Regular.otf'),
     'BegumSans-Medium': require('../assets/fonts/BegumSans-Medium.otf'),
   });
+  const fontsLoaded = criticalFontLoaded;
 
   useEffect(() => {
     loadSavedLanguage().finally(() => setLangReady(true));

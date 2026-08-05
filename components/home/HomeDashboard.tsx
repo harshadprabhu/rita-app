@@ -9,7 +9,7 @@ import { AppHeader } from '../common/AppHeader';
 import { IndriyaWordmark } from '../common/IndriyaWordmark';
 import { ProfileIconButton } from '../common/ProfileIconButton';
 import { GoldRateCard } from './GoldRateCard';
-import { getTickets } from '../../lib/api/tickets';
+import { getTicketCount } from '../../lib/api/tickets';
 import { useAuthStore } from '../../stores/authStore';
 import { SoftPress } from '../common/SoftPress';
 import { QUERY_KEYS } from '../../constants/queryKeys';
@@ -18,7 +18,7 @@ import { theme } from '../../constants/theme';
 
 interface StatDef {
   label: string;
-  filters: Parameters<typeof getTickets>[0];
+  filters: Parameters<typeof getTicketCount>[0];
   color: string;
   icon: keyof typeof Ionicons.glyphMap;
   /** Where tapping the tile navigates (a filtered ticket list). */
@@ -89,14 +89,16 @@ export function HomeDashboard({ stats, showGoldRate, quickActions }: Props) {
 }
 
 function StatCard({ label, filters, color, icon, href }: StatDef) {
-  const { data } = useQuery({ queryKey: QUERY_KEYS.tickets(filters), queryFn: () => getTickets(filters) });
+  // Count-only — was pulling every ticket's full row plus requester/assignee/
+  // store/attachments joins on every Home visit just to read `.length`.
+  const { data } = useQuery({ queryKey: QUERY_KEYS.ticketCount(filters), queryFn: () => getTicketCount(filters) });
   const inner = (
     <>
       <View style={[styles.statIconRing, { backgroundColor: color + '1F' }]}>
         <Ionicons name={icon} size={15} color={color} />
       </View>
       <View style={styles.statText}>
-        <NumericText style={styles.statValue}>{data?.length ?? '–'}</NumericText>
+        <NumericText style={styles.statValue}>{data ?? '–'}</NumericText>
         <Text style={styles.statLabel} numberOfLines={1}>{label}</Text>
       </View>
     </>

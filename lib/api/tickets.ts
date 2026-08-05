@@ -38,6 +38,28 @@ export async function getTickets(filters: TicketFilters = {}): Promise<TicketWit
   return (data ?? []) as unknown as TicketWithRelations[];
 }
 
+/**
+ * Count-only version of getTickets, for stat tiles that only ever read
+ * `.length` off the result. A HEAD request with no row payload and no
+ * joined relations (requester/assignee/store/attachments) — the full
+ * getTickets() select was being used just to count tiles on the home
+ * dashboard, pulling every joined relation for every ticket on every visit.
+ */
+export async function getTicketCount(filters: TicketFilters = {}): Promise<number> {
+  let query = supabase.from('tickets').select('id', { count: 'exact', head: true });
+
+  if (filters.status) query = query.eq('status', filters.status);
+  if (filters.lifecycle) query = query.eq('lifecycle', filters.lifecycle);
+  if (filters.store_id) query = query.eq('store_id', filters.store_id);
+  if (filters.requester_id) query = query.eq('requester_id', filters.requester_id);
+  if (filters.assignee_id) query = query.eq('assignee_id', filters.assignee_id);
+  if (filters.sla_breached !== undefined) query = query.eq('sla_breached', filters.sla_breached);
+
+  const { count, error } = await query;
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function getOpenTickets(): Promise<TicketWithRelations[]> {
   const { data, error } = await supabase
     .from('tickets')
