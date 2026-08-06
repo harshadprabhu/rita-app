@@ -81,6 +81,18 @@ function nameScore(tokens: { unigrams: Set<string>; bigrams: Set<string> }, name
 }
 
 // ---- TF-IDF keyword scoring -------------------------------------------------
+// A keyword that's itself a two-word phrase (e.g. "mobile number") is a much
+// more specific signal than a single generic word ("number") matching —
+// bare-unigram overlap is cheap to produce by accident, phrase-level overlap
+// isn't. Confirmed live: "Mobile number changing request" matched "Serial
+// Number Not Available" (86 historical tickets, "number" ranked high in its
+// list) ahead of "Phone No. Change" (8 tickets, but carries the distinctive
+// "mobile number" bigram) — a bare "number" hit was enough to win. Giving
+// bigram keywords a weight bonus (both in what they contribute when matched
+// AND in the max they're measured against, so the 0-1 ratio stays
+// meaningful) fixes this without blanket-penalizing single-word keywords,
+// which are often legitimately the strongest signal for other nodes.
+const BIGRAM_BONUS = 1.5;
 
 function scoreNode(
   tokens: { unigrams: Set<string>; bigrams: Set<string> },
@@ -90,12 +102,15 @@ function scoreNode(
   let hit = 0;
   let max = 0;
   for (let i = 0; i < keywords.length; i++) {
-    const weight = keywords.length - i;
-    max += weight;
     const kw = keywords[i];
+    const isPhrase = kw.includes(' ');
+    const weight = (keywords.length - i) * (isPhrase ? BIGRAM_BONUS : 1);
+    max += weight;
+    if (isPhrase) {
+      if (tokens.bigrams.has(kw)) hit += weight;
+      continue;
+    }
     if (tokens.unigrams.has(kw) || tokens.unigrams.has(stem(kw))) {
-      hit += weight;
-    } else if (kw.includes(' ') && tokens.bigrams.has(kw)) {
       hit += weight;
     } else {
       const kwStem = stem(kw);
@@ -119,6 +134,31 @@ function volumePrior(node: TicketCategory): number {
   return 0.03 * Math.min(1, Math.log10(1 + count) / 3);
 }
 
+// ---- Confirmed real-world ambiguity corrections --------------------------
+// A small number of Sampark items legitimately compete for very similar
+// generic phrasing, where text-matching alone can't tell them apart, but one
+// is confirmed (by actual usage volume + a human decision, not guessed) to
+// be the overwhelmingly correct read in RITA's real usage. Verified live:
+// "Mobile number changing request" scores well against BOTH "Phone No.
+// Change" (Email ID Issue > Accounts and Groups — a staff member's own
+// number for MFA/login, 9 historical tickets) and "Customer details change"
+// (POS Issue > Customer Information — a customer's number in POS/CRM, 60
+// historical tickets) — the latter's keyword list ranks "mobile"/"mobile
+// number" near the bottom of its top-20 (diluted by covering name/PAN/bank
+// corrections too), so it loses on raw keyword rank despite being ~7x more
+// common in practice. Rather than tune the general scoring formula (risks
+// side effects elsewhere, confirmed by the earlier over-broad volume-prior
+// regression), this is an explicit, auditable, per-item correction — add to
+// it only when a specific real ambiguity has been confirmed, not to tune
+// general accuracy.
+const CONFIRMED_ITEM_PREFERENCE: Record<string, number> = {
+  '12734000007129756': 0.2, // Customer details change — customer's mobile/PAN/bank corrections
+};
+
+function itemPreference(node: TicketCategory): number {
+  return CONFIRMED_ITEM_PREFERENCE[node.id] ?? 0;
+}
+
 // ---- Combined scoring -------------------------------------------------------
 
 function combinedScore(
@@ -128,8 +168,12 @@ function combinedScore(
   const kwScore = scoreNode(tokens, node.keywords);
   const nmScore = nameScore(tokens, node.name);
   // 70% keyword TF-IDF + 30% name match — name acts as a strong prior — plus
-  // a small real-world-frequency nudge on top.
-  return kwScore * 0.7 + nmScore * 0.3 + volumePrior(node);
+  // a small real-world-frequency nudge on top. The confirmed-preference bonus
+  // only applies when the node already has some genuine keyword overlap
+  // (kwScore > 0) — it breaks ties between real candidates, it never
+  // fabricates a match out of nothing.
+  const preference = kwScore > 0 ? itemPreference(node) : 0;
+  return kwScore * 0.7 + nmScore * 0.3 + volumePrior(node) + preference;
 }
 
 function bestMatch(
