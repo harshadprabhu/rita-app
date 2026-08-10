@@ -200,14 +200,24 @@ function getTicketIconCfg(type?: NotificationType | null): TicketIconCfg {
   }
 }
 
-function TicketCard({ item, onMarkRead }: { item: FeedItem; onMarkRead?: (id: string) => void }) {
+function TicketCard({
+  item, onMarkRead, onReadAnnouncement,
+}: {
+  item: FeedItem;
+  onMarkRead?: (id: string) => void;
+  onReadAnnouncement?: (broadcastId: string) => void;
+}) {
   const [open, setOpen] = useState(false);
   const isUnread = !item.is_read;
   const { icon, color, bg } = getTicketIconCfg(item.notificationType);
 
   const handlePress = () => {
-    if (!item.is_read && item.notificationId && onMarkRead) {
-      onMarkRead(item.notificationId);
+    if (!item.is_read) {
+      // gold_rate broadcasts render with ticket styling (kind='ticket') but are
+      // still broadcast rows keyed by broadcastId, not notificationId — read
+      // state for those goes through onReadAnnouncement, same as announcements.
+      if (item.notificationId && onMarkRead) onMarkRead(item.notificationId);
+      else if (item.broadcastId && onReadAnnouncement) onReadAnnouncement(item.broadcastId);
     }
     setOpen(true);
   };
@@ -253,7 +263,7 @@ export function UnifiedNotificationItem({ item, onMarkRead, onReadAnnouncement }
   if (item.kind === 'announcement') {
     return <AnnouncementCard item={item} onReadAnnouncement={onReadAnnouncement} onMarkRead={onMarkRead} />;
   }
-  return <TicketCard item={item} onMarkRead={onMarkRead} />;
+  return <TicketCard item={item} onMarkRead={onMarkRead} onReadAnnouncement={onReadAnnouncement} />;
 }
 
 // ─── Styles ─────────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Switch, RefreshControl, TouchableOpacity, Modal, Pressable, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Screen } from '../../components/common/Screen';
 import { AppHeader } from '../../components/common/AppHeader';
@@ -18,6 +19,7 @@ import { theme, webNoOutline } from '../../constants/theme';
 const ASSIGNABLE_ROLES: UserRole[] = ['user', 'in_store_manager', 'technician', 'manager', 'ops_manager', 'admin'];
 
 export default function Accounts() {
+  const insets = useSafeAreaInsets();
   const profile = useAuthStore((s) => s.profile);
   const showToast = useUiStore((s) => s.showToast);
   const queryClient = useQueryClient();
@@ -119,7 +121,10 @@ export default function Accounts() {
         onRequestClose={() => setRoleTarget(null)}
       >
         <Pressable style={styles.backdrop} onPress={() => setRoleTarget(null)}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable
+            style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, theme.spacing.xxl) }]}
+            onPress={(e) => e.stopPropagation()}
+          >
             <Text style={styles.sheetTitle}>Assign role</Text>
             <Text style={styles.sheetSubtitle}>{roleTarget?.display_name}</Text>
             {ASSIGNABLE_ROLES.map((role) => {
