@@ -19,21 +19,20 @@ export interface GoldRatePosterModalProps {
 
 // One implementation for both platforms — react-native-view-shot v5 ships a web
 // capture (html2canvas), so the poster renders and exports on web too. Template
-// is 1054×1492; overlay anchor points are fractions of that.
-const AR = 1492 / 1054;
+// is 1054×1491; overlay anchor points are fractions of that.
+const AR = 1491 / 1054;
 const GOLD = '#f2d98a';
-const DATE = { left: 594 / 1054, top: 512 / 1492 };
-const RATE_LEFT = 772 / 1054;
+const DATE = { left: 611 / 1054, top: 641 / 1491 };
+const RATE_LEFT = 730 / 1054;
 const RATES: { key: keyof PosterRates; top: number }[] = [
-  { key: '24k_999', top: 639 / 1492 },
-  { key: '24k_995', top: 790 / 1492 },
-  { key: '22k_916', top: 940 / 1492 },
-  { key: '18k_750', top: 1086 / 1492 },
+  { key: '24k_999', top: 778 / 1491 },
+  { key: '24k_995', top: 914 / 1491 },
+  { key: '22k_916', top: 1050 / 1491 },
+  { key: '18k_750', top: 1186 / 1491 },
 ];
-// Special-offer banner as fractions of the template — sized to comfortably
-// hold up to 100 characters wrapped over 2 lines (matches goldPoster.ts's web
-// canvas geometry).
-const OFFER = { left: 130 / 1054, top: 1180 / 1492, width: 794 / 1054, height: 148 / 1492 };
+// Special-offer banner as fractions of the compressed template — rates are
+// shifted upward, giving a large clean area for promotions.
+const OFFER = { left: 130 / 1054, top: 1254 / 1491, width: 794 / 1054, height: 177 / 1491 };
 
 function ordinal(d: number): string {
   if (d > 3 && d < 21) return 'th';
@@ -95,7 +94,7 @@ export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: Go
                 return (
                   <View key={r.key} style={[styles.anchor, { left: RATE_LEFT * W - box / 2, top: r.top * H - rateFont, width: box }]}>
                     <Text style={{ color: GOLD, fontSize: rateFont, fontWeight: '800' }}>
-                      {Math.round(v).toLocaleString('en-IN')}
+                      {`₹ ${Math.round(v).toLocaleString('en-IN')}/-`}
                     </Text>
                   </View>
                 );

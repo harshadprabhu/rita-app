@@ -13,7 +13,7 @@ export interface PosterRates {
 
 // The template's native pixel size — all overlay coordinates below are in this space.
 const TPL_W = 1054;
-const TPL_H = 1492;
+const TPL_H = 1491;
 const GOLD = '#f2d98a';
 
 // Resolve the bundled template image URL lazily and defensively — doing this at
@@ -110,16 +110,15 @@ function deliverPoster(canvas: HTMLCanvasElement, fileName: string): void {
   anchorDownload(blob, fileName);
 }
 
-// Centre of each empty ₹ value box (x is right of the printed ₹ glyph), and the
-// baseline point for the date on the "Date: ____" line. Measured directly off
-// the template PNG's gold border pixels (all 4 boxes share the same left/right
-// edges at x=560/919; the printed ₹ glyph spans x=597-623 inside each box).
-const DATE_POINT = { x: 594, y: 512 };
+// Centre of each value box and the baseline point for the date on the
+// "Date: ____" line. Measured from the compressed template (rates shifted
+// upward to free space for promotions at the bottom).
+const DATE_POINT = { x: 611, y: 641 };
 const RATE_POINTS = [
-  { key: '24k_999', x: 772, y: 639 },
-  { key: '24k_995', x: 772, y: 790 },
-  { key: '22k_916', x: 772, y: 940 },
-  { key: '18k_750', x: 772, y: 1086 },
+  { key: '24k_999', x: 730, y: 778 },
+  { key: '24k_995', x: 730, y: 914 },
+  { key: '22k_916', x: 730, y: 1050 },
+  { key: '18k_750', x: 730, y: 1186 },
 ] as const;
 
 function ordinal(day: number): string {
@@ -156,11 +155,10 @@ export function isPosterSupported(): boolean {
   return typeof document !== 'undefined' && typeof document.createElement === 'function' && !!getTemplateUri();
 }
 
-// Special-offer banner geometry (template pixel space) — sized to comfortably
-// hold up to PROMOTION_MAX_LEN (100) characters wrapped over 2 lines, sits
-// over the bottom tagline band, clear of the corner jewellery. Only drawn
-// when a promo exists.
-const OFFER = { x: 130, y: 1180, w: 794, h: 148, r: 18 };
+// Special-offer banner geometry (template pixel space) — the compressed
+// template removed the bottom jewellery/tagline, so the promo area is much
+// larger: 197px of clean space between the last rate row and the T&C line.
+const OFFER = { x: 130, y: 1254, w: 794, h: 177, r: 18 };
 
 /** Word-wrap `text` to fit `maxWidth` at the current ctx font, capped at
  *  `maxLines` (excess is ellipsised onto the last line). */
@@ -212,15 +210,15 @@ function renderPosterCanvas(img: HTMLImageElement, rates: PosterRates, date: Dat
   ctx.fillText(formatPosterDate(date), DATE_POINT.x * scale, DATE_POINT.y * scale);
   ctx.restore();
 
-  // 3. Each rate value, centred in its ₹ box (whole rupees).
+  // 3. Each rate value, centred in its box (whole rupees, prefixed with ₹).
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.font = `700 ${Math.round(46 * scale)}px "Outfit", "Poppins", Arial, sans-serif`;
+  ctx.font = `700 ${Math.round(40 * scale)}px "Outfit", "Poppins", Arial, sans-serif`;
   for (const pt of RATE_POINTS) {
     const value = rates[pt.key as keyof PosterRates];
     if (!(value > 0)) continue;
-    ctx.fillText(Math.round(value).toLocaleString('en-IN'), pt.x * scale, pt.y * scale);
+    ctx.fillText(`₹ ${Math.round(value).toLocaleString('en-IN')}/-`, pt.x * scale, pt.y * scale);
   }
   ctx.restore();
 
