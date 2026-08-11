@@ -187,14 +187,6 @@ export function GoldRateCard() {
             </View>
           )}
 
-          {/* Ops Manager promotion band */}
-          {promo && (
-            <View style={styles.promoBand}>
-              <Ionicons name="pricetag" size={11} color={theme.colors.textPrimary} />
-              <Text style={styles.promoText} numberOfLines={2}>{promo}</Text>
-            </View>
-          )}
-
           {/* Footer: Trend (left) · updated · Poster (right) */}
           <View style={styles.footer}>
             {isPosterSupported() && (
@@ -308,12 +300,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(200,150,62,0.12)', borderWidth: 1, borderColor: 'rgba(200,150,62,0.35)',
   },
   trendBtnText: { color: GOLD, fontSize: 10, fontWeight: '800', letterSpacing: 0.2 },
-  promoBand: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    marginHorizontal: 14, marginTop: 10, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9,
-    backgroundColor: theme.colors.accentBright,
-  },
-  promoText: { flex: 1, color: theme.colors.textPrimary, fontSize: 11, fontWeight: '800' },
   footer: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 14, marginTop: 10,

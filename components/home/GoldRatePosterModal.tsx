@@ -23,7 +23,9 @@ export interface GoldRatePosterModalProps {
 const AR = 1491 / 1054;
 const GOLD = '#f2d98a';
 const DATE = { left: 611 / 1054, top: 641 / 1491 };
-const RATE_LEFT = 730 / 1054;
+const BOX_LEFT = 561 / 1054;
+const BOX_W = 340 / 1054;
+const BOX_H = 114 / 1491;
 const RATES: { key: keyof PosterRates; top: number }[] = [
   { key: '24k_999', top: 778 / 1491 },
   { key: '24k_995', top: 914 / 1491 },
@@ -57,8 +59,10 @@ export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: Go
   const share = async () => {
     setSharing(true);
     try {
+      const hiResW = 1054 * 2;
+      const hiResH = Math.round(hiResW * AR);
       if (isWeb) {
-        const dataUrl = await captureRef(shotRef, { format: 'png', quality: 1, result: 'data-uri' });
+        const dataUrl = await captureRef(shotRef, { format: 'png', quality: 1, result: 'data-uri', width: hiResW, height: hiResH });
         const link = document.createElement('a');
         link.download = `indriya_gold_rates_${date.toISOString().slice(0, 10)}.png`;
         link.href = dataUrl;
@@ -67,7 +71,7 @@ export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: Go
         document.body.removeChild(link);
         return;
       }
-      const uri = await captureRef(shotRef, { format: 'png', quality: 1 });
+      const uri = await captureRef(shotRef, { format: 'png', quality: 1, width: hiResW, height: hiResH });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: "Today's Gold Rates" });
       }
@@ -92,8 +96,16 @@ export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: Go
                 const v = rates[r.key];
                 if (!(v > 0)) return null;
                 return (
-                  <View key={r.key} style={[styles.anchor, { left: RATE_LEFT * W - box / 2, top: r.top * H - rateFont, width: box }]}>
-                    <Text style={{ color: GOLD, fontSize: rateFont, fontWeight: '800' }}>
+                  <View key={r.key} style={{
+                    position: 'absolute',
+                    left: BOX_LEFT * W,
+                    top: (r.top - BOX_H / 2) * H,
+                    width: BOX_W * W,
+                    height: BOX_H * H,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <Text style={{ color: GOLD, fontSize: rateFont, fontWeight: '800', textAlign: 'center' }}>
                       {`₹ ${Math.round(v).toLocaleString('en-IN')}/-`}
                     </Text>
                   </View>
@@ -107,9 +119,13 @@ export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: Go
             <View style={[styles.offer, {
               left: OFFER.left * W, top: OFFER.top * H, width: OFFER.width * W, height: OFFER.height * H,
             }]}>
-              <Text style={[styles.offerKicker, { fontSize: Math.round(W * 0.024) }]}>✦  S P E C I A L   O F F E R  ✦</Text>
+              <Text style={[styles.offerKicker, { fontSize: Math.round(W * 0.024) }]}>{"✦  T O D A Y ' S   O F F E R  ✦"}</Text>
               <View style={styles.offerTextWrap}>
-                <Text numberOfLines={3} style={[styles.offerText, { fontSize: Math.round(W * 0.024) }]}>{promo.trim()}</Text>
+                <Text
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.5}
+                  style={[styles.offerText, { fontSize: Math.round(W * 0.024) }]}
+                >{promo.trim()}</Text>
               </View>
             </View>
           ) : null}

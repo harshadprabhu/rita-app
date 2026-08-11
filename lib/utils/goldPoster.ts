@@ -115,10 +115,10 @@ function deliverPoster(canvas: HTMLCanvasElement, fileName: string): void {
 // upward to free space for promotions at the bottom).
 const DATE_POINT = { x: 611, y: 641 };
 const RATE_POINTS = [
-  { key: '24k_999', x: 730, y: 778 },
-  { key: '24k_995', x: 730, y: 914 },
-  { key: '22k_916', x: 730, y: 1050 },
-  { key: '18k_750', x: 730, y: 1186 },
+  { key: '24k_999', x: 731, y: 778 },
+  { key: '24k_995', x: 731, y: 914 },
+  { key: '22k_916', x: 731, y: 1050 },
+  { key: '18k_750', x: 731, y: 1186 },
 ] as const;
 
 function ordinal(day: number): string {
@@ -237,20 +237,34 @@ function renderPosterCanvas(img: HTMLImageElement, rates: PosterRates, date: Dat
     goldGrad.addColorStop(0.5, '#E0B55A');
     goldGrad.addColorStop(1, '#C8963E');
 
-    // "SPECIAL OFFER" kicker
+    // "TODAY'S OFFER" kicker
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = goldGrad;
     ctx.font = `800 ${Math.round(18 * scale)}px Arial, sans-serif`;
-    ctx.fillText('✦  S P E C I A L   O F F E R  ✦', centerX, y + 20 * scale);
+    ctx.fillText("✦  T O D A Y ' S   O F F E R  ✦", centerX, y + 20 * scale);
 
-    // Promo body — smaller font, up to 3 lines, bottom-aligned
-    ctx.font = `700 ${Math.round(16 * scale)}px Arial, sans-serif`;
-    const lines = wrapText(ctx, offer, w - innerPad * 2, 3);
-    const lineHeight = 20 * scale;
-    const blockBottom = y + h - 16 * scale;
-    const firstLineY = blockBottom - lineHeight * (lines.length - 1);
-    lines.forEach((ln, i) => ctx.fillText(ln, centerX, firstLineY + i * lineHeight));
+    // Promo body — auto-size font to fit all text in the available area.
+    const kickerH = 36 * scale;
+    const padBottom = 12 * scale;
+    const availH = h - kickerH - padBottom;
+    const maxW = w - innerPad * 2;
+    let fontSize = 16;
+    let lines: string[] = [];
+    let lineH = 0;
+    while (fontSize >= 9) {
+      ctx.font = `700 ${Math.round(fontSize * scale)}px Arial, sans-serif`;
+      lineH = Math.round((fontSize + 4) * scale);
+      const maxLines = Math.floor(availH / lineH);
+      lines = wrapText(ctx, offer, maxW, maxLines);
+      const allText = lines.join(' ');
+      const allFits = allText.length >= offer.replace(/\s+/g, ' ').trim().length * 0.95;
+      if (allFits && lines.length * lineH <= availH) break;
+      fontSize--;
+    }
+    const blockBottom = y + h - padBottom;
+    const firstLineY = blockBottom - lineH * (lines.length - 1);
+    lines.forEach((ln, i) => ctx.fillText(ln, centerX, firstLineY + i * lineH));
     ctx.restore();
   }
   return canvas;
