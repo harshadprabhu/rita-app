@@ -22,7 +22,7 @@ export interface GoldRatePosterModalProps {
 // is 1054×1491; overlay anchor points are fractions of that.
 const AR = 1491 / 1054;
 const GOLD = '#f2d98a';
-const DATE = { left: 611 / 1054, top: 641 / 1491 };
+const DATE_LINE = { left: 452 / 1054, top: 668 / 1491, width: 268 / 1054 };
 const BOX_LEFT = 561 / 1054;
 const BOX_W = 340 / 1054;
 const BOX_H = 114 / 1491;
@@ -54,7 +54,6 @@ export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: Go
   const H = W * AR;
   const rateFont = Math.round(W * 0.044);
   const dateFont = Math.round(W * 0.029);
-  const box = W * 0.42;
 
   const share = async () => {
     setSharing(true);
@@ -89,7 +88,15 @@ export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: Go
           <Image source={require('../../assets/gold-rate-template.png')} style={{ width: W, height: H }} resizeMode="contain" />
           {rates && (
             <>
-              <View style={[styles.anchor, { left: DATE.left * W - box / 2, top: DATE.top * H - dateFont, width: box }]}>
+              <View style={{
+                position: 'absolute',
+                left: DATE_LINE.left * W,
+                top: DATE_LINE.top * H - dateFont * 1.4,
+                width: DATE_LINE.width * W,
+                height: dateFont * 1.4,
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+              }}>
                 <Text style={{ color: GOLD, fontSize: dateFont, fontWeight: '600' }}>{formatDate(date)}</Text>
               </View>
               {RATES.map((r) => {

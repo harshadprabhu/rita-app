@@ -113,7 +113,7 @@ function deliverPoster(canvas: HTMLCanvasElement, fileName: string): void {
 // Centre of each value box and the baseline point for the date on the
 // "Date: ____" line. Measured from the compressed template (rates shifted
 // upward to free space for promotions at the bottom).
-const DATE_POINT = { x: 611, y: 641 };
+const DATE_POINT = { x: 585, y: 668 };
 const RATE_POINTS = [
   { key: '24k_999', x: 731, y: 778 },
   { key: '24k_995', x: 731, y: 914 },
