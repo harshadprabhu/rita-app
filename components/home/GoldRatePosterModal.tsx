@@ -115,20 +115,35 @@ export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: Go
           )}
           {/* Special-offer text — no background box; golden gradient text
               directly on the dark poster bottom. */}
-          {rates && promo?.trim() ? (
-            <View style={[styles.offer, {
-              left: OFFER.left * W, top: OFFER.top * H, width: OFFER.width * W, height: OFFER.height * H,
-            }]}>
-              <Text style={[styles.offerKicker, { fontSize: Math.round(W * 0.024) }]}>{"✦  T O D A Y ' S   O F F E R  ✦"}</Text>
-              <View style={styles.offerTextWrap}>
-                <Text
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.5}
-                  style={[styles.offerText, { fontSize: Math.round(W * 0.024) }]}
-                >{promo.trim()}</Text>
+          {rates && promo?.trim() ? (() => {
+            const offerW = OFFER.width * W;
+            const offerH = OFFER.height * H;
+            const kickerFont = Math.round(W * 0.02);
+            const kickerH = kickerFont * 1.6;
+            const pad = 4;
+            const availH = offerH - kickerH - pad * 2;
+            const availW = offerW - 12;
+            const text = promo!.trim();
+            let bodyFont = Math.round(W * 0.022);
+            while (bodyFont > 4) {
+              const charsPerLine = Math.max(1, Math.floor(availW / (bodyFont * 0.55)));
+              const linesNeeded = Math.ceil(text.length / charsPerLine);
+              if (linesNeeded * bodyFont * 1.3 <= availH) break;
+              bodyFont--;
+            }
+            return (
+              <View style={{
+                position: 'absolute',
+                left: OFFER.left * W, top: OFFER.top * H, width: offerW, height: offerH,
+                alignItems: 'center', paddingHorizontal: 6, paddingVertical: pad,
+              }}>
+                <Text style={[styles.offerKicker, { fontSize: kickerFont }]}>{"✦  T O D A Y ' S   O F F E R  ✦"}</Text>
+                <View style={{ flex: 1, width: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={[styles.offerText, { fontSize: bodyFont, lineHeight: bodyFont * 1.3 }]}>{text}</Text>
+                </View>
               </View>
-            </View>
-          ) : null}
+            );
+          })() : null}
         </ViewShot>
 
         <View style={styles.actions}>
@@ -152,12 +167,7 @@ export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: Go
 const styles = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', padding: theme.spacing.lg },
   anchor: { position: 'absolute', alignItems: 'center' },
-  offer: {
-    position: 'absolute',
-    alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 10,
-  },
   offerKicker: { color: '#F2D98A', fontWeight: '800', letterSpacing: 0.5 },
-  offerTextWrap: { width: '100%', alignItems: 'center', justifyContent: 'flex-end' },
   offerText: { color: '#E0B55A', fontWeight: '800', textAlign: 'center' },
   actions: { flexDirection: 'row', gap: theme.spacing.md, marginTop: theme.spacing.xl, alignItems: 'center' },
   btn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm, paddingVertical: theme.spacing.md, paddingHorizontal: theme.spacing.xl, borderRadius: theme.radius.full },
