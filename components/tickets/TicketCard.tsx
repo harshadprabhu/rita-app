@@ -55,7 +55,7 @@ export function TicketCard({ ticket }: Props) {
   });
 
   const confirmDelete = () => {
-    Alert.alert('Delete ticket', `Delete ${ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : ticket.ticket_number}? This cannot be undone.`, [
+    Alert.alert('Delete ticket', `Delete ${ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : 'this ticket'}? This cannot be undone.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => deleteM.mutate() },
     ]);
@@ -92,7 +92,7 @@ export function TicketCard({ ticket }: Props) {
           <View style={styles.metaRow}>
             <LifecycleChip lifecycle={ticket.lifecycle} small />
             <NumericText style={styles.ticketNumber} numberOfLines={1}>
-              {ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : ticket.ticket_number}
+              {ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : 'Sync pending'}
             </NumericText>
             {categoryLabel && <Text style={styles.metaDot}>·</Text>}
             {categoryLabel && <Text style={styles.metaText} numberOfLines={1}>{categoryLabel}</Text>}

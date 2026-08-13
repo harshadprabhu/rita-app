@@ -83,6 +83,7 @@ export interface DbTicket {
   sampark_request_id: string | null;
   sampark_display_id: string | null;
   sampark_synced_at: string | null;
+  sampark_technician_name: string | null;
   contact_number: string | null;
   created_at: string;
   updated_at: string;

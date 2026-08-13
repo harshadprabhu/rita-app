@@ -41,7 +41,7 @@ export default function TechnicianQueue() {
             <View style={[styles.card, theme.shadows.sm]}>
               <View style={styles.topRow}>
                 <PriorityBadge priority={item.priority} />
-                <Text style={styles.ticketNumber}>{item.sampark_display_id ? `#${item.sampark_display_id}` : item.ticket_number}</Text>
+                <Text style={styles.ticketNumber}>{item.sampark_display_id ? `#${item.sampark_display_id}` : 'Sync pending'}</Text>
                 <LifecycleChip lifecycle={item.lifecycle} small />
               </View>
               <Text style={styles.description} numberOfLines={2}>{item.description}</Text>

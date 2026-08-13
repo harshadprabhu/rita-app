@@ -6,10 +6,10 @@ import { TicketWithRelations } from '../../types/ticket';
 
 function ticketRows(tickets: TicketWithRelations[]) {
   return tickets.map((t) => ({
-    'Ticket #': t.sampark_display_id ? `#${t.sampark_display_id}` : t.ticket_number,
+    'Ticket #': t.sampark_display_id ? `#${t.sampark_display_id}` : 'Sync pending',
     Store: t.store?.name ?? '',
     Requester: t.requester?.display_name ?? '',
-    Assignee: t.assignee?.display_name ?? '',
+    Assignee: t.assignee?.display_name ?? t.sampark_technician_name ?? '',
     Category: t.category ?? '',
     Priority: t.priority,
     Status: t.status,

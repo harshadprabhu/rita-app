@@ -84,7 +84,7 @@ export default function TicketDetail() {
   return (
     <Screen edges={['top', 'left', 'right']}>
       {/* Once mirrored to Sampark, the Sampark ticket no. is the shared id. */}
-      <AppHeader title={ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : ticket.ticket_number} showBack />
+      <AppHeader title={ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : 'Sync pending'} showBack />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={90}>
         <ScrollView contentContainerStyle={styles.summary} keyboardShouldPersistTaps="always">
           <View style={styles.topRow}>
@@ -105,7 +105,7 @@ export default function TicketDetail() {
           </View>
           <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>Assignee</Text>
-            <Text style={styles.metaValue}>{ticket.assignee?.display_name ?? 'Unassigned'}</Text>
+            <Text style={styles.metaValue}>{ticket.assignee?.display_name ?? ticket.sampark_technician_name ?? 'Unassigned'}</Text>
           </View>
           {ticket.category ? (
             <View style={styles.metaRow}>
@@ -138,7 +138,7 @@ export default function TicketDetail() {
               <View style={styles.assignBox}>
                 <View style={styles.assignRow}>
                   <Text style={styles.assignCurrent} numberOfLines={1}>
-                    {ticket.assignee?.display_name ?? 'Unassigned'}
+                    {ticket.assignee?.display_name ?? ticket.sampark_technician_name ?? 'Unassigned'}
                   </Text>
                   <TouchableOpacity
                     style={styles.reassignBtn}

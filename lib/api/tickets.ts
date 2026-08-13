@@ -103,18 +103,11 @@ export async function createTicket(payload: {
   return data as DbTicket;
 }
 
-/**
- * Mirror a RITA ticket into Sampark (ManageEngine SDP) as an incident. Fire it
- * after the ticket + its attachments are saved; it's idempotent (the edge
- * function no-ops if the ticket already has a Sampark id) and non-fatal — a
- * failure just leaves the ticket unsynced to retry later, never blocks the user.
- */
-export async function pushTicketToSampark(ticketId: string): Promise<void> {
-  try {
-    await supabase.functions.invoke('sampark-push', { body: { ticket_id: ticketId } });
-  } catch (e) {
-    console.warn('[pushTicketToSampark] failed (will retry later):', e);
-  }
+export async function pushTicketToSampark(ticketId: string): Promise<{ request_id: string; display_id: string }> {
+  const { data, error } = await supabase.functions.invoke('sampark-push', { body: { ticket_id: ticketId } });
+  if (error) throw new Error(`Sampark sync failed: ${error.message}`);
+  if (!data?.ok) throw new Error(data?.sampark_error ?? data?.error ?? 'Sampark sync failed — unknown error');
+  return { request_id: data.request_id, display_id: data.display_id };
 }
 
 export async function updateTicket(
@@ -149,7 +142,7 @@ export async function updateTicket(
       recipient_id: data.requester_id,
       ticket_id: id,
       title: resolved ? 'Ticket resolved' : 'Ticket status updated',
-      body: `${data.sampark_display_id ? `#${data.sampark_display_id}` : data.ticket_number}: ${resolved ? 'marked resolved' : `moved to ${readable}`}`,
+      body: `${data.sampark_display_id ? `#${data.sampark_display_id}` : 'Ticket'}: ${resolved ? 'marked resolved' : `moved to ${readable}`}`,
       type: resolved ? 'ticket_resolved' : 'ticket_updated',
     }).catch(() => null);
   }

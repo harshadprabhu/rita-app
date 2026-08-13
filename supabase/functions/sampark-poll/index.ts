@@ -55,7 +55,7 @@ async function sdpGet(cfg: Cfg, token: string, path: string): Promise<any> {
 
 async function syncOne(
   supabase: ReturnType<typeof createClient>, cfg: Cfg, token: string,
-  ticket: { id: string; status: string; sampark_request_id: string; requester_id: string | null; ticket_number: string; assignee_id: string | null },
+  ticket: { id: string; status: string; sampark_request_id: string; requester_id: string | null; ticket_number: string; assignee_id: string | null; sampark_technician_name: string | null },
 ): Promise<{ statusChanged: boolean; assigneeChanged: boolean; notesAdded: number }> {
   const reqId = ticket.sampark_request_id;
   const detail = await sdpGet(cfg, token, `/requests/${reqId}`);
@@ -74,52 +74,54 @@ async function syncOne(
   let newAssigneeId = ticket.assignee_id;
   let assigneeName: string | null = null;
   const techName = String(detail.request?.technician?.name ?? '').trim();
+  console.log('[sampark-poll] technician from Sampark:', JSON.stringify(detail.request?.technician), 'for request', reqId);
   if (techName) {
     const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
     const { data: techs } = await supabase.from('profiles')
       .select('id, display_name').in('role', ['technician', 'admin', 'manager', 'ops_manager']).eq('is_active', true);
+    console.log('[sampark-poll] RITA staff names:', (techs ?? []).map(p => `"${p.display_name}"`).join(', '));
     const match = (techs as { id: string; display_name: string }[] | null)?.find(
       (p) => norm(p.display_name) === norm(techName),
     );
-    if (match && match.id !== ticket.assignee_id) {
-      newAssigneeId = match.id;
-      assigneeName = match.display_name;
-      assigneeChanged = true;
+    if (match) {
+      if (match.id !== ticket.assignee_id) {
+        newAssigneeId = match.id;
+        assigneeName = match.display_name;
+        assigneeChanged = true;
+        console.log('[sampark-poll] assignment change:', match.display_name, '→', match.id);
+      }
+    } else {
+      console.warn('[sampark-poll] NO MATCH for Sampark technician:', `"${techName}"`);
     }
   }
 
-  // A ticket with an owner in Sampark is work starting, even if Sampark's own
-  // status field is still "Open" (technicians don't always flip it right
-  // away). Applied every pass against the FINAL resolved assignee — not just
-  // on the pass that detects a new assignment — so a later poll re-pulling
-  // Sampark's raw "Open" status can't silently revert an earlier bump.
-  if (newAssigneeId && newStatus === 'open') {
+  if (techName && newStatus === 'open') {
     newStatus = 'in_progress';
     newLifecycle = 'being_worked_on';
   }
   const statusChanged = newStatus !== ticket.status;
+  const techNameChanged = techName && techName !== ticket.sampark_technician_name;
 
-  if (statusChanged || assigneeChanged) {
+  if (statusChanged || assigneeChanged || techNameChanged) {
     await supabase.from('tickets').update({
       ...(statusChanged ? { status: newStatus, lifecycle: newLifecycle } : {}),
       ...(newStatus === 'resolved' && ticket.status !== 'resolved' ? { resolved_at: new Date().toISOString() } : {}),
       ...(assigneeChanged ? { assignee_id: newAssigneeId } : {}),
+      ...(techName ? { sampark_technician_name: techName } : {}),
     }).eq('id', ticket.id);
 
-    // Same Daily Alerts notification the real-time webhook creates — this
-    // poll is a fallback for a dropped/misfired trigger, so a ticket caught
-    // here should alert the requester exactly like the webhook path does.
     if (ticket.requester_id) {
-      const title = assigneeChanged ? 'Technician assigned' : (newStatus === 'resolved' ? 'Ticket resolved' : 'Ticket status updated');
-      const displayId = ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : ticket.ticket_number;
-      const body = assigneeChanged
-        ? `${displayId}: picked up by ${assigneeName}`
+      const techAssigned = assigneeChanged || techNameChanged;
+      const title = techAssigned ? 'Technician assigned' : (newStatus === 'resolved' ? 'Ticket resolved' : 'Ticket status updated');
+      const displayId = ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : 'Ticket';
+      const body = techAssigned
+        ? `${displayId}: picked up by ${assigneeName ?? techName}`
         : `${displayId}: moved to ${newStatus.replace(/_/g, ' ')}`;
       const { error: notifErr } = await supabase.from('notifications').insert({
         recipient_id: ticket.requester_id,
         ticket_id: ticket.id,
         title, body,
-        type: assigneeChanged ? 'ticket_assigned' : (newStatus === 'resolved' ? 'ticket_resolved' : 'ticket_updated'),
+        type: techAssigned ? 'ticket_assigned' : (newStatus === 'resolved' ? 'ticket_resolved' : 'ticket_updated'),
       });
       if (notifErr) console.warn('[sampark-poll] notification insert failed:', notifErr);
     }
@@ -157,12 +159,12 @@ Deno.serve(async (req) => {
     // to bound the API calls.
     const { data: tickets, error } = await supabase
       .from('tickets')
-      .select('id, status, sampark_request_id, sampark_display_id, requester_id, ticket_number, assignee_id')
+      .select('id, status, sampark_request_id, sampark_display_id, requester_id, ticket_number, assignee_id, sampark_technician_name')
       .not('sampark_request_id', 'is', null)
       .in('status', ['open', 'in_progress'])
       .limit(500);
     if (error) throw error;
-    const list = (tickets ?? []) as { id: string; status: string; sampark_request_id: string; requester_id: string | null; ticket_number: string; assignee_id: string | null }[];
+    const list = (tickets ?? []) as { id: string; status: string; sampark_request_id: string; requester_id: string | null; ticket_number: string; assignee_id: string | null; sampark_technician_name: string | null }[];
     if (!list.length) {
       return new Response(JSON.stringify({ ok: true, polled: 0 }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
     }

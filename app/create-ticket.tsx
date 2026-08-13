@@ -133,8 +133,6 @@ export default function CreateTicket() {
       for (const img of images) {
         await uploadAttachment(ticket.id, img.uri, img.name, 'image');
       }
-      // Mirror into Sampark (creates the incident + pushes photos). Non-fatal:
-      // the ticket is already saved; a failed push retries later.
       await pushTicketToSampark(ticket.id);
       return ticket;
     },

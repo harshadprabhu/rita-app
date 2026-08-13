@@ -72,6 +72,7 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
           t.status,
           t.requester?.display_name,
           t.assignee?.display_name,
+          t.sampark_technician_name,
           t.store?.name,
         ]
           .filter(Boolean)

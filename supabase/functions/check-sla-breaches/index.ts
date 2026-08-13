@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
       recipient_id,
       ticket_id: t.id,
       title: 'SLA Breach',
-      body: `Ticket ${t.sampark_display_id ? `#${t.sampark_display_id}` : t.ticket_number} has breached its SLA.`,
+      body: `${t.sampark_display_id ? `#${t.sampark_display_id}` : 'Ticket'} has breached its SLA.`,
       type: 'sla_breach',
     }));
   });
