@@ -60,14 +60,14 @@ export default function SlaConsole() {
             <View style={[styles.card, theme.shadows.sm]}>
               <View style={styles.topRow}>
                 <PriorityBadge priority={item.priority} />
-                <Text style={styles.ticketNumber}>{item.ticket_number}</Text>
+                <Text style={styles.ticketNumber}>{item.sampark_display_id ? `#${item.sampark_display_id}` : item.ticket_number}</Text>
                 <Text style={styles.breachBadge}>SLA BREACHED</Text>
               </View>
               <Text style={styles.description} numberOfLines={2}>{item.description}</Text>
               <Text style={styles.meta}>{item.store?.name} · Assignee: {item.assignee?.display_name ?? 'Unassigned'}</Text>
               <TouchableOpacity
                 style={styles.reassignBtn}
-                onPress={() => Alert.alert('Reassign', `Reassigning ${item.ticket_number} — open ticket detail to pick a technician.`)}
+                onPress={() => Alert.alert('Reassign', `Reassigning ${item.sampark_display_id ? `#${item.sampark_display_id}` : item.ticket_number} — open ticket detail to pick a technician.`)}
               >
                 <Text style={styles.reassignBtnText}>Reassign</Text>
               </TouchableOpacity>

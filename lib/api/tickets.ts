@@ -149,7 +149,7 @@ export async function updateTicket(
       recipient_id: data.requester_id,
       ticket_id: id,
       title: resolved ? 'Ticket resolved' : 'Ticket status updated',
-      body: `${data.ticket_number}: ${resolved ? 'marked resolved' : `moved to ${readable}`}`,
+      body: `${data.sampark_display_id ? `#${data.sampark_display_id}` : data.ticket_number}: ${resolved ? 'marked resolved' : `moved to ${readable}`}`,
       type: resolved ? 'ticket_resolved' : 'ticket_updated',
     }).catch(() => null);
   }

@@ -55,7 +55,7 @@ export function TicketCard({ ticket }: Props) {
   });
 
   const confirmDelete = () => {
-    Alert.alert('Delete ticket', `Delete ${ticket.ticket_number}? This cannot be undone.`, [
+    Alert.alert('Delete ticket', `Delete ${ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : ticket.ticket_number}? This cannot be undone.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => deleteM.mutate() },
     ]);

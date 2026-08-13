@@ -6,7 +6,7 @@ import { TicketWithRelations } from '../../types/ticket';
 
 function ticketRows(tickets: TicketWithRelations[]) {
   return tickets.map((t) => ({
-    'Ticket #': t.ticket_number,
+    'Ticket #': t.sampark_display_id ? `#${t.sampark_display_id}` : t.ticket_number,
     Store: t.store?.name ?? '',
     Requester: t.requester?.display_name ?? '',
     Assignee: t.assignee?.display_name ?? '',

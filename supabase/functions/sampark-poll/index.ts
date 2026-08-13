@@ -111,9 +111,10 @@ async function syncOne(
     // here should alert the requester exactly like the webhook path does.
     if (ticket.requester_id) {
       const title = assigneeChanged ? 'Technician assigned' : (newStatus === 'resolved' ? 'Ticket resolved' : 'Ticket status updated');
+      const displayId = ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : ticket.ticket_number;
       const body = assigneeChanged
-        ? `${ticket.ticket_number}: picked up by ${assigneeName}`
-        : `${ticket.ticket_number}: moved to ${newStatus.replace(/_/g, ' ')}`;
+        ? `${displayId}: picked up by ${assigneeName}`
+        : `${displayId}: moved to ${newStatus.replace(/_/g, ' ')}`;
       const { error: notifErr } = await supabase.from('notifications').insert({
         recipient_id: ticket.requester_id,
         ticket_id: ticket.id,
@@ -156,7 +157,7 @@ Deno.serve(async (req) => {
     // to bound the API calls.
     const { data: tickets, error } = await supabase
       .from('tickets')
-      .select('id, status, sampark_request_id, requester_id, ticket_number, assignee_id')
+      .select('id, status, sampark_request_id, sampark_display_id, requester_id, ticket_number, assignee_id')
       .not('sampark_request_id', 'is', null)
       .in('status', ['open', 'in_progress'])
       .limit(500);

@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
 
     // Find the RITA ticket linked to this Sampark request.
     const { data: ticket } = await supabase.from('tickets')
-      .select('id, status, lifecycle, assignee_id, requester_id, ticket_number')
+      .select('id, status, lifecycle, assignee_id, requester_id, ticket_number, sampark_display_id')
       .eq('sampark_request_id', requestId).maybeSingle();
     if (!ticket) return new Response(JSON.stringify({ ok: true, ignored: 'no_linked_ticket', requestId }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
     const t = ticket as {
@@ -146,9 +146,10 @@ Deno.serve(async (req) => {
       // OS push automatically on this insert.
       if (t.requester_id) {
         const title = assigneeChanged ? 'Technician assigned' : (newStatus === 'resolved' ? 'Ticket resolved' : 'Ticket status updated');
+        const displayId = t.sampark_display_id ? `#${t.sampark_display_id}` : t.ticket_number;
         const body = assigneeChanged
-          ? `${t.ticket_number}: picked up by ${assigneeName}`
-          : `${t.ticket_number}: moved to ${newStatus.replace(/_/g, ' ')}`;
+          ? `${displayId}: picked up by ${assigneeName}`
+          : `${displayId}: moved to ${newStatus.replace(/_/g, ' ')}`;
         const { error: notifErr } = await supabase.from('notifications').insert({
           recipient_id: t.requester_id,
           ticket_id: ticketId,

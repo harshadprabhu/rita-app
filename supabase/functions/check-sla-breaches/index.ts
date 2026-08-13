@@ -15,7 +15,7 @@ Deno.serve(async (req) => {
 
   const { data: overdue, error } = await supabase
     .from('tickets')
-    .select('id, ticket_number, assignee_id, requester_id, store_id')
+    .select('id, ticket_number, sampark_display_id, assignee_id, requester_id, store_id')
     .lt('sla_due_at', new Date().toISOString())
     .eq('sla_breached', false)
     .not('status', 'eq', 'resolved');
@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
       recipient_id,
       ticket_id: t.id,
       title: 'SLA Breach',
-      body: `Ticket ${t.ticket_number} has breached its SLA.`,
+      body: `Ticket ${t.sampark_display_id ? `#${t.sampark_display_id}` : t.ticket_number} has breached its SLA.`,
       type: 'sla_breach',
     }));
   });

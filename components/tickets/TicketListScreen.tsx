@@ -64,6 +64,7 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
     if (q) {
       list = list.filter((t) =>
         [
+          t.sampark_display_id,
           t.ticket_number,
           t.description,
           t.category,
