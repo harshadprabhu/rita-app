@@ -11,6 +11,8 @@ export default function AdminProfile() {
     { icon: 'megaphone-outline', label: 'Broadcasts', color: theme.colors.accent, bg: '#FDF6EC', onPress: () => router.push('/(admin)/broadcasts') },
     { icon: 'pricetag', label: 'Promotions', color: '#059669', bg: '#ECFDF5', onPress: () => router.push('/(admin)/promotions') },
     { icon: 'cog-outline', label: 'Integrations', color: '#8B5CF6', bg: '#F5F3FF', onPress: () => router.push('/(admin)/integrations') },
+    { icon: 'chatbox-ellipses-outline', label: 'App Feedback', color: '#7C3AED', bg: '#F5F3FF', onPress: () => router.push('/(admin)/feedback' as any) },
+    { icon: 'stats-chart-outline', label: 'POC Analytics', color: '#EC4899', bg: '#FDF2F8', onPress: () => router.push('/(admin)/feedback-analytics' as any) },
   ];
   return <ProfileScreen tools={tools} toolsTitle="Admin Tools" />;
 }

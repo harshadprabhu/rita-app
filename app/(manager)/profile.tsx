@@ -23,5 +23,8 @@ export default function ManagerProfile() {
     tools.push({ icon: 'checkbox', label: 'Checklists', color: '#0EA5E9', bg: '#EFF8FF', onPress: () => router.push('/(manager)/checklist-review') });
   }
 
+  tools.push({ icon: 'chatbox-ellipses-outline', label: 'App Feedback', color: '#7C3AED', bg: '#F5F3FF', onPress: () => router.push('/(manager)/feedback' as any) });
+  tools.push({ icon: 'stats-chart-outline', label: 'POC Analytics', color: '#EC4899', bg: '#FDF2F8', onPress: () => router.push('/(manager)/feedback-analytics' as any) });
+
   return <ProfileScreen tools={tools} />;
 }

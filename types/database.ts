@@ -232,3 +232,23 @@ export interface DbChecklistAnswer {
   created_at: string;
   updated_at: string;
 }
+
+// ─── POC feedback ───────────────────────────────────────────────────────
+
+export interface DbPocFeedback {
+  id: string;
+  user_id: string;
+  store_id: string;
+  ease_of_ticket_creation: number;
+  ease_of_tracking: number;
+  overall_experience: number;
+  app_speed_performance: number;
+  vs_whatsapp: number;
+  would_prefer_app: 'yes' | 'no' | 'maybe';
+  useful_features: string[];
+  would_recommend: 'yes' | 'no' | 'maybe';
+  liked_most: string | null;
+  improvements: string | null;
+  additional_feedback: string | null;
+  created_at: string;
+}

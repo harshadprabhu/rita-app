@@ -36,6 +36,8 @@ export default function ManagerLayout() {
       <Tabs.Screen name="broadcasts" options={{ href: null }} />
       <Tabs.Screen name="promotions" options={{ href: null }} />
       <Tabs.Screen name="checklist-review" options={{ href: null }} />
+      <Tabs.Screen name="feedback" options={{ href: null }} />
+      <Tabs.Screen name="feedback-analytics" options={{ href: null }} />
       <Tabs.Screen name="profile" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     </Tabs>
     <ReportFab />

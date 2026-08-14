@@ -8,6 +8,7 @@ export default function UserProfile() {
   const { t } = useTranslation();
   const tools: ProfileTool[] = [
     { icon: 'megaphone-outline', label: t('announcements.title'), color: theme.colors.accent, bg: '#FDF6EC', onPress: () => router.push('/(user)/announcements') },
+    { icon: 'chatbox-ellipses-outline', label: 'App Feedback', color: '#8B5CF6', bg: '#F5F3FF', onPress: () => router.push('/(user)/feedback' as any) },
   ];
   return <ProfileScreen tools={tools} />;
 }

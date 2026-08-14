@@ -45,6 +45,7 @@ export default function UserLayout() {
         }}
       />
       <Tabs.Screen name="announcements" options={{ href: null }} />
+      <Tabs.Screen name="feedback" options={{ href: null }} />
       <Tabs.Screen name="profile" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     </Tabs>
     <ReportFab />
