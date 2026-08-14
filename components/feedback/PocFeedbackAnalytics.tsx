@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../common/Screen';
 import { AppHeader } from '../common/AppHeader';
 import { getAllFeedback } from '../../lib/api/pocFeedback';
+import { getAllTicketRatings } from '../../lib/api/ticketRatings';
 import { theme } from '../../constants/theme';
 
 const FEATURE_LABELS: Record<string, string> = {
@@ -25,6 +26,10 @@ export function PocFeedbackAnalytics() {
   const { data: feedback, isLoading } = useQuery({
     queryKey: ['poc-feedback-all'],
     queryFn: getAllFeedback,
+  });
+  const { data: ticketRatings } = useQuery({
+    queryKey: ['ticket-ratings-all'],
+    queryFn: getAllTicketRatings,
   });
 
   if (isLoading) return <Screen edges={['top']}><AppHeader title="POC Analytics" showBack /><ActivityIndicator style={{ marginTop: 40 }} /></Screen>;
@@ -151,6 +156,52 @@ export function PocFeedbackAnalytics() {
           ))}
         </View>
 
+        {/* Ticket ratings */}
+        {(ticketRatings ?? []).length > 0 && (() => {
+          const tr = ticketRatings!;
+          const trN = tr.length;
+          const trAvg = (fn: (r: typeof tr[0]) => number) => (tr.reduce((sum, r) => sum + fn(r), 0) / trN).toFixed(1);
+          const avgCat = trAvg((r) => r.auto_category_accuracy);
+          const avgEaseT = trAvg((r) => r.ease_of_creation);
+          const avgOverallT = trAvg((r) => r.overall_experience);
+          const dist = (fn: (r: typeof tr[0]) => number) =>
+            [1, 2, 3, 4, 5].map((v) => ({ star: v, count: tr.filter((r) => fn(r) === v).length }));
+          return (
+            <>
+              <Text style={s.sectionTitle}>Ticket Ratings ({trN} ticket{trN !== 1 ? 's' : ''} rated)</Text>
+              <View style={s.ratingGrid}>
+                <RatingTile label="Auto-Category Accuracy" value={avgCat} />
+                <RatingTile label="Ease of Creation" value={avgEaseT} />
+                <RatingTile label="Overall Experience" value={avgOverallT} />
+              </View>
+              <View style={[s.card, { marginTop: 10 }]}>
+                <Text style={s.distTitle}>Auto-Category Accuracy Distribution</Text>
+                {dist((r) => r.auto_category_accuracy).map((d) => (
+                  <View key={d.star} style={s.barRow}>
+                    <Text style={[s.barLabel, { width: 60 }]}>{'★'.repeat(d.star)}</Text>
+                    <View style={s.barTrack}>
+                      <View style={[s.barFill, s.barFillAccent, { width: `${Math.round((d.count / trN) * 100)}%` }]} />
+                    </View>
+                    <Text style={s.barPct}>{d.count}</Text>
+                  </View>
+                ))}
+              </View>
+              {tr.filter((r) => r.feedback?.trim()).length > 0 && (
+                <>
+                  <Text style={s.sectionTitle}>Ticket Rating Comments</Text>
+                  <View style={s.card}>
+                    {tr.filter((r) => r.feedback?.trim()).map((r, i) => (
+                      <View key={r.id} style={[s.freeTextRow, i > 0 && s.freeTextBorder]}>
+                        <Text style={s.freeText}>"{r.feedback}"</Text>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              )}
+            </>
+          );
+        })()}
+
         {/* Free text responses */}
         <Text style={s.sectionTitle}>What Users Liked Most</Text>
         <FreeTextList items={fb.map((f) => ({ text: f.liked_most, name: (f as any).profile?.display_name, store: (f as any).store?.name }))} />
@@ -246,6 +297,7 @@ const s = StyleSheet.create({
   triSegBar: { height: 8, borderRadius: 4, width: '100%' },
   triSegLabel: { fontSize: 10, fontWeight: '700', color: theme.colors.textSecondary },
 
+  distTitle: { fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary, marginBottom: 10 },
   noData: { fontSize: 13, color: theme.colors.textTertiary, fontStyle: 'italic', textAlign: 'center' as const, paddingVertical: 8 },
   freeTextRow: { paddingVertical: 10 },
   freeTextBorder: { borderTopWidth: 1, borderTopColor: theme.colors.border },

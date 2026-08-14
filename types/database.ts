@@ -233,6 +233,19 @@ export interface DbChecklistAnswer {
   updated_at: string;
 }
 
+// ─── Ticket ratings ─────────────────────────────────────────────────────
+
+export interface DbTicketRating {
+  id: string;
+  ticket_id: string;
+  user_id: string;
+  auto_category_accuracy: number;
+  ease_of_creation: number;
+  overall_experience: number;
+  feedback: string | null;
+  created_at: string;
+}
+
 // ─── POC feedback ───────────────────────────────────────────────────────
 
 export interface DbPocFeedback {

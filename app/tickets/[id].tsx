@@ -11,6 +11,7 @@ import { PriorityBadge } from '../../components/common/PriorityBadge';
 import { AttachmentGrid } from '../../components/tickets/AttachmentGrid';
 import { CommentBubble } from '../../components/tickets/CommentBubble';
 import { CommentInput } from '../../components/tickets/CommentInput';
+import { TicketRatingCard } from '../../components/tickets/TicketRatingCard';
 import { getTicketById, updateTicket, claimTicket, reassignTicket } from '../../lib/api/tickets';
 import { getTechnicians } from '../../lib/api/profiles';
 import { getComments, addComment } from '../../lib/api/comments';
@@ -125,6 +126,10 @@ export default function TicketDetail() {
 
           <Text style={styles.sectionLabel}>Attachments</Text>
           <AttachmentGrid attachments={ticket.attachments} />
+
+          {ticket.requester_id === profile.id && (
+            <TicketRatingCard ticketId={ticket.id} />
+          )}
 
           {canAssign && !ticket.assignee_id && (
             <TouchableOpacity style={styles.claimBtn} onPress={() => claim.mutate()} disabled={claim.isPending}>
