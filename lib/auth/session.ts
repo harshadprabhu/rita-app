@@ -135,7 +135,27 @@ async function storeFromAdId(email: string | undefined) {
  */
 export async function ensureProfile(user: User): Promise<DbProfile | null> {
   const existing = await fetchProfile(user.id);
-  if (existing) return existing;
+  if (existing) {
+    // The SSO trigger may have created a bare profile (no store). Back-fill
+    // from the workers table / AD login id if the store is still missing.
+    if (!existing.store_id) {
+      const worker = await workerDefaults(user.email);
+      const adStore = worker?.store ? null : await storeFromAdId(user.email);
+      const store = worker?.store ?? adStore;
+      if (store) {
+        const patch: Record<string, unknown> = {
+          store_id: store.store_id,
+          store_name: store.store_name,
+          store_location: store.store_location,
+        };
+        if (worker?.phone && !existing.phone) patch.phone = worker.phone;
+        if (!worker && adStore) patch.designation = 'Store Tablet';
+        await supabase.from('profiles').update(patch).eq('id', existing.id);
+        return { ...existing, ...patch } as DbProfile;
+      }
+    }
+    return existing;
+  }
 
   const worker = await workerDefaults(user.email);
   const { first, last } = worker?.name ?? deriveName(user);
