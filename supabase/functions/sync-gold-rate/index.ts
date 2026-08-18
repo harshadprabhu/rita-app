@@ -289,12 +289,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    const now = new Date().toISOString();
     const rows = filteredItems.map((item) => ({
       entry_date: todayIST,
       metal:      item.Metal,
       purity:     item.Purity,
       rate:       item.Rate,
       currency:   'INR',
+      updated_at: now,
     }));
 
     // Upsert with update (not ignoreDuplicates) so intraday rate changes are persisted
@@ -304,22 +306,48 @@ Deno.serve(async (req) => {
 
     if (upsertError) throw upsertError;
 
-    // Rates changed → record it as a system broadcast. That makes it visible in
-    // the in-app Alerts feed (it previously only fired a push, so nothing ever
-    // surfaced in Alerts), and the `broadcast_push` trigger sends the OS push
-    // from here — so we no longer call send-push directly and can't double-send.
+    // Rates changed → record it as a system broadcast (one per day, updated on
+    // intraday changes). The `broadcast_push` trigger sends the OS push.
     try {
       const k24 = filteredItems.find((i) => i.Purity === '24KT 999')?.Rate;
       if (k24 && k24 > 0) {
         const inr = Math.round(k24).toLocaleString('en-IN');
-        const { error: bErr } = await supabase.from('broadcasts').insert({
-          sender_id: null,          // system-generated
-          kind: 'gold_rate',
-          title: 'Gold rate updated',
-          body: `24K (999): ₹${inr}/g`,
-          target_store_ids: null,   // everyone
-        });
-        if (bErr) console.warn('[sync-gold-rate] broadcast insert failed:', bErr.message);
+        const prev24 = existingRateMap['24KT 999'];
+        const delta = prev24 ? k24 - prev24 : 0;
+        const arrow = delta > 0 ? '↑' : delta < 0 ? '↓' : '';
+        const deltaStr = delta !== 0 ? ` (${arrow}₹${Math.abs(Math.round(delta)).toLocaleString('en-IN')})` : '';
+        const body = `24K (999): ₹${inr}/g${deltaStr}`;
+
+        // Check if a gold_rate broadcast already exists for today (IST)
+        const todayStart = `${todayIST}T00:00:00+05:30`;
+        const tomorrowStart = (() => {
+          const d = new Date(todayIST + 'T00:00:00+05:30');
+          d.setDate(d.getDate() + 1);
+          return d.toISOString();
+        })();
+        const { data: existingBroadcast } = await supabase
+          .from('broadcasts')
+          .select('id')
+          .eq('kind', 'gold_rate')
+          .gte('created_at', todayStart)
+          .lt('created_at', tomorrowStart)
+          .limit(1)
+          .maybeSingle();
+
+        if (existingBroadcast) {
+          // Update the existing broadcast body (no new push — trigger only fires on INSERT)
+          await supabase.from('broadcasts').update({ body }).eq('id', existingBroadcast.id);
+        } else {
+          // First rate of the day — insert triggers the push notification
+          const { error: bErr } = await supabase.from('broadcasts').insert({
+            sender_id: null,
+            kind: 'gold_rate',
+            title: 'Gold rate updated',
+            body,
+            target_store_ids: null,
+          });
+          if (bErr) console.warn('[sync-gold-rate] broadcast insert failed:', bErr.message);
+        }
       }
     } catch (e) {
       console.warn('[sync-gold-rate] alert insert failed:', e);

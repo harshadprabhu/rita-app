@@ -139,7 +139,16 @@ Deno.serve(async (req) => {
     const { data: rows, error } = await q;
     if (error) throw error;
 
-    const targets = (rows ?? []) as { id: string; expo_push_token: string }[];
+    // Deduplicate by token — the same device may be registered under multiple
+    // profiles (e.g. admin + in_store_manager on one phone), and FCM delivers
+    // per-token, so sending the same token twice means two OS notifications.
+    const seenTokens = new Set<string>();
+    const targets: { id: string; expo_push_token: string }[] = [];
+    for (const row of (rows ?? []) as { id: string; expo_push_token: string }[]) {
+      if (seenTokens.has(row.expo_push_token)) continue;
+      seenTokens.add(row.expo_push_token);
+      targets.push(row);
+    }
     if (!targets.length) {
       return new Response(JSON.stringify({ ok: true, sent: 0, reason: 'no_tokens' }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
