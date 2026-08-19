@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Switch, RefreshControl, TouchableOpacity, Modal, Pressable, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Screen } from '../../components/common/Screen';
 import { AppHeader } from '../../components/common/AppHeader';
@@ -83,7 +84,11 @@ export default function Accounts() {
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
           renderItem={({ item }) => (
-            <View style={[styles.row, theme.shadows.sm]}>
+            <TouchableOpacity
+              style={[styles.row, theme.shadows.sm]}
+              onPress={() => router.push({ pathname: '/(admin)/account-edit' as any, params: { id: item.id } })}
+              activeOpacity={0.7}
+            >
               <View style={styles.rowText}>
                 <Text style={styles.name}>{item.display_name}</Text>
                 <Text style={styles.meta}>{item.store_name ?? item.store_id ?? 'No store'}</Text>
@@ -97,12 +102,15 @@ export default function Accounts() {
                   <Ionicons name="chevron-down" size={13} color={theme.colors.brand} />
                 </TouchableOpacity>
               </View>
-              <Switch
-                value={item.is_active}
-                onValueChange={(v) => toggleActive.mutate({ id: item.id, isActive: v })}
-                trackColor={{ true: theme.colors.brand, false: theme.colors.border }}
-              />
-            </View>
+              <View style={styles.rowRight}>
+                <Switch
+                  value={item.is_active}
+                  onValueChange={(v) => toggleActive.mutate({ id: item.id, isActive: v })}
+                  trackColor={{ true: theme.colors.brand, false: theme.colors.border }}
+                />
+                <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
+              </View>
+            </TouchableOpacity>
           )}
           ListEmptyComponent={
             <EmptyState
@@ -167,6 +175,7 @@ const styles = StyleSheet.create({
   rowText: { flex: 1, gap: 4 },
   name: { fontSize: 14, fontWeight: '700', color: theme.colors.textPrimary },
   meta: { fontSize: 12, color: theme.colors.textSecondary },
+  rowRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   roleChip: {
     flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start',
     backgroundColor: theme.colors.accentLight, borderRadius: theme.radius.full,

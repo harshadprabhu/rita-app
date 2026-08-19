@@ -7,9 +7,12 @@ import Svg, { Polyline, Polygon } from 'react-native-svg';
 import QRCode from 'react-native-qrcode-svg';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import * as Print from 'expo-print';
+import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { IGP_URL } from '../../constants/links';
+import { pngDataUrlToPdfBlob } from '../../lib/utils/goldPoster';
 import type { GoldRateTrendPoint } from '../../lib/api/goldRate';
 import { theme } from '../../constants/theme';
 
@@ -109,20 +112,24 @@ export function GoldTrendPosterModal({ visible, onClose, series, currentRate, da
     setSharing(true);
     try {
       if (isWeb) {
-        // Web capture returns a data URL (html2canvas under the hood); hand it
-        // to the browser as a normal download — there's no share sheet.
         const dataUrl = await captureRef(shotRef, { format: 'png', quality: 1, result: 'data-uri' });
+        const blob = pngDataUrlToPdfBlob(dataUrl);
+        const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.download = `indriya_gold_trends_${date.toISOString().slice(0, 10)}.png`;
-        link.href = dataUrl;
+        link.download = `indriya_gold_trends_${date.toISOString().slice(0, 10)}.pdf`;
+        link.href = url;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
         return;
       }
-      const uri = await captureRef(shotRef, { format: 'png', quality: 1 });
+      const pngUri = await captureRef(shotRef, { format: 'png', quality: 1 });
+      const b64 = await FileSystem.readAsStringAsync(pngUri, { encoding: 'base64' });
+      const html = `<html><body style="margin:0;padding:0"><img src="data:image/png;base64,${b64}" style="width:100%;height:auto" /></body></html>`;
+      const { uri: pdfUri } = await Print.printToFileAsync({ html, width: 595, height: 842 });
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: 'Gold Rate Trends' });
+        await Sharing.shareAsync(pdfUri, { mimeType: 'application/pdf', dialogTitle: 'Gold Rate Trends' });
       }
     } catch {
       // user cancelled / capture failed

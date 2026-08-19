@@ -40,6 +40,7 @@
     "expo-status-bar": "~3.0.9",
     "expo-web-browser": "~15.0.11",
     "i18next": "^23.16.8",
+    "jspdf": "^4.2.1",
     "nativewind": "4.0.36",
     "papaparse": "^5.4.1",
     "react": "19.1.0",

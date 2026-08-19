@@ -4,8 +4,11 @@ import {
 } from 'react-native';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
+import * as Print from 'expo-print';
+import * as FileSystem from 'expo-file-system';
 import { Ionicons } from '@expo/vector-icons';
 import type { PosterRates } from '../../lib/utils/goldPoster';
+import { pngDataUrlToPdfBlob } from '../../lib/utils/goldPoster';
 import { theme } from '../../constants/theme';
 
 export interface GoldRatePosterModalProps {
@@ -62,17 +65,23 @@ export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: Go
       const hiResH = Math.round(hiResW * AR);
       if (isWeb) {
         const dataUrl = await captureRef(shotRef, { format: 'png', quality: 1, result: 'data-uri', width: hiResW, height: hiResH });
+        const blob = pngDataUrlToPdfBlob(dataUrl);
+        const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        link.download = `indriya_gold_rates_${date.toISOString().slice(0, 10)}.png`;
-        link.href = dataUrl;
+        link.download = `indriya_gold_rates_${date.toISOString().slice(0, 10)}.pdf`;
+        link.href = url;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
         return;
       }
-      const uri = await captureRef(shotRef, { format: 'png', quality: 1, width: hiResW, height: hiResH });
+      const pngUri = await captureRef(shotRef, { format: 'png', quality: 1, width: hiResW, height: hiResH });
+      const b64 = await FileSystem.readAsStringAsync(pngUri, { encoding: 'base64' });
+      const html = `<html><body style="margin:0;padding:0"><img src="data:image/png;base64,${b64}" style="width:100%;height:auto" /></body></html>`;
+      const { uri: pdfUri } = await Print.printToFileAsync({ html, width: 595, height: 842 });
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: 'image/png', dialogTitle: "Today's Gold Rates" });
+        await Sharing.shareAsync(pdfUri, { mimeType: 'application/pdf', dialogTitle: "Today's Gold Rates" });
       }
     } catch {
       // user cancelled / capture failed

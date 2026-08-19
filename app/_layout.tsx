@@ -159,6 +159,8 @@ function AuthGate() {
       dest = 'login'; // deactivated accounts are bounced back to login
     } else if (profile.role === 'technician' && profile.approval_status === 'pending') {
       dest = 'pending';
+    } else if (!profile.store_id && !['admin', 'technician'].includes(profile.role) && profile.approval_status === 'approved') {
+      dest = 'select-store';
     } else if ((profile.role === 'user' || profile.role === 'in_store_manager') && profile.approval_status === 'approved') {
       // In-Store Manager uses the store-staff screens for now.
       dest = 'user';
@@ -183,6 +185,7 @@ function AuthGate() {
     else if (dest === 'technician') router.replace('/(technician)/home');
     else if (dest === 'admin') router.replace('/(admin)/home');
     else if (dest === 'pending') router.replace('/pending-approval');
+    else if (dest === 'select-store') router.replace('/select-store' as any);
     else router.replace('/(auth)/login');
   }, [isLoading, session, profile, pathname]);
 
@@ -253,6 +256,7 @@ export default function RootLayout() {
             <Stack.Screen name="tickets/[id]" options={{ presentation: 'card' }} />
             <Stack.Screen name="create-ticket" options={{ presentation: 'modal' }} />
             <Stack.Screen name="pending-approval" />
+            <Stack.Screen name="select-store" />
             <Stack.Screen name="auth/callback" />
           </Stack>
           <AuthGate />

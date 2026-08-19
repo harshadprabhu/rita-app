@@ -3,6 +3,7 @@
 // dynamic bits — today's date on the "Date:" line and each rate inside its ₹ box.
 // Web-only (uses the DOM canvas + anchor download); guarded for native/SSR.
 import { Image as RNImage, Platform } from 'react-native';
+import { jsPDF } from 'jspdf';
 
 export interface PosterRates {
   '24k_999': number;
@@ -88,9 +89,12 @@ function isIOS(): boolean {
   return /iPad|iPhone|iPod/.test(ua) || iPadOS;
 }
 
-/** Deliver the poster: plain download everywhere; share sheet only on iOS. */
+/** Wrap a canvas image into an A4 PDF and deliver it. */
 function deliverPoster(canvas: HTMLCanvasElement, fileName: string): void {
-  const blob = dataUrlToBlob(canvas.toDataURL('image/png'));
+  const imgData = canvas.toDataURL('image/jpeg', 0.92);
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+  const blob = pdf.output('blob');
 
   if (isIOS()) {
     const nav = navigator as Navigator & {
@@ -98,7 +102,7 @@ function deliverPoster(canvas: HTMLCanvasElement, fileName: string): void {
       share?: (d: unknown) => Promise<void>;
     };
     try {
-      const file = new File([blob], fileName, { type: 'image/png' });
+      const file = new File([blob], fileName, { type: 'application/pdf' });
       if (nav.canShare && nav.share && nav.canShare({ files: [file] })) {
         nav.share({ files: [file], title: "Today's Gold Rates" }).catch(() => anchorDownload(blob, fileName));
         return;
@@ -108,6 +112,25 @@ function deliverPoster(canvas: HTMLCanvasElement, fileName: string): void {
     }
   }
   anchorDownload(blob, fileName);
+}
+
+/** Convert a PNG data URL to a PDF blob sized to fit the image on an A4 page. */
+export function pngDataUrlToPdfBlob(dataUrl: string): Blob {
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageW = 210, pageH = 297;
+  const props = pdf.getImageProperties(dataUrl);
+  const imgAr = props.width / props.height;
+  const pageAr = pageW / pageH;
+  let w: number, h: number;
+  if (imgAr > pageAr) {
+    w = pageW; h = pageW / imgAr;
+  } else {
+    h = pageH; w = pageH * imgAr;
+  }
+  const x = (pageW - w) / 2;
+  const y = (pageH - h) / 2;
+  pdf.addImage(dataUrl, 'PNG', x, y, w, h);
+  return pdf.output('blob');
 }
 
 // Centre of each value box and the baseline point for the date on the
@@ -281,7 +304,7 @@ export function downloadGoldRatePoster(rates: PosterRates, date = new Date(), sc
   const img = getTemplateImage();
   if (!img) return;
 
-  const fileName = `indriya_gold_rates_${date.toISOString().slice(0, 10)}.png`;
+  const fileName = `indriya_gold_rates_${date.toISOString().slice(0, 10)}.pdf`;
   const run = () => {
     try {
       const canvas = renderPosterCanvas(img, rates, date, scale, promo);
