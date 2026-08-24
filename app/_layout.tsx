@@ -100,25 +100,18 @@ function AuthGate() {
     (async () => {
       try {
         if (Platform.OS === 'android') {
-          await Notifications.setNotificationChannelAsync('default', {
-            name: 'Default',
-            importance: Notifications.AndroidImportance.HIGH,
-            vibrationPattern: [0, 250, 250, 250],
-            lightColor: '#1B3A7A',
-          });
-          // TEMPORARY: getDevicePushTokenAsync() below crashes the whole app
-          // natively immediately after sign-in on the standalone Android
-          // build — a native-layer FCM/Firebase failure the try/catch here
-          // cannot catch (this is a real crash, not a rejected promise).
-          // The `hasFcm` config check this replaced only verified that
-          // google-services.json was REFERENCED in app.json; it didn't
-          // catch this because the file IS present and the Google Services
-          // Gradle plugin IS correctly applied (confirmed via a CI
-          // diagnostic build) — so the failure is in Firebase's runtime
-          // initialization, not build wiring, and needs a real device crash
-          // log to root-cause. Skipping registration on Android until then
-          // trades a temporarily missing push feature for a working app.
-          console.warn('[push] Android push token registration temporarily disabled — see comment above');
+          // TEMPORARY: the app crashes immediately after sign-in on the
+          // standalone Android build, and it persisted even after an
+          // earlier fix that only skipped getDevicePushTokenAsync() below —
+          // proof the crash isn't necessarily (or isn't only) that call.
+          // setNotificationChannelAsync() also touches native notification
+          // APIs and was still running unconditionally before that skip, so
+          // it's an equally live suspect. Skipping the ENTIRE Android
+          // notifications branch (channel setup + push token registration)
+          // until a real device crash log (adb logcat) pinpoints the actual
+          // native failure — this trades notifications on Android for an
+          // app that boots, which is the priority right now.
+          console.warn('[push] Android notification setup temporarily disabled — see comment above');
           return;
         }
         const { status } = await Notifications.requestPermissionsAsync();
