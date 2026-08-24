@@ -138,26 +138,48 @@ export async function ensureProfile(user: User): Promise<DbProfile | null> {
   if (existing) {
     // The SSO trigger may have created a bare profile (no store). Back-fill
     // from the workers table / AD login id if the store is still missing.
+    //
+    // Wrapped in try/catch: any failure in the backfill (network hiccup,
+    // stores/workers query rejecting, RLS on the update) must NOT propagate
+    // — it used to bubble up as an unhandled promise rejection that took
+    // down the app right after login. The user already has a profile row;
+    // returning it as-is is always safer than crashing over a missing store.
     if (!existing.store_id) {
-      const worker = await workerDefaults(user.email);
-      const adStore = worker?.store ? null : await storeFromAdId(user.email);
-      const store = worker?.store ?? adStore;
-      if (store) {
-        const patch: Record<string, unknown> = {
-          store_id: store.store_id,
-          store_name: store.store_name,
-          store_location: store.store_location,
-        };
-        if (worker?.phone && !existing.phone) patch.phone = worker.phone;
-        if (!worker && adStore) patch.designation = 'Store Tablet';
-        await supabase.from('profiles').update(patch).eq('id', existing.id);
-        return { ...existing, ...patch } as DbProfile;
+      try {
+        const worker = await workerDefaults(user.email);
+        const adStore = worker?.store ? null : await storeFromAdId(user.email);
+        const store = worker?.store ?? adStore;
+        if (store) {
+          const patch: Record<string, unknown> = {
+            store_id: store.store_id,
+            store_name: store.store_name,
+            store_location: store.store_location,
+          };
+          if (worker?.phone && !existing.phone) patch.phone = worker.phone;
+          if (!worker && adStore) patch.designation = 'Store Tablet';
+          await supabase.from('profiles').update(patch).eq('id', existing.id);
+          return { ...existing, ...patch } as DbProfile;
+        }
+      } catch (err) {
+        console.warn('[ensureProfile] store back-fill failed, using existing profile:', err);
       }
     }
     return existing;
   }
 
-  const worker = await workerDefaults(user.email);
+  // Wrapped in try/catch for the same reason as the backfill above — a rejected
+  // query here (workers table down, stores table unreadable, whatever) used to
+  // bubble up as an unhandled promise rejection during first login and crash
+  // the app. Fall back to a minimal insert with just the OAuth name if any of
+  // this fails; the user can be enriched later.
+  let worker: Awaited<ReturnType<typeof workerDefaults>> = null;
+  let adStore: Awaited<ReturnType<typeof storeFromAdId>> = null;
+  try {
+    worker = await workerDefaults(user.email);
+    adStore = worker?.store ? null : await storeFromAdId(user.email);
+  } catch (err) {
+    console.warn('[ensureProfile] worker/store lookup failed, inserting bare profile:', err);
+  }
   const { first, last } = worker?.name ?? deriveName(user);
   const isBootstrapAdmin = !!user.email && BOOTSTRAP_ADMIN_EMAILS.has(user.email.toLowerCase());
 
@@ -173,12 +195,11 @@ export async function ensureProfile(user: User): Promise<DbProfile | null> {
   // Store resolution order: bootstrap admins → head office; otherwise the D365
   // worker store (address book); otherwise the store encoded in the AD login id
   // (store-tablet accounts). Anything still unresolved = a Head Office user.
-  const adStore = (worker?.store || isBootstrapAdmin) ? null : await storeFromAdId(user.email);
-  const store = worker?.store ?? adStore;
+  const store = worker?.store ?? (isBootstrapAdmin ? null : adStore);
   // A store resolved from the AD id with no matching person record is a shared
   // store-tablet/kiosk account — mark it so the app scopes it to store-wide
   // ticket views instead of a single requester's tickets.
-  if (!worker && adStore) insert.designation = 'Store Tablet';
+  if (!worker && adStore && !isBootstrapAdmin) insert.designation = 'Store Tablet';
 
   if (isBootstrapAdmin) {
     Object.assign(insert, HEAD_OFFICE);

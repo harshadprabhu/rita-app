@@ -163,10 +163,15 @@ function AuthGate() {
       dest = 'login'; // deactivated accounts are bounced back to login
     } else if (profile.role === 'technician' && profile.approval_status === 'pending') {
       dest = 'pending';
-    } else if (!profile.store_id && !['admin', 'technician'].includes(profile.role) && profile.approval_status === 'approved') {
-      dest = 'select-store';
     } else if ((profile.role === 'user' || profile.role === 'in_store_manager') && profile.approval_status === 'approved') {
       // In-Store Manager uses the store-staff screens for now.
+      // A missing store_id no longer routes to /select-store — that branch
+      // was implicated in the Android crash-after-login (large SectionList
+      // + Modal + KeyboardAvoidingView on some devices), and session.ts's
+      // own contract already treats a store-less profile as "Head Office /
+      // let them in" rather than a signup-blocker. Users who genuinely need
+      // a store assignment can now be updated by an admin via the Accounts
+      // screen instead of being trapped on a full-screen picker at login.
       dest = 'user';
     } else if ((profile.role === 'manager' || profile.role === 'ops_manager') && profile.approval_status === 'approved') {
       // Ops Manager uses the manager screens (+ promotions, gated in-screen).
@@ -189,7 +194,6 @@ function AuthGate() {
     else if (dest === 'technician') router.replace('/(technician)/home');
     else if (dest === 'admin') router.replace('/(admin)/home');
     else if (dest === 'pending') router.replace('/pending-approval');
-    else if (dest === 'select-store') router.replace('/select-store' as any);
     else router.replace('/(auth)/login');
   }, [isLoading, session, profile, pathname]);
 
