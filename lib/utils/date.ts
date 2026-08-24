@@ -23,6 +23,12 @@ export function formatDateTime(dateStr: string): string {
   });
 }
 
+/** Time-only, e.g. "6:22 PM" — for pairing with a relative "X ago" string. */
+export function formatTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleTimeString(activeLocale(), { hour: 'numeric', minute: '2-digit' });
+}
+
 export function timeAgo(dateStr: string): string {
   const now = Date.now();
   const then = new Date(dateStr).getTime();

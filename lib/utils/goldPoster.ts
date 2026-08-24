@@ -159,6 +159,15 @@ function formatPosterDate(d = new Date()): string {
   return `${d.getDate()}${ordinal(d.getDate())} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
+/** e.g. "6:22 PM" — matches the manual formatting GoldRatePosterModal uses natively. */
+function formatPosterTime(d: Date): string {
+  let h = d.getHours();
+  const m = d.getMinutes();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
 /** Map RITA's D365 purity-keyed rates to the poster's four fixed rows. */
 export function ratesFromGold(rates: Record<string, number>): PosterRates | null {
   const r: PosterRates = {
@@ -225,12 +234,14 @@ function renderPosterCanvas(img: HTMLImageElement, rates: PosterRates, date: Dat
   ctx.drawImage(img, 0, 0, TPL_W * scale, TPL_H * scale);
   ctx.fillStyle = GOLD;
 
-  // 2. Date on the "Date:" line.
+  // 2. Date + time on the "Date:" line. Slightly smaller than the old
+  // date-only size (30px) so the combined string comfortably fits the open
+  // background to the right of "Date:" without crowding the label.
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'alphabetic';
-  ctx.font = `600 ${Math.round(30 * scale)}px Georgia, "Playfair Display", serif`;
-  ctx.fillText(formatPosterDate(date), DATE_POINT.x * scale, DATE_POINT.y * scale);
+  ctx.font = `600 ${Math.round(26 * scale)}px Georgia, "Playfair Display", serif`;
+  ctx.fillText(`${formatPosterDate(date)}  ·  ${formatPosterTime(date)}`, DATE_POINT.x * scale, DATE_POINT.y * scale);
   ctx.restore();
 
   // 3. Each rate value, centred in its box (whole rupees, prefixed with ₹).

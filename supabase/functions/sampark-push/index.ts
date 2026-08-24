@@ -75,9 +75,10 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ ok: true, already: true, request_id: (ticket as any).sampark_request_id }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 
-    const { data: prof } = await supabase.from('profiles').select('id').eq('id', (ticket as any).requester_id).maybeSingle();
+    const { data: prof } = await supabase.from('profiles').select('display_name').eq('id', (ticket as any).requester_id).maybeSingle();
     const { data: authUser } = await supabase.auth.admin.getUserById((ticket as any).requester_id);
     const email = authUser?.user?.email ?? '';
+    const requesterName = (prof as { display_name?: string } | null)?.display_name || '';
 
     const cfg = await loadCfg(supabase);
     const token = await getToken(cfg);
@@ -92,7 +93,14 @@ Deno.serve(async (req) => {
       priority: { name: PRIORITY_MAP[String((ticket as any).priority)] ?? 'Medium' },
     };
     if (email) {
+      // A name-less requester object gives Sampark nothing to auto-create a
+      // new contact from — it can only match an EXISTING requester by email,
+      // which fails (status_code 4001, field "requester") for anyone who
+      // hasn't been separately provisioned as a Sampark requester yet (e.g. a
+      // brand-new RITA user whose only identity so far is Azure AD/SSO).
+      // Supplying name lets Sampark auto-create the requester on the fly.
       const requester: Record<string, string> = { email_id: email };
+      if (requesterName) requester.name = requesterName;
       if ((ticket as any).contact_number) requester.phone = (ticket as any).contact_number;
       request.requester = requester;
     }
@@ -100,22 +108,55 @@ Deno.serve(async (req) => {
     if ((ticket as any).subcategory) request.subcategory = { name: (ticket as any).subcategory };
     if ((ticket as any).item) request.item = { name: (ticket as any).item };
 
-    const url = `${cfg.serviceUrl}/app/${cfg.portal}/api/v3/requests`;
-    const form = new URLSearchParams({ input_data: JSON.stringify({ request }) });
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Zoho-oauthtoken ${token}`,
-        Accept: SDP_ACCEPT,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: form,
-    });
-    const text = await res.text();
-    if (!res.ok) {
-      return new Response(JSON.stringify({ ok: false, status: res.status, sampark_error: text.slice(0, 500), sent: request }), { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } });
+    const requestsUrl = `${cfg.serviceUrl}/app/${cfg.portal}/api/v3/requests`;
+    async function postRequest(): Promise<{ ok: boolean; status: number; text: string }> {
+      const form = new URLSearchParams({ input_data: JSON.stringify({ request }) });
+      const r = await fetch(requestsUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Zoho-oauthtoken ${token}`,
+          Accept: SDP_ACCEPT,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: form,
+      });
+      return { ok: r.ok, status: r.status, text: await r.text() };
     }
-    const json = JSON.parse(text);
+
+    let attempt = await postRequest();
+
+    // Azure AD / SSO auto-provisions a RITA account the instant someone
+    // signs in — Sampark does not. Its POST /requests only MATCHES an
+    // existing requester by email; it doesn't auto-create one (confirmed:
+    // adding `name` to the requester object alone did not help). So on a
+    // "requester failed" rejection, explicitly create the requester in
+    // Sampark first, then retry the original request once.
+    let requesterProvisioned: unknown = null;
+    if (!attempt.ok && email && /"field":"requester"/.test(attempt.text)) {
+      const requesterPayload: Record<string, unknown> = { email_id: email, name: requesterName || email };
+      if ((ticket as any).contact_number) requesterPayload.phone = (ticket as any).contact_number;
+      const createForm = new URLSearchParams({ input_data: JSON.stringify({ requester: requesterPayload }) });
+      const createUrl = `${cfg.serviceUrl}/app/${cfg.portal}/api/v3/requesters`;
+      const createRes = await fetch(createUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Zoho-oauthtoken ${token}`,
+          Accept: SDP_ACCEPT,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: createForm,
+      });
+      const createText = await createRes.text();
+      requesterProvisioned = { status: createRes.status, body: createText.slice(0, 500) };
+      if (createRes.ok) {
+        attempt = await postRequest();
+      }
+    }
+
+    if (!attempt.ok) {
+      return new Response(JSON.stringify({ ok: false, status: attempt.status, sampark_error: attempt.text.slice(0, 500), sent: request, requesterProvisioned }), { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } });
+    }
+    const json = JSON.parse(attempt.text);
     const created = json.request ?? {};
     const reqId = String(created.id ?? '');
     const displayId = String(created.display_id ?? created.id ?? '');

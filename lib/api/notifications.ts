@@ -63,11 +63,17 @@ export async function notifyTechnicians(
   body: string,
   type: NotificationType,
 ): Promise<void> {
+  // Not restricted to role='technician' -- this org currently has zero
+  // technician-role accounts; admins, managers, and ops managers are who
+  // actually pick up and resolve tickets in practice (same role set
+  // sampark-poll already matches Sampark's assigned technician name
+  // against). Filtering to 'technician' alone would alert no one.
   const { data: techs, error: queryError } = await supabase
     .from('profiles')
     .select('id')
-    .eq('role', 'technician')
-    .eq('approval_status', 'approved');
+    .in('role', ['technician', 'admin', 'manager', 'ops_manager'])
+    .eq('approval_status', 'approved')
+    .eq('is_active', true);
 
   if (queryError) {
     console.error('[notifyTechnicians] query failed:', queryError.message);

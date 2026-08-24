@@ -46,6 +46,10 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
   const [statusFilter, setStatusFilter] = useState<'all' | (typeof STATUSES)[number]>('all');
   const [priorityFilter, setPriorityFilter] = useState<'all' | TicketPriority>('all');
   const slaOnly = params.sla === '1';
+  // Lifted here (not owned per-card) so opening one ticket's action menu
+  // closes whichever other one was open, instead of each TicketCard tracking
+  // its own independent open/closed state and allowing several at once.
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   // Apply an incoming ?status= param to the status filter (drives the chip when
   // shown; otherwise still filters the list client-side).
@@ -142,7 +146,14 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
     <FlatList
       data={filteredTickets}
       keyExtractor={(item) => item.id}
-      renderItem={({ item }) => <TicketCard ticket={item} />}
+      renderItem={({ item }) => (
+        <TicketCard
+          ticket={item}
+          menuOpen={openMenuId === item.id}
+          onToggleMenu={() => setOpenMenuId((cur) => (cur === item.id ? null : item.id))}
+          onCloseMenu={() => setOpenMenuId(null)}
+        />
+      )}
       contentContainerStyle={styles.list}
       keyboardShouldPersistTaps="handled"
       style={{ flex: 1 }}

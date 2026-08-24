@@ -139,6 +139,7 @@ export function GoldTrendPosterModal({ visible, onClose, series, currentRate, da
   };
 
   const dateStr = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+  const timeStr = date.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -172,7 +173,7 @@ export function GoldTrendPosterModal({ visible, onClose, series, currentRate, da
                 <View style={styles.headline}>
                   <Text style={styles.headlineLabel}>TODAY'S RATE / GRAM</Text>
                   <Text style={styles.headlineValue}>{RUPEE}{fmt(currentRate)}</Text>
-                  <Text style={styles.headlineDate}>{dateStr}</Text>
+                  <Text style={styles.headlineDate}>{dateStr} · {timeStr}</Text>
                 </View>
               ) : null}
 

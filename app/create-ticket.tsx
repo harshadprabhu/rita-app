@@ -20,7 +20,7 @@ import { ALL_PRIORITIES } from '../constants/ticket';
 import { TicketPriority } from '../types';
 import { webNoOutline, theme } from '../constants/theme';
 
-const MAX_ATTACHMENTS = 5;
+const MAX_ATTACHMENTS = 10;
 
 export default function CreateTicket() {
   const { t } = useTranslation();
@@ -133,7 +133,17 @@ export default function CreateTicket() {
       for (const img of images) {
         await uploadAttachment(ticket.id, img.uri, img.name, 'image');
       }
-      await pushTicketToSampark(ticket.id);
+      // Best-effort: the ticket already exists in RITA at this point, so a
+      // Sampark failure (e.g. a brand-new user's SSO account not yet synced
+      // into Sampark's own requester directory) must not surface as a submit
+      // error — that read as "nothing happened" and drove users to resubmit,
+      // creating duplicate tickets. sampark-poll's backstop retry picks up
+      // any ticket still missing a sampark_request_id, so this self-heals.
+      try {
+        await pushTicketToSampark(ticket.id);
+      } catch (samparkErr) {
+        console.warn('[create-ticket] Sampark sync deferred, backstop poller will retry:', samparkErr);
+      }
       return ticket;
     },
     onSuccess: (ticket) => {
@@ -144,6 +154,10 @@ export default function CreateTicket() {
 
   const addAsset = (asset: ImagePicker.ImagePickerAsset) => {
     setImages((prev) => [...prev, { uri: asset.uri, name: asset.fileName ?? `photo_${Date.now()}.jpg` }]);
+  };
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const openCamera = async () => {
@@ -286,7 +300,12 @@ export default function CreateTicket() {
         <Text style={[styles.label, styles.spaced]}>Photos ({images.length}/{MAX_ATTACHMENTS})</Text>
         <View style={styles.imagesRow}>
           {images.map((img, i) => (
-            <Image key={i} source={{ uri: img.uri }} style={styles.thumb} />
+            <View key={i} style={styles.thumbWrap}>
+              <Image source={{ uri: img.uri }} style={styles.thumb} />
+              <TouchableOpacity style={styles.removeThumbBtn} onPress={() => removeImage(i)} hitSlop={8}>
+                <Ionicons name="close" size={12} color="#fff" />
+              </TouchableOpacity>
+            </View>
           ))}
           {images.length < MAX_ATTACHMENTS && (
             <TouchableOpacity style={styles.addThumb} onPress={pickImage}>
@@ -423,7 +442,13 @@ const styles = StyleSheet.create({
   pickerRowTextSel: { color: theme.colors.brand, fontWeight: '700' },
   pickerEmpty: { textAlign: 'center', color: theme.colors.textTertiary, paddingVertical: theme.spacing.xl },
   imagesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
+  thumbWrap: { width: 72, height: 72 },
   thumb: { width: 72, height: 72, borderRadius: theme.radius.sm, borderWidth: 1, borderColor: theme.colors.border },
+  removeThumbBtn: {
+    position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10,
+    backgroundColor: theme.colors.error, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: '#fff', zIndex: 1,
+  },
   addThumb: {
     width: 72, height: 72, borderRadius: theme.radius.sm, borderWidth: 1.5, borderColor: theme.colors.border,
     borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface2,

@@ -16,9 +16,15 @@ import { NumericText } from '../common/NumericText';
 
 interface Props {
   ticket: TicketWithRelations;
+  /** Whether THIS card's action menu is the one currently open — lifted to the
+   * list screen so opening one ticket's menu closes any other that was open,
+   * instead of each card tracking its own independent open/closed state. */
+  menuOpen: boolean;
+  onToggleMenu: () => void;
+  onCloseMenu: () => void;
 }
 
-export function TicketCard({ ticket }: Props) {
+export function TicketCard({ ticket, menuOpen, onToggleMenu, onCloseMenu }: Props) {
   const { t } = useTranslation();
   const profile = useAuthStore((s) => s.profile);
   const qc = useQueryClient();
@@ -26,8 +32,10 @@ export function TicketCard({ ticket }: Props) {
 
   // Row actions (Resolve / Reassign / Delete) are available to technicians and admins only.
   const canAct = profile?.role === 'technician' || profile?.role === 'admin';
-  const [menuOpen, setMenuOpen] = useState(false);
   const [reassignOpen, setReassignOpen] = useState(false);
+  // The reassign sub-panel should reset whenever this card's menu closes,
+  // whether that's from an action completing or another ticket's menu opening.
+  React.useEffect(() => { if (!menuOpen) setReassignOpen(false); }, [menuOpen]);
 
   const { data: technicians } = useQuery({
     queryKey: QUERY_KEYS.technicians(),
@@ -39,7 +47,7 @@ export function TicketCard({ ticket }: Props) {
     qc.invalidateQueries({ queryKey: QUERY_KEYS.tickets() });
     qc.invalidateQueries({ queryKey: QUERY_KEYS.ticket(ticket.id) });
   };
-  const closeMenu = () => { setMenuOpen(false); setReassignOpen(false); };
+  const closeMenu = () => { onCloseMenu(); setReassignOpen(false); };
 
   const resolveM = useMutation({
     mutationFn: () => updateTicket(ticket.id, { status: 'resolved', lifecycle: 'resolved' }, profile?.id),
@@ -65,7 +73,7 @@ export function TicketCard({ ticket }: Props) {
   const priorityColor = theme.priorityColors[ticket.priority];
 
   return (
-    <View style={[styles.card, theme.shadows.sm]}>
+    <View style={[styles.card, theme.shadows.sm, menuOpen && styles.cardMenuOpen]}>
       <TouchableOpacity onPress={() => router.push(`/tickets/${ticket.id}`)} activeOpacity={0.7}>
         <View style={styles.inner}>
           {/* Row 1: status dot · title · priority pill · menu */}
@@ -78,7 +86,7 @@ export function TicketCard({ ticket }: Props) {
               </View>
               {canAct && (
                 <TouchableOpacity
-                  onPress={() => { setMenuOpen((v) => !v); setReassignOpen(false); }}
+                  onPress={onToggleMenu}
                   hitSlop={8}
                   style={styles.menuBtn}
                 >
@@ -153,6 +161,13 @@ function MenuItem({ icon, color, label, onPress, busy }: { icon: keyof typeof Io
 
 const styles = StyleSheet.create({
   card: { borderRadius: 16, marginHorizontal: theme.spacing.lg, marginVertical: 5 },
+  // FlatList paints each row over the previous one in list order, so a
+  // card's absolutely-positioned menu (below) was getting covered by the
+  // NEXT card in the list, which has no zIndex/elevation of its own to lose
+  // to. Raising the whole open card above its siblings — not just the menu
+  // — is what actually fixes it; zIndex alone does nothing on Android
+  // without a matching `elevation`.
+  cardMenuOpen: { zIndex: 50, elevation: 12 },
   inner: {
     backgroundColor: theme.colors.surface, borderRadius: 16,
     paddingVertical: 12, paddingHorizontal: 14, borderWidth: 1, borderColor: theme.colors.border,
@@ -177,7 +192,7 @@ const styles = StyleSheet.create({
   slaBreach: { fontSize: 8, fontWeight: '800', color: theme.priorityColors.high, letterSpacing: 0.4 },
   // Action menu
   menu: {
-    position: 'absolute', top: 40, right: theme.spacing.md, zIndex: 20,
+    position: 'absolute', top: 40, right: theme.spacing.md, zIndex: 20, elevation: 20,
     backgroundColor: theme.colors.surface, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.colors.border,
     paddingVertical: theme.spacing.xs, minWidth: 190, ...theme.shadows.lg,
   },

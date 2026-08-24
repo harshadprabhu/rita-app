@@ -3,7 +3,7 @@ import { DbTicket, TicketStatus, TicketLifecycle, TicketPriority, DbTicketAttach
 import { TicketWithRelations } from '../../types/ticket';
 import { computeSlaDueAt } from '../../constants/sla';
 import { logTicketAction } from './auditLog';
-import { createNotification } from './notifications';
+import { createNotification, notifyTechnicians } from './notifications';
 import { getMimeType, readFileAsBytes, compressIfImage } from '../utils/fileUpload';
 
 interface TicketFilters {
@@ -100,6 +100,21 @@ export async function createTicket(payload: {
     .single();
   if (error) throw error;
   await logTicketAction(data.id, payload.requester_id, 'created', null, data.status);
+
+  // Alert every approved technician the moment a ticket is raised. The
+  // 'ticket_created' notification type, its UI icon, and notifyTechnicians()
+  // already existed end-to-end — it was just never called from here, so no
+  // one was ever alerted that a new ticket existed until they happened to
+  // open the ticket list.
+  const { data: store } = await supabase.from('stores').select('name').eq('id', payload.store_id).maybeSingle();
+  const storeLabel = (store as { name?: string } | null)?.name ?? payload.store_id;
+  await notifyTechnicians(
+    data.id,
+    'New ticket raised',
+    `${storeLabel}: ${payload.description}`,
+    'ticket_created',
+  ).catch(() => null);
+
   return data as DbTicket;
 }
 

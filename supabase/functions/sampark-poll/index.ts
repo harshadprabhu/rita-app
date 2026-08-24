@@ -5,6 +5,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // linked ticket (open / in progress) so a dropped or misfired trigger can't
 // leave a status change or technician note stranded. Same pull-and-mirror logic
 // as the webhook, applied in bulk.
+//
+// It also retries the OUTBOUND push for tickets that never got a
+// sampark_request_id in the first place (sampark-push failed synchronously
+// at ticket-creation time, e.g. Sampark's own AD sync hadn't yet provisioned
+// a brand-new SSO user as a requester). Without this, such a ticket is
+// permanently stuck: nothing else ever re-attempts the initial push.
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -182,7 +188,37 @@ Deno.serve(async (req) => {
       } catch { errors++; }
     }
 
-    return new Response(JSON.stringify({ ok: true, polled: list.length, statusChanges, assigneeChanges, notesAdded: notes, errors }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
+    // Retry initial pushes that never went through. Bounded to recent tickets
+    // (7 days) so a permanently-unresolvable case (e.g. a deactivated
+    // requester) doesn't get retried forever.
+    let pushRetried = 0, pushRecovered = 0;
+    const { data: unsynced } = await supabase
+      .from('tickets')
+      .select('id, ticket_number')
+      .is('sampark_request_id', null)
+      .in('status', ['open', 'in_progress'])
+      .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+      .limit(50);
+    for (const t of (unsynced ?? []) as { id: string; ticket_number: string }[]) {
+      pushRetried++;
+      try {
+        const res = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/sampark-push`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ ticket_id: t.id }),
+        });
+        const j = await res.json().catch(() => ({}));
+        if (j.ok) pushRecovered++;
+      } catch { /* try again next cron tick */ }
+    }
+
+    return new Response(JSON.stringify({
+      ok: true, polled: list.length, statusChanges, assigneeChanges, notesAdded: notes, errors,
+      pushRetried, pushRecovered,
+    }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
   } catch (err) {
     console.error('[sampark-poll]', err);
     return new Response(JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) }), { status: 500, headers: { ...CORS, 'Content-Type': 'application/json' } });

@@ -25,7 +25,10 @@ export interface GoldRatePosterModalProps {
 // is 1054×1491; overlay anchor points are fractions of that.
 const AR = 1491 / 1054;
 const GOLD = '#f2d98a';
-const DATE_LINE = { left: 452 / 1054, top: 668 / 1491, width: 268 / 1054 };
+// Widened from the underline's own 268px (right edge only — left stays
+// where the underline starts, right after the "Date:" label) so the added
+// time fits the open background to the right without crowding the label.
+const DATE_LINE = { left: 452 / 1054, top: 668 / 1491, width: 460 / 1054 };
 const BOX_LEFT = 561 / 1054;
 const BOX_W = 340 / 1054;
 const BOX_H = 114 / 1491;
@@ -47,6 +50,14 @@ function formatDate(d: Date): string {
   const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   return `${d.getDate()}${ordinal(d.getDate())} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
+/** e.g. "6:22 PM" — matches the web canvas poster's formatting. */
+function formatTime(d: Date): string {
+  let h = d.getHours();
+  const m = d.getMinutes();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${h}:${String(m).padStart(2, '0')} ${ampm}`;
+}
 
 export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: GoldRatePosterModalProps) {
   const shotRef = useRef<React.ComponentRef<typeof ViewShot>>(null);
@@ -56,7 +67,10 @@ export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: Go
   const W = Math.min(Dimensions.get('window').width - 40, 360);
   const H = W * AR;
   const rateFont = Math.round(W * 0.044);
-  const dateFont = Math.round(W * 0.029);
+  // Slightly smaller than the old date-only size (0.029) now that it's
+  // sharing the line with a time — keeps the combined string comfortably
+  // inside the widened box instead of crowding the "Date:" label.
+  const dateFont = Math.round(W * 0.025);
 
   const share = async () => {
     setSharing(true);
@@ -106,7 +120,7 @@ export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: Go
                 alignItems: 'center',
                 justifyContent: 'flex-end',
               }}>
-                <Text style={{ color: GOLD, fontSize: dateFont, fontWeight: '600' }}>{formatDate(date)}</Text>
+                <Text style={{ color: GOLD, fontSize: dateFont, fontWeight: '600' }}>{formatDate(date)}  ·  {formatTime(date)}</Text>
               </View>
               {RATES.map((r) => {
                 const v = rates[r.key];

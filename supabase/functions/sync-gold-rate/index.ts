@@ -156,13 +156,33 @@ async function fetchD365Rates(
   cfg: D365Config,
   dateISO: string, // YYYY-MM-DD, for the OData EntryDate filter
   dateDMY: string, // DD-MM-YYYY, for the getMetalRate service
+  diag?: { path?: string; note?: string },
 ): Promise<D365Item[]> {
   // --- Primary: OData entity ---
   try {
     // EntryDate is a datetime stamped at noon (e.g. 2026-07-03T12:00:00Z), so an
     // `eq <date>` match fails — filter by a [today, tomorrow) UTC range instead.
-    // Warehouse is filtered client-side (the working query omits it), and the
-    // entity returns many rows per purity across the day, so keep the latest.
+    // Metal and Warehouse are filtered client-side (Metal is an enum type —
+    // `Metal eq 'Gold'` server-side 400s with "incompatible types", so it's
+    // deliberately NOT in $filter; unlike RateType/IsRetail, its enum type
+    // name isn't known/documented here, so it isn't worth guessing against
+    // production. Warehouse likewise stays client-side per the prior note).
+    //
+    // The actual bug this fixes: with no $orderby, a $top=1000 page returns
+    // rows in some undefined/arbitrary order. Early in the day, when total
+    // matching rows for today is under 1000, that happened to include the
+    // latest Gold entries. As more rows accumulate through the day (every
+    // metal/warehouse matching RateType=Sale + IsRetail=Yes for today, not
+    // just ours), the page fills before reaching the newest rows, and every
+    // run since then silently keeps seeing the same stale page — no error,
+    // just quietly wrong data.
+    //
+    // Order by EntryTime, not EntryDate: EntryDate is a fixed business-date
+    // stamp (always noon, constant across every row for today — confirmed
+    // live, ordering by it changed nothing), while EntryTime is the field
+    // the client-side dedup below already treats as the real per-row
+    // recency signal. $orderby=EntryTime desc guarantees the newest rows
+    // are always the ones kept, regardless of total row count.
     const start = `${dateISO}T00:00:00Z`;
     const next = new Date(`${dateISO}T00:00:00Z`);
     next.setUTCDate(next.getUTCDate() + 1);
@@ -171,7 +191,7 @@ async function fetchD365Rates(
       `RateType eq Microsoft.Dynamics.DataEntities.PwC_MetalRateType'Sale'` +
       ` and IsRetail eq Microsoft.Dynamics.DataEntities.NoYes'Yes'` +
       ` and EntryDate ge ${start} and EntryDate lt ${end}`;
-    const url = `${cfg.resourceUrl}/data/C_JISchemeAppMetalRate?$top=1000&$filter=${encodeURIComponent(filter)}`;
+    const url = `${cfg.resourceUrl}/data/C_JISchemeAppMetalRate?$top=5000&$orderby=EntryTime desc&$filter=${encodeURIComponent(filter)}`;
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) {
       const { value } = await res.json();
@@ -185,16 +205,23 @@ async function fetchD365Rates(
         if (!ex || t >= ex.t) latest.set(r.Purity, { rate: r.Rate, t });
       }
       const items: D365Item[] = [...latest].map(([Purity, v]) => ({ Metal: 'Gold', Purity, Rate: v.rate }));
-      if (items.length) return items;
+      if (items.length) {
+        if (diag) { diag.path = 'odata'; diag.note = `rows=${rows.length} items=${items.length}`; }
+        return items;
+      }
       console.warn('[sync-gold-rate] OData entity returned no gold rows; trying getMetalRate');
+      if (diag) diag.note = `odata: 0 gold rows out of ${rows.length}`;
     } else {
       console.warn(`[sync-gold-rate] OData entity HTTP ${res.status}; trying getMetalRate`);
+      if (diag) diag.note = `odata HTTP ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}`;
     }
   } catch (e) {
     console.warn('[sync-gold-rate] OData entity error; trying getMetalRate:', e);
+    if (diag) diag.note = `odata threw: ${e instanceof Error ? e.message : String(e)}`;
   }
 
   // --- Fallback: getMetalRate custom service, one call per purity ---
+  if (diag) diag.path = 'getMetalRate';
   const out: D365Item[] = [];
   for (const [purity] of GOLD_RATE_DISPLAY) {
     const rate = await fetchD365Rate(token, cfg, dateDMY, purity);
@@ -264,10 +291,11 @@ Deno.serve(async (req) => {
   const isFirstFetchToday = (existing ?? []).length === 0;
 
   // Fetch from D365 and detect changes
+  const diag: { path?: string; note?: string } = {};
   try {
     const cfg = await loadD365Config(supabase);
     const token = await getD365Token(cfg);
-    const items = await fetchD365Rates(token, cfg, todayIST, dateApi);
+    const items = await fetchD365Rates(token, cfg, todayIST, dateApi, diag);
     const targetSet = new Set(TARGET_PURITIES);
     const filteredItems = items.filter((i) => targetSet.has(i.Purity) && i.Rate >= MIN_PLAUSIBLE_GOLD_RATE);
 
@@ -284,7 +312,10 @@ Deno.serve(async (req) => {
         existing as { purity: string; rate: number; updated_at: string }[],
         todayIST,
       );
-      return new Response(JSON.stringify(result), {
+      return new Response(JSON.stringify({
+        ...result,
+        _diag: { ...diag, fetchedRates: filteredItems, existingRateMap },
+      }), {
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });
     }
@@ -354,6 +385,7 @@ Deno.serve(async (req) => {
     });
   } catch (err) {
     // D365 unreachable — fall back to most recent day's Gold rates in DB
+    const errMsg = err instanceof Error ? err.message : String(err);
     console.error('[sync-gold-rate] D365 error, using DB fallback:', err);
 
     if (existing && existing.length > 0) {
@@ -361,7 +393,10 @@ Deno.serve(async (req) => {
         existing as { purity: string; rate: number; updated_at: string }[],
         todayIST,
       );
-      return new Response(JSON.stringify(result), {
+      // Surfaced so a caller (or a human debugging a stuck rate) can tell
+      // "genuinely unchanged" apart from "D365 fetch is currently broken and
+      // we're serving cached data" — both previously looked identical.
+      return new Response(JSON.stringify({ ...result, degraded: true, error: errMsg, _diag: diag }), {
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });
     }

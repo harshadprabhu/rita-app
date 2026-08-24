@@ -11,7 +11,7 @@ import { useGoldRate, useGoldRateTrend } from '../../hooks/useGoldRate';
 import { NumericText } from '../common/NumericText';
 import { getActivePromotionForStore } from '../../lib/api/promotions';
 import { useAuthStore } from '../../stores/authStore';
-import { timeAgo } from '../../lib/utils/date';
+import { timeAgo, formatTime } from '../../lib/utils/date';
 import { ratesFromGold, isPosterSupported, PosterRates } from '../../lib/utils/goldPoster';
 import { theme } from '../../constants/theme';
 import { SoftPress } from '../common/SoftPress';
@@ -196,7 +196,7 @@ export function GoldRateCard() {
               </SoftPress>
             )}
             <Text style={styles.updatedText} numberOfLines={1}>
-              {t('goldRate.updated', { time: timeAgo(data!.updated_at) })}
+              {t('goldRate.updated', { time: `${formatTime(data!.updated_at)} · ${timeAgo(data!.updated_at)}` })}
             </Text>
             {isPosterSupported() && (
               <SoftPress style={styles.posterBtn} onPress={handleDownload}>

@@ -2,12 +2,14 @@ import { View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNotificationStore } from '../../stores/notificationStore';
 import { ReportFab } from '../../components/common/ReportFab';
 import { theme } from '../../constants/theme';
 
 export default function AdminLayout() {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   const unreadAnnouncementCount = useNotificationStore((s) => s.unreadAnnouncementCount);
   const totalUnread = unreadCount + unreadAnnouncementCount;
@@ -19,7 +21,11 @@ export default function AdminLayout() {
         headerShown: false,
         tabBarActiveTintColor: theme.colors.brand,
         tabBarInactiveTintColor: theme.colors.textTertiary,
-        tabBarStyle: { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border, paddingBottom: theme.spacing.sm, height: 60 },
+        // Fixed height/paddingBottom (no insets.bottom) hid the tab bar behind
+        // the OS home-indicator/gesture-nav bar on devices that have one —
+        // React Navigation only auto-adds that inset when tabBarStyle is left
+        // unset, so a custom style has to add it back manually.
+        tabBarStyle: { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.border, paddingBottom: theme.spacing.sm + insets.bottom, height: 60 + insets.bottom },
       }}
     >
       <Tabs.Screen name="home" options={{ title: t('tabs.home'), tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} /> }} />
