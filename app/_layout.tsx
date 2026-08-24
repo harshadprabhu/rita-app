@@ -9,7 +9,6 @@ import { PaperProvider, MD3LightTheme } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
-import Constants from 'expo-constants';
 import { useTranslation } from 'react-i18next';
 import { loadSavedLanguage } from '../lib/i18n';
 import { queryClient } from '../lib/queryClient';
@@ -107,17 +106,20 @@ function AuthGate() {
             vibrationPattern: [0, 250, 250, 250],
             lightColor: '#1B3A7A',
           });
-          // A standalone Android build needs FCM (google-services.json) to mint
-          // a push token. Without it the native layer fails with "Default
-          // FirebaseApp is not initialized" — which the try/catch below cannot
-          // catch, taking the whole app down right after sign-in. Guard stays
-          // so a misconfigured build degrades instead of crashing.
-          const hasFcm = !!(Constants.expoConfig as { android?: { googleServicesFile?: string } } | null)
-            ?.android?.googleServicesFile;
-          if (!hasFcm) {
-            console.warn('[push] skipping token registration — no google-services.json configured');
-            return;
-          }
+          // TEMPORARY: getDevicePushTokenAsync() below crashes the whole app
+          // natively immediately after sign-in on the standalone Android
+          // build — a native-layer FCM/Firebase failure the try/catch here
+          // cannot catch (this is a real crash, not a rejected promise).
+          // The `hasFcm` config check this replaced only verified that
+          // google-services.json was REFERENCED in app.json; it didn't
+          // catch this because the file IS present and the Google Services
+          // Gradle plugin IS correctly applied (confirmed via a CI
+          // diagnostic build) — so the failure is in Firebase's runtime
+          // initialization, not build wiring, and needs a real device crash
+          // log to root-cause. Skipping registration on Android until then
+          // trades a temporarily missing push feature for a working app.
+          console.warn('[push] Android push token registration temporarily disabled — see comment above');
+          return;
         }
         const { status } = await Notifications.requestPermissionsAsync();
         if (status !== 'granted') return;
