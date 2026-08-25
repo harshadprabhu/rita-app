@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, ActivityIndicator, Modal, Pressable, FlatList, Alert, Platform } from 'react-native';
+import { useUiStore } from '../stores/uiStore';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -116,39 +117,72 @@ export default function CreateTicket() {
     setPicker(null);
   };
 
+  // If a prior submit created the DB row but Sampark push failed and the
+  // user retries, we must NOT insert a second ticket. Remembering the id
+  // across retries makes the mutation idempotent — a retry only re-attempts
+  // the Sampark push.
+  const createdTicketIdRef = useRef<string | null>(null);
+  // Belt-and-braces double-tap guard. The button already disables on
+  // isPending, but a rapid double-tap in the same JS tick has been observed
+  // to sneak past that check and create duplicate tickets.
+  const inFlightRef = useRef(false);
+
   const submit = useMutation({
     mutationFn: async () => {
       if (!profile?.store_id) throw new Error('No store assigned to your account');
-      const ticket = await createTicket({
-        requester_id: profile.id,
-        store_id: profile.store_id,
-        description,
-        priority,
-        category,
-        subcategory,
-        item,
-        contact_number: contactNumber.trim() || null,
-        source: 'form',
-      });
-      for (const img of images) {
-        await uploadAttachment(ticket.id, img.uri, img.name, 'image');
+
+      let ticketId = createdTicketIdRef.current;
+      let ticket: Awaited<ReturnType<typeof createTicket>> | null = null;
+      if (!ticketId) {
+        ticket = await createTicket({
+          requester_id: profile.id,
+          store_id: profile.store_id,
+          description,
+          priority,
+          category,
+          subcategory,
+          item,
+          contact_number: contactNumber.trim() || null,
+          source: 'form',
+        });
+        ticketId = ticket.id;
+        createdTicketIdRef.current = ticketId;
+        for (const img of images) {
+          await uploadAttachment(ticketId, img.uri, img.name, 'image');
+        }
       }
-      // Best-effort: the ticket already exists in RITA at this point, so a
-      // Sampark failure (e.g. a brand-new user's SSO account not yet synced
-      // into Sampark's own requester directory) must not surface as a submit
-      // error — that read as "nothing happened" and drove users to resubmit,
-      // creating duplicate tickets. sampark-poll's backstop retry picks up
-      // any ticket still missing a sampark_request_id, so this self-heals.
+
+      // Sampark push happens after the DB row exists. On failure, we want to
+      // surface the error so the user can retry — but the retry uses the
+      // ref above so it never creates a second RITA row. sampark-poll's
+      // backstop poller is a secondary safety net.
+      let samparkDisplayId: string | null = null;
       try {
-        await pushTicketToSampark(ticket.id);
+        const res = await pushTicketToSampark(ticketId);
+        samparkDisplayId = res.display_id;
       } catch (samparkErr) {
         console.warn('[create-ticket] Sampark sync deferred, backstop poller will retry:', samparkErr);
       }
-      return ticket;
+      return { ticketId, samparkDisplayId };
     },
-    onSuccess: (ticket) => {
+    onSuccess: ({ ticketId, samparkDisplayId }) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tickets() });
-      router.replace(`/tickets/${ticket.id}`);
+      inFlightRef.current = false;
+      // Clear the idempotency ref so navigating away and creating a NEW
+      // ticket later isn't blocked by the previous one.
+      createdTicketIdRef.current = null;
+
+      const idLabel = samparkDisplayId ? `#${samparkDisplayId}` : 'Ticket created (Sampark sync pending)';
+      const alertBody = samparkDisplayId
+        ? `Your ticket ${idLabel} has been created and registered at Sampark.`
+        : 'Your ticket has been created. The Sampark sync will complete in the background.';
+      useUiStore.getState().showToast(`Ticket created ${samparkDisplayId ? idLabel : ''}`.trim(), 'success');
+      Alert.alert('Ticket created', alertBody, [
+        { text: 'OK', onPress: () => router.replace(`/tickets/${ticketId}`) },
+      ]);
+    },
+    onError: () => {
+      inFlightRef.current = false;
     },
   });
 
@@ -316,8 +350,13 @@ export default function CreateTicket() {
 
         <SoftPress
           style={[styles.submitBtn, theme.shadows.md, submit.isPending && styles.submitBtnDisabled]}
-          onPress={() => { if (!canSubmit) { setSubmitAttempted(true); return; } submit.mutate(); }}
-          disabled={submit.isPending}
+          onPress={() => {
+            if (inFlightRef.current || submit.isPending) return;
+            if (!canSubmit) { setSubmitAttempted(true); return; }
+            inFlightRef.current = true;
+            submit.mutate();
+          }}
+          disabled={submit.isPending || inFlightRef.current}
         >
           <LinearGradient colors={theme.gradients.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.submitBtnInner}>
             {submit.isPending ? <ActivityIndicator color={theme.colors.textPrimary} /> : (
@@ -328,8 +367,28 @@ export default function CreateTicket() {
             )}
           </LinearGradient>
         </SoftPress>
-        {submit.isError && <Text style={styles.error}>{String(submit.error)}</Text>}
+        {submit.isError && (
+          <Text style={styles.error}>
+            {String(submit.error)}
+            {createdTicketIdRef.current
+              ? '\n\nYour ticket was saved locally but the Sampark sync failed. Tap Submit again to retry — a duplicate ticket will NOT be created.'
+              : ''}
+          </Text>
+        )}
       </ScrollView>
+
+      {/* Full-screen loader with the Indriya gazelle running while the ticket
+        * is being created + pushed to Sampark. Blocks all input so a second
+        * tap can't sneak in and create a duplicate. */}
+      <Modal visible={submit.isPending} transparent animationType="fade">
+        <View style={styles.loaderBackdrop}>
+          <Image source={require('../assets/Footer Gazelle.gif')} style={styles.loaderGazelle} resizeMode="contain" />
+          <Text style={styles.loaderTitle}>Registering your ticket…</Text>
+          <Text style={styles.loaderSubtitle}>
+            {createdTicketIdRef.current ? 'Retrying Sampark sync' : 'Saving and syncing with Sampark'}
+          </Text>
+        </View>
+      </Modal>
 
       {/* Searchable category / subcategory picker */}
       <Modal visible={picker !== null} transparent animationType="slide" onRequestClose={() => setPicker(null)}>
@@ -463,4 +522,17 @@ const styles = StyleSheet.create({
   submitBtnText: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
   error: { color: theme.colors.error, fontSize: 13, marginTop: theme.spacing.md, textAlign: 'center' },
   requiredHint: { color: theme.colors.error, fontSize: 12, marginTop: theme.spacing.md, textAlign: 'center', fontWeight: '600' },
+  loaderBackdrop: {
+    flex: 1, backgroundColor: 'rgba(15,23,42,0.85)',
+    alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl,
+  },
+  loaderGazelle: { width: 200, height: 140 },
+  loaderTitle: {
+    color: '#fff', fontSize: 18, fontWeight: '800',
+    marginTop: theme.spacing.lg, letterSpacing: 0.3,
+  },
+  loaderSubtitle: {
+    color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '500',
+    marginTop: theme.spacing.xs, textAlign: 'center',
+  },
 });

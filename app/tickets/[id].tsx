@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Screen } from '../../components/common/Screen';
 import { AppHeader } from '../../components/common/AppHeader';
 import { LoadingOverlay } from '../../components/common/LoadingOverlay';
-import { StatusChip, LifecycleChip } from '../../components/common/StatusChip';
+import { StatusChip } from '../../components/common/StatusChip';
 import { PriorityBadge } from '../../components/common/PriorityBadge';
 import { AttachmentGrid } from '../../components/tickets/AttachmentGrid';
 import { CommentBubble } from '../../components/tickets/CommentBubble';
@@ -90,8 +90,11 @@ export default function TicketDetail() {
         <ScrollView contentContainerStyle={styles.summary} keyboardShouldPersistTaps="always">
           <View style={styles.topRow}>
             <PriorityBadge priority={ticket.priority} />
+            {/* Single status chip only — mirrors Sampark's authoritative
+              * status. The RITA-side lifecycle used to show alongside it,
+              * which read as "two 'open' statuses" for freshly-created
+              * tickets and confused users. */}
             <StatusChip status={ticket.status} />
-            <LifecycleChip lifecycle={ticket.lifecycle} />
           </View>
           <Text style={styles.description}>{ticket.description}</Text>
           {ticket.long_description && <Text style={styles.longDescription}>{ticket.long_description}</Text>}
