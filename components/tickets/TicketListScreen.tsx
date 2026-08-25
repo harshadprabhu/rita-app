@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { FlatList, RefreshControl, View, StyleSheet, TextInput, ScrollView, Text } from 'react-native';
+import { FlatList, RefreshControl, View, StyleSheet, TextInput, ScrollView, Text, Pressable } from 'react-native';
 // LinearGradient removed — solid-color pills work reliably on native
 import { useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
@@ -143,25 +143,40 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
   );
 
   const list = (
-    <FlatList
-      data={filteredTickets}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item }) => (
-        <TicketCard
-          ticket={item}
-          menuOpen={openMenuId === item.id}
-          onToggleMenu={() => setOpenMenuId((cur) => (cur === item.id ? null : item.id))}
-          onCloseMenu={() => setOpenMenuId(null)}
+    <View style={{ flex: 1 }}>
+      <FlatList
+        data={filteredTickets}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <TicketCard
+            ticket={item}
+            menuOpen={openMenuId === item.id}
+            onToggleMenu={() => setOpenMenuId((cur) => (cur === item.id ? null : item.id))}
+            onCloseMenu={() => setOpenMenuId(null)}
+          />
+        )}
+        contentContainerStyle={styles.list}
+        keyboardShouldPersistTaps="handled"
+        style={{ flex: 1 }}
+        // Scrolling with a menu open should dismiss it — otherwise the absolute
+        // menu detaches from its (now off-screen) card.
+        onScrollBeginDrag={() => openMenuId && setOpenMenuId(null)}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
+        ListEmptyComponent={
+          <EmptyState icon="ticket-outline" title={t('ticketList.empty')} subtitle={t('ticketList.emptySubtitle')} />
+        }
+      />
+      {/* Tap-outside dismiss layer. Sits above other cards but below the
+        * currently-open card (which raises its own elevation/zIndex), so the
+        * open menu + its ellipsis remain interactive while everything else
+        * routes its first tap to closing the menu. */}
+      {openMenuId && (
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={() => setOpenMenuId(null)}
         />
       )}
-      contentContainerStyle={styles.list}
-      keyboardShouldPersistTaps="handled"
-      style={{ flex: 1 }}
-      refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
-      ListEmptyComponent={
-        <EmptyState icon="ticket-outline" title={t('ticketList.empty')} subtitle={t('ticketList.emptySubtitle')} />
-      }
-    />
+    </View>
   );
 
   return (
