@@ -1,11 +1,14 @@
 import React, { useRef, useState } from 'react';
 import {
-  Modal, View, Image, Text, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator, Platform,
+  Modal, View, Image, Text, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator, Platform, Alert,
 } from 'react-native';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
-import * as FileSystem from 'expo-file-system';
+// expo-file-system v19 (SDK 54) moved the classic imperative API to the
+// /legacy subpath. Importing the bare package makes readAsStringAsync
+// undefined at runtime, which silently killed the share button.
+import * as FileSystem from 'expo-file-system/legacy';
 import { Ionicons } from '@expo/vector-icons';
 import type { PosterRates } from '../../lib/utils/goldPoster';
 import { pngDataUrlToPdfBlob } from '../../lib/utils/goldPoster';
@@ -97,8 +100,12 @@ export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: Go
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(pdfUri, { mimeType: 'application/pdf', dialogTitle: "Today's Gold Rates" });
       }
-    } catch {
-      // user cancelled / capture failed
+    } catch (err) {
+      // Never silently swallow — a bare catch is what hid the underlying
+      // "readAsStringAsync is undefined" for weeks. Surface the message so
+      // the next failure is diagnosable.
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!/cancel/i.test(msg)) Alert.alert('Could not share poster', msg);
     } finally {
       setSharing(false);
     }

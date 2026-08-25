@@ -1,14 +1,17 @@
 import React, { useRef, useState } from 'react';
 import {
   Modal, View, Image, Text, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator,
-  ScrollView, Linking, Platform,
+  ScrollView, Linking, Platform, Alert,
 } from 'react-native';
 import Svg, { Polyline, Polygon } from 'react-native-svg';
 import QRCode from 'react-native-qrcode-svg';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
-import * as FileSystem from 'expo-file-system';
+// expo-file-system v19 (SDK 54): classic imperative API is now on the
+// /legacy subpath. The bare import leaves readAsStringAsync undefined at
+// runtime, silently killing the share flow.
+import * as FileSystem from 'expo-file-system/legacy';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { IGP_URL } from '../../constants/links';
@@ -131,8 +134,9 @@ export function GoldTrendPosterModal({ visible, onClose, series, currentRate, da
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(pdfUri, { mimeType: 'application/pdf', dialogTitle: 'Gold Rate Trends' });
       }
-    } catch {
-      // user cancelled / capture failed
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!/cancel/i.test(msg)) Alert.alert('Could not share poster', msg);
     } finally {
       setSharing(false);
     }
