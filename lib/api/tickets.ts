@@ -229,7 +229,18 @@ export async function deleteTicket(ticketId: string): Promise<void> {
     .delete()
     .eq('id', ticketId)
     .select('id');
-  if (error) throw error;
+  if (error) {
+    // Foreign-key violation from a table whose FK to tickets(id) lacks an
+    // ON DELETE clause (notifications / chat_messages historically).
+    // Translate to plain English so the user knows a DB migration is
+    // needed, not that they clicked the wrong button.
+    if (error.code === '23503' || /foreign key/i.test(error.message)) {
+      throw new Error(
+        'Delete blocked by a database constraint. Apply supabase/tickets-delete-fk-cleanup.sql (ON DELETE SET NULL on notifications/chat_messages), then retry.',
+      );
+    }
+    throw error;
+  }
   if (!data || data.length === 0) {
     throw new Error(
       'Delete blocked — no rows affected. Your role likely lacks a DELETE policy on tickets, or the ticket no longer exists.',
