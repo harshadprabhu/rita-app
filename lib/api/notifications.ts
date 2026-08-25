@@ -103,6 +103,43 @@ export async function notifyTechnicians(
 }
 
 /**
+ * Notify every store-side user of a ticket event so the whole store team
+ * (not just the requester) stays aware of status changes without needing to
+ * check with each other. Excludes the actor to avoid pinging the person who
+ * just performed the action. OS push is fanned out by the notification_push
+ * DB trigger, same as notifyTechnicians.
+ */
+export async function notifyStoreUsers(
+  storeId: string,
+  excludeUserId: string | null,
+  ticketId: string,
+  title: string,
+  body: string,
+  type: NotificationType,
+): Promise<void> {
+  const { data: users, error } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('store_id', storeId)
+    .in('role', ['user', 'in_store_manager'])
+    .eq('approval_status', 'approved')
+    .eq('is_active', true);
+  if (error) {
+    console.error('[notifyStoreUsers] query failed:', error.message);
+    return;
+  }
+  const rows = (users ?? [])
+    .filter((u) => u.id !== excludeUserId)
+    .map((u) => ({ recipient_id: u.id as string, ticket_id: ticketId, title, body, type }));
+  if (!rows.length) return;
+
+  const { error: insertError } = await supabase.from('notifications').insert(rows);
+  if (insertError) {
+    console.error('[notifyStoreUsers] DB insert failed:', insertError.message, insertError.code);
+  }
+}
+
+/**
  * Send a broadcast push to all relevant users.
  * targetStoreIds (multi) takes priority over targetStoreId (legacy single).
  * If neither is supplied every registered device receives the push.

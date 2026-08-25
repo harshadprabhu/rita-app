@@ -3,7 +3,7 @@ import { DbTicket, TicketStatus, TicketLifecycle, TicketPriority, DbTicketAttach
 import { TicketWithRelations } from '../../types/ticket';
 import { computeSlaDueAt } from '../../constants/sla';
 import { logTicketAction } from './auditLog';
-import { createNotification, notifyTechnicians } from './notifications';
+import { notifyTechnicians, notifyStoreUsers } from './notifications';
 import { getMimeType, readFileAsBytes, compressIfImage } from '../utils/fileUpload';
 
 interface TicketFilters {
@@ -115,6 +115,17 @@ export async function createTicket(payload: {
     'ticket_created',
   ).catch(() => null);
 
+  // Also alert everyone else at the same store so the whole store team
+  // knows a ticket was raised (not just the requester and the tech pool).
+  await notifyStoreUsers(
+    payload.store_id,
+    payload.requester_id,
+    data.id,
+    'New ticket at your store',
+    `${storeLabel}: ${payload.description}`,
+    'ticket_created',
+  ).catch(() => null);
+
   return data as DbTicket;
 }
 
@@ -148,18 +159,21 @@ export async function updateTicket(
     }
   }
 
-  // Notify the requester whenever the status changes (surfaces in Alerts and
-  // pushes to their phone via createNotification). Skip self-changes.
-  if (updates.status && before && before.status !== data.status && data.requester_id && data.requester_id !== actorId) {
+  // Notify every user at the ticket's store whenever the status changes, so
+  // the whole store team stays aware (not just the original requester).
+  // Excludes the actor to avoid self-pinging.
+  if (updates.status && before && before.status !== data.status && data.store_id) {
     const resolved = data.status === 'resolved';
     const readable = String(data.status).replace(/_/g, ' ');
-    await createNotification({
-      recipient_id: data.requester_id,
-      ticket_id: id,
-      title: resolved ? 'Ticket resolved' : 'Ticket status updated',
-      body: `${data.sampark_display_id ? `#${data.sampark_display_id}` : 'Ticket'}: ${resolved ? 'marked resolved' : `moved to ${readable}`}`,
-      type: resolved ? 'ticket_resolved' : 'ticket_updated',
-    }).catch(() => null);
+    const idLabel = data.sampark_display_id ? `#${data.sampark_display_id}` : 'Ticket';
+    await notifyStoreUsers(
+      data.store_id,
+      actorId ?? null,
+      id,
+      resolved ? 'Ticket resolved' : 'Ticket status updated',
+      `${idLabel}: ${resolved ? 'marked resolved' : `moved to ${readable}`}`,
+      resolved ? 'ticket_resolved' : 'ticket_updated',
+    ).catch(() => null);
   }
 
   return data as DbTicket;

@@ -1,17 +1,16 @@
 import { TicketListScreen } from '../../components/tickets/TicketListScreen';
 import { useAuthStore } from '../../stores/authStore';
 
-// Shared store-tablet accounts see the whole store's tickets; an individual
-// user sees only their own.
-const isStoreTablet = (designation?: string | null) => designation === 'Store Tablet';
-
+// Everyone at a store sees every ticket raised from that store — not
+// just their own — so the store team stays aware of status without
+// needing to ask each other. (Was previously limited to the requester,
+// with only the shared Store Tablet account getting the store view.)
 export default function UserTickets() {
   const profile = useAuthStore((s) => s.profile);
-  const tablet = isStoreTablet(profile?.designation);
   return (
     <TicketListScreen
-      title={tablet ? 'Store Tickets' : 'My Tickets'}
-      filters={tablet ? { store_id: profile?.store_id ?? undefined } : { requester_id: profile?.id }}
+      title="Store Tickets"
+      filters={{ store_id: profile?.store_id ?? undefined }}
       showCreateButton
     />
   );
