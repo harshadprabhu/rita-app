@@ -5,12 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { useNotificationStore } from '../../stores/notificationStore';
 import { ReportFab } from '../../components/common/ReportFab';
 import { theme } from '../../constants/theme';
-import { breadcrumb } from '../../lib/utils/crashLogger';
-
-breadcrumb('module: (user)/_layout.tsx loaded');
 
 export default function UserLayout() {
-  breadcrumb('UserLayout render');
   const { t } = useTranslation();
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   const unreadAnnouncementCount = useNotificationStore((s) => s.unreadAnnouncementCount);

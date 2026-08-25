@@ -1,13 +1,9 @@
 import { HomeDashboard } from '../../components/home/HomeDashboard';
 import { useAuthStore } from '../../stores/authStore';
-import { breadcrumb } from '../../lib/utils/crashLogger';
-
-breadcrumb('module: (user)/home.tsx loaded');
 
 const TICKETS = '/(user)/tickets' as const;
 
 export default function UserHome() {
-  breadcrumb('UserHome render');
   const profile = useAuthStore((s) => s.profile);
   // Everyone at a store now sees the store's tickets — not just their own —
   // so the whole store team stays in sync on status without side channels.

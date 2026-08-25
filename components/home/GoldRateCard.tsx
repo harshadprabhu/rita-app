@@ -18,9 +18,6 @@ import { SoftPress } from '../common/SoftPress';
 import { GoldRateTrendChart } from './GoldRateTrendChart';
 import { GoldRatePosterModal } from './GoldRatePosterModal';
 import { GoldTrendPosterModal } from './GoldTrendPosterModal';
-import { breadcrumb } from '../../lib/utils/crashLogger';
-
-breadcrumb('module: GoldRateCard.tsx loaded');
 
 // LayoutAnimation needs an explicit opt-in on Android for the expand/collapse to animate.
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -40,7 +37,6 @@ const DISPLAY_PURITIES = [
 ] as const;
 
 export function GoldRateCard() {
-  breadcrumb('GoldRateCard render');
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [posterRates, setPosterRates] = useState<PosterRates | null>(null); // native modal
