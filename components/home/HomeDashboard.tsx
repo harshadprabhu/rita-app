@@ -15,6 +15,9 @@ import { SoftPress } from '../common/SoftPress';
 import { QUERY_KEYS } from '../../constants/queryKeys';
 import { NumericText } from '../common/NumericText';
 import { theme } from '../../constants/theme';
+import { breadcrumb } from '../../lib/utils/crashLogger';
+
+breadcrumb('module: HomeDashboard.tsx loaded');
 
 interface StatDef {
   label: string;
@@ -43,6 +46,7 @@ interface Props {
 }
 
 export function HomeDashboard({ stats, showGoldRate, quickActions }: Props) {
+  breadcrumb('HomeDashboard render');
   const { t } = useTranslation();
   const profile = useAuthStore((s) => s.profile);
 

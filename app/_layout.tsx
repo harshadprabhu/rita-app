@@ -21,13 +21,14 @@ import { updatePushToken } from '../lib/api/profiles';
 import { LoadingOverlay } from '../components/common/LoadingOverlay';
 import { ToastHost } from '../components/common/ToastHost';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
-import { installCrashLogger, readAndClearPersistedCrash, type PersistedCrash } from '../lib/utils/crashLogger';
+import { installCrashLogger, readAndClearPersistedCrash, readAndClearBreadcrumbs, breadcrumb, type PersistedCrash } from '../lib/utils/crashLogger';
 
 // Install the crash logger BEFORE any other module-scope code has a chance
 // to throw, so a fatal error during boot still ends up persisted for the
 // next launch to display. Route is filled in dynamically per crash.
 let currentRoute: string | null = null;
 installCrashLogger(() => currentRoute);
+breadcrumb('module: app/_layout.tsx loaded');
 
 // Bricolage Grotesque — the app's brand typeface for all text.
 // Inter — used only for numerical values (gold rates, ticket numbers, etc.).
@@ -136,6 +137,7 @@ function AuthGate() {
   }, [profile?.id]);
 
   useEffect(() => {
+    breadcrumb(`AuthGate: effect fire — isLoading=${isLoading} session=${!!session} profile=${!!profile}`);
     if (isLoading) return;
 
     if (!session) {
@@ -189,12 +191,14 @@ function AuthGate() {
     if (lastNav.current === dest) return;
     lastNav.current = dest;
 
+    breadcrumb(`AuthGate: navigating to ${dest} (role=${profile.role})`);
     if (dest === 'user') router.replace('/(user)/home');
     else if (dest === 'manager') router.replace('/(manager)/home');
     else if (dest === 'technician') router.replace('/(technician)/home');
     else if (dest === 'admin') router.replace('/(admin)/home');
     else if (dest === 'pending') router.replace('/pending-approval');
     else router.replace('/(auth)/login');
+    breadcrumb(`AuthGate: router.replace done`);
   }, [isLoading, session, profile, pathname]);
 
   if (isLoading) return <LoadingOverlay message={t('common.loading')} />;
@@ -285,12 +289,19 @@ export default function RootLayout() {
  */
 function PersistedCrashBanner() {
   const [crash, setCrash] = useState<PersistedCrash | null>(null);
+  const [crumbs, setCrumbs] = useState<{ at: string; label: string }[]>([]);
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     readAndClearPersistedCrash().then(setCrash).catch(() => null);
+    readAndClearBreadcrumbs().then(setCrumbs).catch(() => null);
   }, []);
 
-  if (!crash) return null;
+  // Show the banner if we caught a JS crash OR if the previous run left
+  // enough breadcrumbs to suggest it crashed mid-boot (native crash) — the
+  // breadcrumbs alone are diagnostic gold even when there's no JS error.
+  if (dismissed) return null;
+  if (!crash && crumbs.length === 0) return null;
   return (
     <View style={{
       position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -298,19 +309,33 @@ function PersistedCrashBanner() {
     }}>
       <ScrollView>
         <RNText style={{ color: '#FCA5A5', fontSize: 18, fontWeight: '800', marginBottom: 6 }}>
-          Previous run crashed
+          {crash ? 'Previous run crashed' : 'Previous run ended early'}
         </RNText>
-        <RNText style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, marginBottom: 12 }}>
-          {crash.kind} · {new Date(crash.when).toLocaleString()} · route: {crash.route ?? 'unknown'}
+        {crash ? (
+          <>
+            <RNText style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, marginBottom: 12 }}>
+              {crash.kind} · {new Date(crash.when).toLocaleString()} · route: {crash.route ?? 'unknown'}
+            </RNText>
+            <RNText style={{ color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 12 }}>
+              {crash.message}
+            </RNText>
+            <RNText selectable style={{ color: 'rgba(255,255,255,0.75)', fontSize: 10, lineHeight: 14 }}>
+              {crash.stack}
+            </RNText>
+          </>
+        ) : (
+          <RNText style={{ color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 12 }}>
+            No JS error caught. The last successful step is the last breadcrumb below.
+          </RNText>
+        )}
+        <RNText style={{ color: '#FBBF24', fontSize: 13, fontWeight: '800', marginTop: 20, marginBottom: 8 }}>
+          Breadcrumbs (oldest first):
         </RNText>
-        <RNText style={{ color: '#fff', fontSize: 14, fontWeight: '700', marginBottom: 12 }}>
-          {crash.message}
-        </RNText>
-        <RNText selectable style={{ color: 'rgba(255,255,255,0.75)', fontSize: 10, lineHeight: 14 }}>
-          {crash.stack}
+        <RNText selectable style={{ color: 'rgba(255,255,255,0.75)', fontSize: 10, lineHeight: 14, fontFamily: 'monospace' }}>
+          {crumbs.map((c) => `${c.at}  ${c.label}`).join('\n')}
         </RNText>
         <RNText
-          onPress={() => setCrash(null)}
+          onPress={() => setDismissed(true)}
           style={{
             marginTop: 24, alignSelf: 'flex-start',
             color: '#1B3A7A', backgroundColor: '#E0B55A',

@@ -1,9 +1,13 @@
 import { HomeDashboard } from '../../components/home/HomeDashboard';
 import { useAuthStore } from '../../stores/authStore';
+import { breadcrumb } from '../../lib/utils/crashLogger';
+
+breadcrumb('module: (user)/home.tsx loaded');
 
 const TICKETS = '/(user)/tickets' as const;
 
 export default function UserHome() {
+  breadcrumb('UserHome render');
   const profile = useAuthStore((s) => s.profile);
   // Store-tablet accounts are shared devices — scope stats to the whole store;
   // individual users see only their own tickets.

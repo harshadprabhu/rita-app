@@ -1,18 +1,26 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
- * Persistent crash catcher.
+ * Persistent crash catcher + breadcrumb tracer.
  *
- * Motivation: on the standalone Android build the app was crashing after
- * login with zero surviving output — no red-box (release build), no visible
- * error message, no way to see WHERE it crashed without adb logcat. This
- * catcher intercepts any JS error / unhandled promise rejection BEFORE the
- * app dies, writes the details to AsyncStorage, and lets the next launch
- * read them back and display them. So even a hard crash leaves forensics
- * behind on device, and we don't need adb to root-cause.
+ * Motivation: on the standalone Android build the app has been crashing
+ * after login with zero surviving output — no red-box (release build), no
+ * visible error message, no way to see WHERE it crashed without adb logcat.
+ *
+ * Two layers:
+ * 1) A global JS error handler that writes the caught error to AsyncStorage
+ *    for the NEXT launch to display. Catches JS-visible errors and
+ *    unhandled promise rejections.
+ * 2) A breadcrumb tracer: each named phase writes an entry to a rolling
+ *    breadcrumb list. Even if the app dies natively — where the JS error
+ *    handler can't catch anything — the LAST breadcrumb tells us where
+ *    the process was when it crashed. That's the diagnostic we've been
+ *    missing every time the app crashed with no banner shown afterwards.
  */
 
 const KEY = '@rita:last_crash';
+const CRUMBS_KEY = '@rita:breadcrumbs';
+const MAX_CRUMBS = 40;
 
 export interface PersistedCrash {
   message: string;
@@ -72,5 +80,38 @@ export async function readAndClearPersistedCrash(): Promise<PersistedCrash | nul
     return JSON.parse(raw) as PersistedCrash;
   } catch {
     return null;
+  }
+}
+
+// ---- Breadcrumb trail (survives even a hard native crash) ----
+
+// In-memory ring buffer, mirrored to AsyncStorage on every write so the
+// trail is on disk within milliseconds of each step. On next launch,
+// readBreadcrumbs() returns whatever was captured before the process died.
+let inMem: { at: string; label: string }[] = [];
+
+/** Emit a named checkpoint. Cheap; safe to call on every mount / phase. */
+export function breadcrumb(label: string): void {
+  try {
+    inMem.push({ at: new Date().toISOString().slice(11, 23), label });
+    if (inMem.length > MAX_CRUMBS) inMem = inMem.slice(-MAX_CRUMBS);
+    // Fire-and-forget write of the whole buffer — AsyncStorage batches
+    // efficiently on native, and even a hard native crash usually gives
+    // the JVM enough microseconds to flush the pending write.
+    AsyncStorage.setItem(CRUMBS_KEY, JSON.stringify(inMem)).catch(() => null);
+  } catch {
+    /* never let logging crash the app */
+  }
+}
+
+export async function readAndClearBreadcrumbs(): Promise<{ at: string; label: string }[]> {
+  try {
+    const raw = await AsyncStorage.getItem(CRUMBS_KEY);
+    if (!raw) return [];
+    await AsyncStorage.removeItem(CRUMBS_KEY);
+    inMem = [];
+    return JSON.parse(raw) as { at: string; label: string }[];
+  } catch {
+    return [];
   }
 }
