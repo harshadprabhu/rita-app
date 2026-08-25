@@ -3,7 +3,16 @@
 // dynamic bits — today's date on the "Date:" line and each rate inside its ₹ box.
 // Web-only (uses the DOM canvas + anchor download); guarded for native/SSR.
 import { Image as RNImage, Platform } from 'react-native';
-import { jsPDF } from 'jspdf';
+
+// jspdf is lazy-required (not top-level imported) because its module-init
+// code calls `new TextDecoder('latin1')` — an encoding Hermes doesn't
+// support, which crashes the whole app right after login on Android as
+// soon as any route imports this file. Deferring the require to the
+// exact functions that need it means Hermes never evaluates the offending
+// module on native (posters use expo-print there anyway), and web still
+// works because those functions are the only ones that call require.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const requireJsPdf = () => require('jspdf').jsPDF as typeof import('jspdf').jsPDF;
 
 export interface PosterRates {
   '24k_999': number;
@@ -91,6 +100,7 @@ function isIOS(): boolean {
 
 /** Wrap a canvas image into an A4 PDF and deliver it. */
 function deliverPoster(canvas: HTMLCanvasElement, fileName: string): void {
+  const jsPDF = requireJsPdf();
   const imgData = canvas.toDataURL('image/jpeg', 0.92);
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
@@ -116,6 +126,7 @@ function deliverPoster(canvas: HTMLCanvasElement, fileName: string): void {
 
 /** Convert a PNG data URL to a PDF blob sized to fit the image on an A4 page. */
 export function pngDataUrlToPdfBlob(dataUrl: string): Blob {
+  const jsPDF = requireJsPdf();
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = 210, pageH = 297;
   const props = pdf.getImageProperties(dataUrl);
