@@ -207,8 +207,20 @@ export async function reassignTicket(
 }
 
 export async function deleteTicket(ticketId: string): Promise<void> {
-  const { error } = await supabase.from('tickets').delete().eq('id', ticketId);
+  // Ask PostgREST to return the deleted rows so we can detect the
+  // deny-by-default-RLS case (no error, but zero rows removed). Without
+  // this, a missing DELETE policy makes the button appear to do nothing.
+  const { data, error } = await supabase
+    .from('tickets')
+    .delete()
+    .eq('id', ticketId)
+    .select('id');
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error(
+      'Delete blocked — no rows affected. Your role likely lacks a DELETE policy on tickets, or the ticket no longer exists.',
+    );
+  }
 }
 
 export async function uploadAttachment(

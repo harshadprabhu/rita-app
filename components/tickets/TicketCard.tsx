@@ -60,6 +60,10 @@ export function TicketCard({ ticket, menuOpen, onToggleMenu, onCloseMenu }: Prop
   const deleteM = useMutation({
     mutationFn: () => deleteTicket(ticket.id),
     onSuccess: () => { invalidate(); closeMenu(); },
+    onError: (err: Error) => {
+      closeMenu();
+      Alert.alert('Delete failed', err.message ?? 'Unknown error');
+    },
   });
 
   const confirmDelete = () => {
