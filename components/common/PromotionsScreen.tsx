@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Screen } from './Screen';
@@ -12,6 +12,7 @@ import {
 } from '../../lib/api/promotions';
 import { getStores } from '../../lib/api/stores';
 import { useAuthStore } from '../../stores/authStore';
+import { showAlert } from '../../lib/utils/alert';
 import { canPushPromotions } from '../../constants/roles';
 import { DbStore } from '../../types';
 import { webNoOutline, theme } from '../../constants/theme';
@@ -97,7 +98,7 @@ export function PromotionsScreen() {
       const overlaps = await findOverlappingPromotions(targetStoreIds);
       if (overlaps.length) {
         const names = overlaps.map((o) => `#${o.seq} — ${targetLabel(o, stores ?? [])}\n"${o.body}"`).join('\n\n');
-        Alert.alert(
+        showAlert(
           'Cannot publish',
           `${targetStoreIds.length ? 'Some of the selected stores' : 'All stores'} already have an active promotion. Deactivate the existing one first before publishing a new one.\n\nActive:\n${names}`,
           [{ text: 'OK' }],
@@ -106,7 +107,7 @@ export function PromotionsScreen() {
       }
       publish.mutate(body);
     } catch (e) {
-      Alert.alert('Could not check for overlaps', String(e));
+      showAlert('Could not check for overlaps', String(e));
     }
   };
 
@@ -212,7 +213,7 @@ export function PromotionsScreen() {
                   {p.is_active && (
                     <SoftPress
                       style={styles.deactivateBtn}
-                      onPress={() => Alert.alert('Deactivate promotion', `Stop showing #${p.seq} on the poster?`, [
+                      onPress={() => showAlert('Deactivate promotion', `Stop showing #${p.seq} on the poster?`, [
                         { text: 'Cancel', style: 'cancel' },
                         { text: 'Deactivate', style: 'destructive', onPress: () => deactivate.mutate(p.id) },
                       ])}

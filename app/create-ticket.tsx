@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, ActivityIndicator, Modal, Pressable, FlatList, Alert, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, ActivityIndicator, Modal, Pressable, FlatList, Platform } from 'react-native';
 import { useUiStore } from '../stores/uiStore';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -20,6 +20,7 @@ import { QUERY_KEYS } from '../constants/queryKeys';
 import { ALL_PRIORITIES } from '../constants/ticket';
 import { TicketPriority } from '../types';
 import { webNoOutline, theme } from '../constants/theme';
+import { showAlert } from '../lib/utils/alert';
 
 const MAX_ATTACHMENTS = 10;
 
@@ -177,7 +178,7 @@ export default function CreateTicket() {
         ? `Your ticket ${idLabel} has been created and registered at Sampark.`
         : 'Your ticket has been created. The Sampark sync will complete in the background.';
       useUiStore.getState().showToast(`Ticket created ${samparkDisplayId ? idLabel : ''}`.trim(), 'success');
-      Alert.alert('Ticket created', alertBody, [
+      showAlert('Ticket created', alertBody, [
         { text: 'OK', onPress: () => router.replace(`/tickets/${ticketId}`) },
       ]);
     },
@@ -211,7 +212,7 @@ export default function CreateTicket() {
   const pickImage = () => {
     if (images.length >= MAX_ATTACHMENTS) return;
     if (Platform.OS === 'web') { openGallery(); return; }
-    Alert.alert('Add photo', 'Take a new photo or choose from your gallery.', [
+    showAlert('Add photo', 'Take a new photo or choose from your gallery.', [
       { text: 'Camera', onPress: openCamera },
       { text: 'Gallery', onPress: openGallery },
       { text: 'Cancel', style: 'cancel' },

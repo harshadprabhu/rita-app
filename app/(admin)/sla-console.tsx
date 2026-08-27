@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, RefreshControl } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../components/common/Screen';
+import { showAlert } from '../../lib/utils/alert';
 import { AppHeader } from '../../components/common/AppHeader';
 import { EmptyState } from '../../components/common/EmptyState';
 import { LoadingOverlay } from '../../components/common/LoadingOverlay';
@@ -67,7 +68,7 @@ export default function SlaConsole() {
               <Text style={styles.meta}>{item.store?.name} · Assignee: {item.assignee?.display_name ?? item.sampark_technician_name ?? 'Unassigned'}</Text>
               <TouchableOpacity
                 style={styles.reassignBtn}
-                onPress={() => Alert.alert('Reassign', `Reassigning ${item.sampark_display_id ? `#${item.sampark_display_id}` : 'ticket'} — open ticket detail to pick a technician.`)}
+                onPress={() => showAlert('Reassign', `Reassigning ${item.sampark_display_id ? `#${item.sampark_display_id}` : 'ticket'} — open ticket detail to pick a technician.`)}
               >
                 <Text style={styles.reassignBtnText}>Reassign</Text>
               </TouchableOpacity>

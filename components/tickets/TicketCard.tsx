@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,7 @@ import { updateTicket, reassignTicket, deleteTicket } from '../../lib/api/ticket
 import { QUERY_KEYS } from '../../constants/queryKeys';
 import { theme } from '../../constants/theme';
 import { NumericText } from '../common/NumericText';
+import { showAlert } from '../../lib/utils/alert';
 
 interface Props {
   ticket: TicketWithRelations;
@@ -59,15 +60,22 @@ export function TicketCard({ ticket, menuOpen, onToggleMenu, onCloseMenu }: Prop
   });
   const deleteM = useMutation({
     mutationFn: () => deleteTicket(ticket.id),
-    onSuccess: () => { invalidate(); closeMenu(); },
+    onSuccess: () => {
+      invalidate();
+      closeMenu();
+      // A successful delete used to be visually indistinguishable from a
+      // silently-failed one — the row just vanished (or didn't) with no
+      // feedback either way. Explicit confirmation removes that ambiguity.
+      showAlert('Ticket deleted', 'The ticket was permanently removed.');
+    },
     onError: (err: Error) => {
       closeMenu();
-      Alert.alert('Delete failed', err.message ?? 'Unknown error');
+      showAlert('Delete failed', err.message ?? 'Unknown error');
     },
   });
 
   const confirmDelete = () => {
-    Alert.alert('Delete ticket', `Delete ${ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : 'this ticket'}? This cannot be undone.`, [
+    showAlert('Delete ticket', `Delete ${ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : 'this ticket'}? This cannot be undone.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => deleteM.mutate() },
     ]);

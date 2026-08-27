@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
@@ -8,6 +8,7 @@ import { AppHeader } from '../common/AppHeader';
 import { submitPocFeedback, getMyFeedback, PocFeedbackInsert } from '../../lib/api/pocFeedback';
 import { useAuthStore } from '../../stores/authStore';
 import { theme, webNoOutline } from '../../constants/theme';
+import { showAlert } from '../../lib/utils/alert';
 
 const FEATURES = [
   { key: 'ticket_creation', label: 'Ticket Creation' },
@@ -87,11 +88,11 @@ export function PocFeedbackForm() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['poc-feedback'] });
-      Alert.alert('Thank you!', 'Your feedback has been submitted successfully.', [
+      showAlert('Thank you!', 'Your feedback has been submitted successfully.', [
         { text: 'OK', onPress: () => router.back() },
       ]);
     },
-    onError: (e) => Alert.alert('Error', e instanceof Error ? e.message : 'Failed to submit'),
+    onError: (e) => showAlert('Error', e instanceof Error ? e.message : 'Failed to submit'),
   });
 
   const valid = ease > 0 && tracking > 0 && overall > 0 && speed > 0 && vsWa > 0 && prefer !== '' && recommend !== '';

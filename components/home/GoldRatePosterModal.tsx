@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import {
-  Modal, View, Image, Text, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator, Platform, Alert,
+  Modal, View, Image, Text, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator, Platform,
 } from 'react-native';
 import ViewShot, { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { PosterRates } from '../../lib/utils/goldPoster';
 import { pngDataUrlToPdfBlob } from '../../lib/utils/goldPoster';
 import { theme } from '../../constants/theme';
+import { showAlert } from '../../lib/utils/alert';
 
 export interface GoldRatePosterModalProps {
   visible: boolean;
@@ -105,7 +106,7 @@ export function GoldRatePosterModal({ visible, onClose, rates, date, promo }: Go
       // "readAsStringAsync is undefined" for weeks. Surface the message so
       // the next failure is diagnosable.
       const msg = err instanceof Error ? err.message : String(err);
-      if (!/cancel/i.test(msg)) Alert.alert('Could not share poster', msg);
+      if (!/cancel/i.test(msg)) showAlert('Could not share poster', msg);
     } finally {
       setSharing(false);
     }

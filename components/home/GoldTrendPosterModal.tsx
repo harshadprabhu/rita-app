@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
   Modal, View, Image, Text, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator,
-  ScrollView, Linking, Platform, Alert,
+  ScrollView, Linking, Platform,
 } from 'react-native';
 import Svg, { Polyline, Polygon } from 'react-native-svg';
 import QRCode from 'react-native-qrcode-svg';
@@ -18,6 +18,7 @@ import { IGP_URL } from '../../constants/links';
 import { pngDataUrlToPdfBlob } from '../../lib/utils/goldPoster';
 import type { GoldRateTrendPoint } from '../../lib/api/goldRate';
 import { theme } from '../../constants/theme';
+import { showAlert } from '../../lib/utils/alert';
 
 // One implementation for both platforms — react-native-view-shot v5 ships a web
 // capture (html2canvas), so the poster renders and exports on web too. Types
@@ -136,7 +137,7 @@ export function GoldTrendPosterModal({ visible, onClose, series, currentRate, da
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (!/cancel/i.test(msg)) Alert.alert('Could not share poster', msg);
+      if (!/cancel/i.test(msg)) showAlert('Could not share poster', msg);
     } finally {
       setSharing(false);
     }

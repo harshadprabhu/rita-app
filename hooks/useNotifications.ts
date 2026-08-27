@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { Alert } from 'react-native';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../lib/api/notifications';
 import { useNotificationStore } from '../stores/notificationStore';
 import { supabase } from '../lib/supabase';
 import { DbNotification } from '../types';
+import { showAlert } from '../lib/utils/alert';
 
 export function useNotifications(userId: string) {
   const qc = useQueryClient();
@@ -71,7 +71,7 @@ export function useMarkRead(userId: string) {
     },
     onError: (err, _id, ctx) => {
       if (ctx?.prev) qc.setQueryData(QUERY_KEYS.notifications(userId), ctx.prev);
-      Alert.alert('Could not mark read', err instanceof Error ? err.message : String(err));
+      showAlert('Could not mark read', err instanceof Error ? err.message : String(err));
     },
     onSettled: () => qc.invalidateQueries({ queryKey: QUERY_KEYS.notifications(userId) }),
   });
@@ -89,7 +89,7 @@ export function useMarkRead(userId: string) {
     },
     onError: (err, _v, ctx) => {
       if (ctx?.prev) qc.setQueryData(QUERY_KEYS.notifications(userId), ctx.prev);
-      Alert.alert('Could not mark all read', err instanceof Error ? err.message : String(err));
+      showAlert('Could not mark all read', err instanceof Error ? err.message : String(err));
     },
     onSettled: () => qc.invalidateQueries({ queryKey: QUERY_KEYS.notifications(userId) }),
   });
