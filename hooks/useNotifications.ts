@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
+import { Alert } from 'react-native';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../lib/api/notifications';
 import { useNotificationStore } from '../stores/notificationStore';
@@ -57,15 +58,40 @@ export function useMarkRead(userId: string) {
 
   const markOne = useMutation({
     mutationFn: markNotificationRead,
-    onSuccess: () => qc.invalidateQueries({ queryKey: QUERY_KEYS.notifications(userId) }),
+    // Optimistic: flip is_read locally so the UI reflects instantly, and
+    // roll back if the DB write fails. Prevents the "looks read, comes
+    // back unread" flicker.
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: QUERY_KEYS.notifications(userId) });
+      const prev = qc.getQueryData<DbNotification[]>(QUERY_KEYS.notifications(userId));
+      qc.setQueryData<DbNotification[]>(QUERY_KEYS.notifications(userId), (rows) =>
+        (rows ?? []).map((r) => (r.id === id ? { ...r, is_read: true } : r)),
+      );
+      return { prev };
+    },
+    onError: (err, _id, ctx) => {
+      if (ctx?.prev) qc.setQueryData(QUERY_KEYS.notifications(userId), ctx.prev);
+      Alert.alert('Could not mark read', err instanceof Error ? err.message : String(err));
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: QUERY_KEYS.notifications(userId) }),
   });
 
   const markAll = useMutation({
     mutationFn: () => markAllNotificationsRead(userId),
-    onSuccess: () => {
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: QUERY_KEYS.notifications(userId) });
+      const prev = qc.getQueryData<DbNotification[]>(QUERY_KEYS.notifications(userId));
+      qc.setQueryData<DbNotification[]>(QUERY_KEYS.notifications(userId), (rows) =>
+        (rows ?? []).map((r) => ({ ...r, is_read: true })),
+      );
       setUnreadCount(0);
-      qc.invalidateQueries({ queryKey: QUERY_KEYS.notifications(userId) });
+      return { prev };
     },
+    onError: (err, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(QUERY_KEYS.notifications(userId), ctx.prev);
+      Alert.alert('Could not mark all read', err instanceof Error ? err.message : String(err));
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: QUERY_KEYS.notifications(userId) }),
   });
 
   return { markOne, markAll };

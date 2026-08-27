@@ -20,7 +20,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { canAssignTicket, canChangeStatus, canSeeInternalComments, canReassignTicket } from '../../lib/auth/permissions';
 import { ALL_LIFECYCLES, LIFECYCLE_TO_STATUS } from '../../constants/ticket';
 import { QUERY_KEYS } from '../../constants/queryKeys';
-import { timeAgo } from '../../lib/utils/date';
+import { timeAgo, formatDurationBetween } from '../../lib/utils/date';
 import { theme } from '../../constants/theme';
 
 type Tab = 'comments' | 'audit';
@@ -111,18 +111,27 @@ export default function TicketDetail() {
             <Text style={styles.metaLabel}>Assignee</Text>
             <Text style={styles.metaValue}>{ticket.assignee?.display_name ?? ticket.sampark_technician_name ?? 'Unassigned'}</Text>
           </View>
+          {/* Category shown inline (no "Category" label) — the › separators
+            * make it self-describing and save a whole row of width. */}
           {ticket.category ? (
-            <View style={styles.metaRow}>
-              <Text style={styles.metaLabel}>Category</Text>
-              <Text style={styles.metaValue}>
-                {[ticket.category, ticket.subcategory, ticket.item].filter(Boolean).join(' › ')}
-              </Text>
-            </View>
+            <Text style={styles.categoryInline}>
+              {[ticket.category, ticket.subcategory, ticket.item].filter(Boolean).join(' › ')}
+            </Text>
           ) : null}
           {ticket.contact_number ? (
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>Contact</Text>
               <Text style={styles.metaValue}>{ticket.contact_number}</Text>
+            </View>
+          ) : null}
+          {/* Resolution time — end-to-end from create to resolve. Only shown
+            * for resolved tickets that have a resolved_at stamp. */}
+          {ticket.status === 'resolved' && ticket.resolved_at ? (
+            <View style={styles.metaRow}>
+              <Text style={styles.metaLabel}>Resolved in</Text>
+              <Text style={styles.metaValue}>
+                {formatDurationBetween(ticket.created_at, ticket.resolved_at)}
+              </Text>
             </View>
           ) : null}
           {ticket.sla_breached && <Text style={styles.slaBreach}>⚠ SLA breached</Text>}
@@ -244,6 +253,10 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   metaLabel: { fontSize: 12, color: theme.colors.textTertiary },
   metaValue: { fontSize: 12, color: theme.colors.textPrimary, fontWeight: '600' },
+  categoryInline: {
+    fontSize: 12, color: theme.colors.textSecondary, fontWeight: '600',
+    paddingVertical: 8, letterSpacing: 0.2,
+  },
   slaBreach: { color: theme.priorityColors.critical, fontWeight: '700', marginTop: theme.spacing.sm },
   sectionLabel: { fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary, letterSpacing: 0.8, marginTop: theme.spacing.lg, marginBottom: theme.spacing.sm },
   claimBtn: { backgroundColor: theme.colors.brand, borderRadius: theme.radius.md, paddingVertical: theme.spacing.md, alignItems: 'center', marginTop: theme.spacing.lg },

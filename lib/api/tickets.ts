@@ -142,9 +142,16 @@ export async function updateTicket(
   actorId?: string,
 ): Promise<DbTicket> {
   const before = actorId ? await getTicketById(id).catch(() => null) : null;
+  // Client-side belt for the resolved_at trigger: if this call is what
+  // transitions the ticket to resolved and the caller didn't set
+  // resolved_at explicitly, stamp it. Ensures resolution-time analytics
+  // work even against a DB that hasn't picked up the trigger migration.
+  const patched = updates.status === 'resolved' && !updates.resolved_at
+    ? { ...updates, resolved_at: new Date().toISOString() }
+    : updates;
   const { data, error } = await supabase
     .from('tickets')
-    .update(updates)
+    .update(patched)
     .eq('id', id)
     .select()
     .single();

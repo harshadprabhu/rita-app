@@ -14,20 +14,31 @@ export async function getNotifications(userId: string): Promise<DbNotification[]
 }
 
 export async function markNotificationRead(id: string): Promise<void> {
-  const { error } = await supabase
+  // `.select('id')` forces PostgREST to return affected rows so a
+  // deny-by-default-RLS block (0 rows updated, no error) doesn't look
+  // like success — otherwise the UI clears optimistically and the DB
+  // state resurrects the unread flag on next re-sign-in.
+  const { data, error } = await supabase
     .from('notifications')
     .update({ is_read: true })
-    .eq('id', id);
+    .eq('id', id)
+    .select('id');
   if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error('Mark-read blocked (RLS). The DB update returned 0 rows.');
+  }
 }
 
 export async function markAllNotificationsRead(userId: string): Promise<void> {
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('notifications')
     .update({ is_read: true })
     .eq('recipient_id', userId)
-    .eq('is_read', false);
+    .eq('is_read', false)
+    .select('id');
   if (error) throw error;
+  // Zero rows here just means "nothing was unread" — not an error.
+  void data;
 }
 
 /** Remove all of a user's ticket notifications from their inbox. */

@@ -29,6 +29,27 @@ export function formatTime(dateStr: string): string {
   return date.toLocaleTimeString(activeLocale(), { hour: 'numeric', minute: '2-digit' });
 }
 
+/**
+ * Compact human duration between two ISO timestamps, tuned for
+ * ticket resolution time: "43m", "3h 12m", "2d 4h". Under a minute →
+ * "less than 1m". Returns null if either timestamp is missing.
+ */
+export function formatDurationBetween(fromIso: string | null | undefined, toIso: string | null | undefined): string | null {
+  if (!fromIso || !toIso) return null;
+  const seconds = Math.max(0, Math.floor((new Date(toIso).getTime() - new Date(fromIso).getTime()) / 1000));
+  return formatDurationSeconds(seconds);
+}
+
+export function formatDurationSeconds(seconds: number): string {
+  if (seconds < 60) return 'less than 1m';
+  const m = Math.floor(seconds / 60) % 60;
+  const h = Math.floor(seconds / 3600) % 24;
+  const d = Math.floor(seconds / 86400);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
 export function timeAgo(dateStr: string): string {
   const now = Date.now();
   const then = new Date(dateStr).getTime();

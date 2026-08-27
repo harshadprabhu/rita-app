@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { TicketWithRelations } from '../../types/ticket';
 import { LifecycleChip } from '../common/StatusChip';
-import { timeAgo } from '../../lib/utils/date';
+import { timeAgo, formatDurationBetween } from '../../lib/utils/date';
 import { useAuthStore } from '../../stores/authStore';
 import { getTechnicians } from '../../lib/api/profiles';
 import { updateTicket, reassignTicket, deleteTicket } from '../../lib/api/tickets';
@@ -109,7 +109,12 @@ export function TicketCard({ ticket, menuOpen, onToggleMenu, onCloseMenu }: Prop
             {categoryLabel && <Text style={styles.metaDot}>·</Text>}
             {categoryLabel && <Text style={styles.metaText} numberOfLines={1}>{categoryLabel}</Text>}
             <View style={{ flex: 1 }} />
-            {ticket.sla_breached ? (
+            {ticket.status === 'resolved' && ticket.resolved_at ? (
+              <View style={styles.resolvedBadge}>
+                <Ionicons name="checkmark-done" size={10} color={theme.statusColors.resolved.text} />
+                <Text style={styles.resolvedText}>{formatDurationBetween(ticket.created_at, ticket.resolved_at)}</Text>
+              </View>
+            ) : ticket.sla_breached ? (
               <View style={styles.slaBadge}>
                 <Ionicons name="alert" size={10} color={theme.priorityColors.high} />
                 <Text style={styles.slaBreach}>SLA</Text>
@@ -194,6 +199,12 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.full,
   },
   slaBreach: { fontSize: 8, fontWeight: '800', color: theme.priorityColors.high, letterSpacing: 0.4 },
+  resolvedBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: theme.statusColors.resolved.bg,
+    paddingHorizontal: 6, paddingVertical: 2, borderRadius: theme.radius.full,
+  },
+  resolvedText: { fontSize: 9, fontWeight: '800', color: theme.statusColors.resolved.text, letterSpacing: 0.2 },
   // Action menu
   menu: {
     position: 'absolute', top: 40, right: theme.spacing.md, zIndex: 20, elevation: 20,
