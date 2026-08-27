@@ -73,7 +73,10 @@ export function TicketCard({ ticket, menuOpen, onToggleMenu, onCloseMenu }: Prop
     ]);
   };
 
-  const categoryLabel = ticket.category ? t(`category.${ticket.category}`) : null;
+  // Categories are dynamic Sampark taxonomy values, not a fixed translated
+  // set — running them through t() just prints the raw key (e.g.
+  // "category.MTO Request") when no translation exists. Show as-is.
+  const categoryLabel = ticket.category ?? null;
   const priorityColor = theme.priorityColors[ticket.priority];
 
   return (
