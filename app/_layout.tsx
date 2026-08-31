@@ -18,9 +18,11 @@ import { useAuth } from '../hooks/useAuth';
 import { useUnifiedNotifications } from '../hooks/useUnifiedNotifications';
 import { useAuthStore } from '../stores/authStore';
 import { updatePushToken } from '../lib/api/profiles';
+import { signOut } from '../lib/auth/session';
 import { LoadingOverlay } from '../components/common/LoadingOverlay';
 import { ToastHost } from '../components/common/ToastHost';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
+import { showAlert } from '../lib/utils/alert';
 
 // Bricolage Grotesque — the app's brand typeface for all text.
 // Inter — used only for numerical values (gold rates, ticket numbers, etc.).
@@ -74,6 +76,7 @@ function AuthGate() {
   // Guard against React Strict Mode double-invoking effects and re-firing the
   // same router.replace() twice (which can knock focus out of a TextInput).
   const lastNav = useRef<string | null>(null);
+  const profileStallHandled = useRef(false);
 
   // Fetch notifications + broadcasts globally so the bottom-bar badge reflects
   // both ticket alerts and announcement unread counts before the user opens the
@@ -142,16 +145,40 @@ function AuthGate() {
     }
 
     if (!profile) {
-      // Session exists but the profile isn't loaded yet (first-login race —
-      // ensureProfile retries the read). Just keep showing the loading screen;
-      // do NOT sign out here — the old aggressive sign-out flashed an error and
-      // crashed the app on first login. The profile arrives moments later.
+      // useAuth's setLoading(false) only fires AFTER ensureProfile's own
+      // internal retries (up to 4, ~1.6s) have already been exhausted — so
+      // by the time isLoading is false here, a null profile is terminal,
+      // not "arriving moments later". Previously this branch just returned
+      // and rendered nothing forever: the user had successfully signed in
+      // with Microsoft but got permanently stuck staring at a frozen
+      // screen with zero explanation — indistinguishable from "my login
+      // didn't work". Give it one short grace window (in case something
+      // upstream ever does resolve profile a beat later) then surface it.
+      if (!profileStallHandled.current) {
+        profileStallHandled.current = true;
+        setTimeout(() => {
+          if (!useAuthStore.getState().profile && useAuthStore.getState().session) {
+            showAlert(
+              'Could not load your account',
+              'Signed in with Microsoft, but RITA could not load your account profile. Please try again — if this keeps happening, contact your admin.',
+            );
+            signOut().catch(() => null);
+          }
+        }, 500);
+      }
       return;
     }
+    profileStallHandled.current = false;
 
     let dest: string;
+    // Reason shown to the user when a *successfully Microsoft-authenticated*
+    // account still gets bounced to login — previously this happened with
+    // zero explanation, which is indistinguishable from "my password didn't
+    // work" even though sign-in with Microsoft actually succeeded.
+    let rejectionReason: string | null = null;
     if (!profile.is_active) {
-      dest = 'login'; // deactivated accounts are bounced back to login
+      dest = 'login';
+      rejectionReason = 'Your RITA account has been deactivated. Contact your admin to have it reactivated.';
     } else if (profile.role === 'technician' && profile.approval_status === 'pending') {
       dest = 'pending';
     } else if ((profile.role === 'user' || profile.role === 'in_store_manager') && profile.approval_status === 'approved') {
@@ -175,6 +202,7 @@ function AuthGate() {
       dest = 'pending';
     } else {
       dest = 'login';
+      rejectionReason = `Your account (role: ${profile.role}, status: ${profile.approval_status}) isn't set up to sign in yet. Contact your admin.`;
     }
 
     if (lastNav.current === dest) return;
@@ -185,7 +213,19 @@ function AuthGate() {
     else if (dest === 'technician') router.replace('/(technician)/home');
     else if (dest === 'admin') router.replace('/(admin)/home');
     else if (dest === 'pending') router.replace('/pending-approval');
-    else router.replace('/(auth)/login');
+    else {
+      router.replace('/(auth)/login');
+      // A rejected user still has a live Supabase session — left alone, the
+      // next render sees the same profile and silently bounces to login
+      // again with no way to tell the user why. Show the reason, then sign
+      // out so the session doesn't linger uselessly and a retry (e.g. after
+      // an admin reactivates the account) starts clean.
+      if (rejectionReason) {
+        const reason = rejectionReason;
+        showAlert('Sign-in blocked', reason);
+        signOut().catch(() => null);
+      }
+    }
   }, [isLoading, session, profile, pathname]);
 
   if (isLoading) return <LoadingOverlay message={t('common.loading')} />;
