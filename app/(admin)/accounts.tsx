@@ -43,6 +43,7 @@ export default function Accounts() {
   const toggleActive = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => setAccountActive(id, isActive, profile!.id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.accounts() }),
+    onError: (e) => showToast(extractErrorMessage(e), 'error'),
   });
 
   const changeRole = useMutation({

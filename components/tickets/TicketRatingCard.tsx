@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { submitTicketRating, getTicketRating } from '../../lib/api/ticketRatings';
 import { useAuthStore } from '../../stores/authStore';
 import { theme, webNoOutline } from '../../constants/theme';
+import { showAlert } from '../../lib/utils/alert';
 
 interface Props {
   ticketId: string;
@@ -48,6 +49,7 @@ export function TicketRatingCard({ ticketId }: Props) {
       qc.invalidateQueries({ queryKey: ['ticket-rating', ticketId] });
       setSubmitted(true);
     },
+    onError: (e) => showAlert('Could not submit rating', e instanceof Error ? e.message : String(e)),
   });
 
   if (isLoading) return null;

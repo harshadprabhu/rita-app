@@ -11,6 +11,7 @@ import { PriorityBadge } from '../../components/common/PriorityBadge';
 import { getOpenTickets, claimTicket } from '../../lib/api/tickets';
 import { useAuthStore } from '../../stores/authStore';
 import { theme } from '../../constants/theme';
+import { showAlert } from '../../lib/utils/alert';
 
 export default function TechnicianQueue() {
   const profile = useAuthStore((s) => s.profile);
@@ -24,6 +25,14 @@ export default function TechnicianQueue() {
   const claim = useMutation({
     mutationFn: (ticketId: string) => claimTicket(ticketId, profile!.id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['open-tickets'] }),
+    onError: (e) => {
+      // claimTicket only updates a still-unassigned row — if another
+      // technician claimed it first, this throws (0 rows matched) with no
+      // prior feedback of any kind. Surface it and refresh so the (now
+      // stale) row disappears from this technician's queue.
+      showAlert('Could not claim ticket', 'Someone else may have already claimed it. The queue will refresh.');
+      queryClient.invalidateQueries({ queryKey: ['open-tickets'] });
+    },
   });
 
   return (
