@@ -102,6 +102,36 @@ Deno.serve(async (req) => {
     if (probe) {
       const inspectId = new URL(req.url).searchParams.get('inspectId');
       const inspectPath = new URL(req.url).searchParams.get('path');
+      const subjectSearch = new URL(req.url).searchParams.get('subject');
+      if (subjectSearch) {
+        // Ad-hoc subject-text search across recent requests — used to find a
+        // Sampark ticket whose RITA-side row was lost/deleted before its
+        // sampark_request_id was ever recorded locally, so it can't be
+        // looked up by id. Paginates up to 10 pages (1000 tickets, newest
+        // first) and returns any whose subject contains the search text.
+        try {
+          const matches: unknown[] = [];
+          for (let page = 0; page < 10; page++) {
+            const res = await sdpGet(cfg, token, '/requests', {
+              row_count: 100,
+              start_index: page * 100 + 1,
+              sort_field: 'created_time',
+              sort_order: 'desc',
+              search_criteria: [{ field: 'subject', condition: 'contains', values: [subjectSearch] }],
+            });
+            const list = (res.requests ?? []) as Record<string, unknown>[];
+            matches.push(...list);
+            if (!res.list_info?.has_more_rows) break;
+          }
+          return new Response(JSON.stringify({ count: matches.length, matches }, null, 2), {
+            headers: { ...CORS, 'Content-Type': 'application/json' },
+          });
+        } catch (e) {
+          return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), {
+            status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
+          });
+        }
+      }
       if (inspectId) {
         // Ad-hoc single-request lookup (full detail, not the trimmed
         // fields_required list) — for diagnosing a specific ticket's fields
