@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { FlatList, RefreshControl, View, StyleSheet, TextInput, ScrollView, Text, Pressable } from 'react-native';
 // LinearGradient removed — solid-color pills work reliably on native
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
@@ -50,6 +50,20 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
   // closes whichever other one was open, instead of each TicketCard tracking
   // its own independent open/closed state and allowing several at once.
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  // Tab screens stay mounted across navigation in expo-router, so this
+  // component's state survives a "leave and come back". If a card's action
+  // menu was left open when the user navigated away (e.g. pushed into a
+  // ticket, or switched tabs, without tapping the menu closed first),
+  // openMenuId stayed non-null — which kept the full-screen tap-outside
+  // dismiss Pressable (below) mounted and invisibly swallowing every touch
+  // on the list, including taps meant to open a ticket. Clearing it
+  // whenever this screen loses focus guarantees a clean slate on return.
+  useFocusEffect(
+    React.useCallback(() => {
+      return () => setOpenMenuId(null);
+    }, []),
+  );
 
   // Apply an incoming ?status= param to the status filter (drives the chip when
   // shown; otherwise still filters the list client-side).
