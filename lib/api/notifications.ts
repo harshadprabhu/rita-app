@@ -43,12 +43,16 @@ export async function markAllNotificationsRead(userId: string): Promise<number> 
 }
 
 /** Remove all of a user's ticket notifications from their inbox. */
-export async function deleteAllNotifications(userId: string): Promise<void> {
-  const { error } = await supabase
+export async function deleteAllNotifications(userId: string): Promise<number> {
+  // `.select('id')` returns the deleted rows so a missing DELETE RLS policy
+  // (0 rows, no error) surfaces to the caller instead of silently no-oping.
+  const { data, error } = await supabase
     .from('notifications')
     .delete()
-    .eq('recipient_id', userId);
+    .eq('recipient_id', userId)
+    .select('id');
   if (error) throw error;
+  return data?.length ?? 0;
 }
 
 export async function createNotification(payload: {

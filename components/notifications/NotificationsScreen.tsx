@@ -95,14 +95,24 @@ export function NotificationsScreen() {
   };
 
   const clearAll = useMutation({
+    // Do NOT swallow errors here. The previous `.catch(() => null)` hid a
+    // real problem — the notifications DELETE RLS policy was missing, so
+    // every delete was silently denied, the row count never dropped, and
+    // the badge kept resurrecting on the next sign-in.
     mutationFn: async () => {
-      await deleteAllNotifications(userId).catch(() => null);
+      const deleted = await deleteAllNotifications(userId);
       await markAllBroadcastsRead();
+      return deleted;
     },
-    onSuccess: () => {
+    onSuccess: (deleted) => {
       setClearedAt(Date.now());
       qc.invalidateQueries({ queryKey: QUERY_KEYS.notifications(userId) });
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.broadcastReads(userId) });
       refetch();
+      showToast(deleted > 0 ? `Cleared ${deleted} alert${deleted === 1 ? '' : 's'}` : 'Already clear', 'success');
+    },
+    onError: (err) => {
+      showToast(`Could not clear: ${err instanceof Error ? err.message : String(err)}`, 'error');
     },
   });
 
