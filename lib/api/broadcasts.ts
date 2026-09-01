@@ -71,9 +71,13 @@ export async function getBroadcastReadIds(userId: string): Promise<Set<string>> 
 export async function markBroadcastsRead(userId: string, broadcastIds: string[]): Promise<void> {
   if (!broadcastIds.length) return;
   const rows = broadcastIds.map((broadcast_id) => ({ user_id: userId, broadcast_id }));
-  await supabase
+  // Surface errors instead of the silent `await` that used to hide RLS
+  // rejections here — an INSERT-only policy that misses this specific row
+  // shape would otherwise leave the badge unread with no signal.
+  const { error } = await supabase
     .from('broadcast_reads')
     .upsert(rows, { onConflict: 'user_id,broadcast_id', ignoreDuplicates: true });
+  if (error) throw error;
 }
 
 export async function createBroadcast(payload: CreateBroadcastPayload): Promise<DbBroadcast> {
