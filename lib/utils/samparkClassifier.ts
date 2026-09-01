@@ -232,37 +232,61 @@ export function classifySamparkTicket(description: string, allNodes: TicketCateg
 
   const categories = allNodes.filter((n) => !n.is_subcategory);
   const bestCategory = bestMatch(tokens, categories);
-  if (!bestCategory) return rescueFromItems(tokens, allNodes);
 
-  const subcategories = allNodes.filter(
-    (n) => n.is_subcategory && !n.is_item && n.parent_id === bestCategory.node.id,
-  );
-  // Use a slightly lower threshold for subcategory/item — the category context
-  // already narrows the search space, so weaker matches are more trustworthy.
-  const bestSubcategory = bestMatch(tokens, subcategories, MIN_CONFIDENCE * 0.8);
+  // Bottom-up rescue used to only fire when NO category matched at all, which
+  // meant a weak top-down match (e.g. category "Customer Service Issue" won
+  // purely because its name/keyword includes the generic term "customer")
+  // permanently blocked a much stronger leaf-level match from ever being
+  // considered — real case, ticket #63394 "SKU will not scan in mPOS" matched
+  // POS Issue > Item > Item Search on all 5 top bigrams (sku scan / scan mpos
+  // / mpos urgent / urgent customer / customer waiting) yet lost to Customer
+  // Service Issue > Case Creation whose keywords the ticket text didn't hit
+  // at all. Now we always compute both paths and take the more confident one,
+  // where "confidence" for the item path is the item match itself (leaf
+  // specificity is what earned the rescue in the first place).
+  const rescue = rescueFromItems(tokens, allNodes);
 
-  // Hierarchical boost: when subcategory also matches, raise category confidence
-  // slightly — matching at two levels is stronger evidence.
-  const catConfidence = bestSubcategory
-    ? Math.min(1, bestCategory.confidence * 1.1)
-    : bestCategory.confidence;
+  const topDown: ClassifyResult | null = bestCategory
+    ? (() => {
+        const subcategories = allNodes.filter(
+          (n) => n.is_subcategory && !n.is_item && n.parent_id === bestCategory.node.id,
+        );
+        const bestSubcategory = bestMatch(tokens, subcategories, MIN_CONFIDENCE * 0.8);
+        const catConfidence = bestSubcategory
+          ? Math.min(1, bestCategory.confidence * 1.1)
+          : bestCategory.confidence;
+        const items = bestSubcategory
+          ? allNodes.filter((n) => n.is_item && n.parent_id === bestSubcategory.node.id)
+          : [];
+        const bestItem = bestMatch(tokens, items, MIN_CONFIDENCE * 0.7);
+        return {
+          category: bestCategory.node.name,
+          categoryId: bestCategory.node.id,
+          subcategory: bestSubcategory?.node.name ?? null,
+          subcategoryId: bestSubcategory?.node.id ?? null,
+          item: bestItem?.node.name ?? null,
+          itemId: bestItem?.node.id ?? null,
+          confidence: {
+            category: catConfidence,
+            subcategory: bestSubcategory?.confidence ?? 0,
+            item: bestItem?.confidence ?? 0,
+          },
+        };
+      })()
+    : null;
 
-  const items = bestSubcategory
-    ? allNodes.filter((n) => n.is_item && n.parent_id === bestSubcategory.node.id)
-    : [];
-  const bestItem = bestMatch(tokens, items, MIN_CONFIDENCE * 0.7);
+  // A rescue-path result with a real item match dominates a top-down result
+  // that couldn't reach a leaf (subcategory or item null). And when both have
+  // items, the higher-confidence item wins — leaf specificity is the whole
+  // point of learning per-item keywords.
+  const topDownItemScore = topDown?.confidence.item ?? 0;
+  const rescueItemScore = rescue.confidence.item;
+  const rescueBeatsTopDown =
+    rescueItemScore > 0 &&
+    (topDown === null ||
+      topDown.item === null ||
+      rescueItemScore > topDownItemScore * 1.1);
 
-  return {
-    category: bestCategory.node.name,
-    categoryId: bestCategory.node.id,
-    subcategory: bestSubcategory?.node.name ?? null,
-    subcategoryId: bestSubcategory?.node.id ?? null,
-    item: bestItem?.node.name ?? null,
-    itemId: bestItem?.node.id ?? null,
-    confidence: {
-      category: catConfidence,
-      subcategory: bestSubcategory?.confidence ?? 0,
-      item: bestItem?.confidence ?? 0,
-    },
-  };
+  if (rescueBeatsTopDown) return rescue;
+  return topDown ?? rescue;
 }
