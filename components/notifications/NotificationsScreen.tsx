@@ -70,12 +70,16 @@ export function NotificationsScreen() {
     if (!anyUnread) return;
     const totalBefore = unreadTicketCount + unreadAnnouncementCount;
     try {
-      const jobs: Promise<unknown>[] = [];
-      // Use mutateAsync so optimistic-update + rollback in useMarkRead still
-      // run; a bare API call would leave stale unread flags in the cache on
-      // failure.
-      if (unreadTicketCount > 0) jobs.push(markAll.mutateAsync());
-      if (unreadAnnouncementCount > 0) jobs.push(markAllBroadcastsRead());
+      // Always fire BOTH jobs — the "kind" of an unread item is not the same
+      // as its data source: gold_rate broadcasts render under the Alerts tab
+      // (kind='ticket') but live in the broadcasts table, so gating markAll
+      // DB writes on unreadTicketCount or broadcast writes on unreadAnnouncement
+      // both miss the mixed-source case. markAllBroadcastsRead now iterates
+      // both feeds internally and no-ops when nothing is unread.
+      const jobs: Promise<unknown>[] = [
+        markAll.mutateAsync().catch(() => 0),
+        markAllBroadcastsRead(),
+      ];
       await Promise.all(jobs);
       // Force-refetch is deliberately outside the mutation onSettled: a silent
       // RLS block on the UPDATE returns 0 rows, no error — the optimistic

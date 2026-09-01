@@ -141,16 +141,27 @@ export function useUnifiedNotifications(userId: string, storeId: string | null) 
     qc.invalidateQueries({ queryKey: QUERY_KEYS.broadcastReads(userId) });
   }, [userId, qc]);
 
+  // Mark EVERY unread broadcast read, from both feeds. gold_rate broadcasts
+  // render under the Alerts tab (kind='ticket') so they land in
+  // ticketNotifications, not announcementNotifications — iterating only the
+  // announcements list left every unread gold-rate broadcast permanently
+  // unread, which was the root cause of "Mark all read does nothing" when
+  // the visible unread items were all rate posters.
   const markAllBroadcastsRead = useCallback(async () => {
     if (!userId) return;
-    const unreadIds = announcementNotifications
-      .filter((n) => !n.is_read && n.broadcastId)
-      .map((n) => n.broadcastId as string);
+    const collectUnreadBroadcastIds = (items: FeedItem[]) =>
+      items.filter((n) => !n.is_read && n.broadcastId).map((n) => n.broadcastId as string);
+    const unreadIds = Array.from(
+      new Set([
+        ...collectUnreadBroadcastIds(announcementNotifications),
+        ...collectUnreadBroadcastIds(ticketNotifications),
+      ]),
+    );
     if (!unreadIds.length) return;
     await markBroadcastsRead(userId, unreadIds);
     setUnreadAnnouncementCount(0);
     qc.invalidateQueries({ queryKey: QUERY_KEYS.broadcastReads(userId) });
-  }, [userId, announcementNotifications, qc]);
+  }, [userId, announcementNotifications, ticketNotifications, qc]);
 
   return {
     feed,
