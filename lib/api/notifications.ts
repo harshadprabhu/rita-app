@@ -29,7 +29,7 @@ export async function markNotificationRead(id: string): Promise<void> {
   }
 }
 
-export async function markAllNotificationsRead(userId: string): Promise<void> {
+export async function markAllNotificationsRead(userId: string): Promise<number> {
   const { data, error } = await supabase
     .from('notifications')
     .update({ is_read: true })
@@ -37,8 +37,9 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
     .eq('is_read', false)
     .select('id');
   if (error) throw error;
-  // Zero rows here just means "nothing was unread" — not an error.
-  void data;
+  // Return count so the UI can confirm the write actually landed — a
+  // silent-RLS block would look like success otherwise.
+  return data?.length ?? 0;
 }
 
 /** Remove all of a user's ticket notifications from their inbox. */

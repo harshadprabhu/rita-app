@@ -18,6 +18,7 @@ import { deleteAllNotifications } from '../../lib/api/notifications';
 import { QUERY_KEYS } from '../../constants/queryKeys';
 import { useAuthStore } from '../../stores/authStore';
 import { useNotificationStore } from '../../stores/notificationStore';
+import { useUiStore } from '../../stores/uiStore';
 import { theme } from '../../constants/theme';
 
 type Tab = 'alerts' | 'announcements';
@@ -33,6 +34,7 @@ export function NotificationsScreen() {
     unreadTicketCount, unreadAnnouncementCount, markAllBroadcastsRead, markBroadcastRead,
   } = useUnifiedNotifications(userId, profile?.store_id ?? null);
   const { markOne, markAll } = useMarkRead(userId);
+  const showToast = useUiStore((s) => s.showToast);
 
   const clearedAt = useNotificationStore((s) => s.alertsClearedAt);
   const setClearedAt = useNotificationStore((s) => s.setAlertsClearedAt);
@@ -53,9 +55,43 @@ export function NotificationsScreen() {
 
   const anyUnread = unreadTicketCount > 0 || unreadAnnouncementCount > 0;
 
-  const markAllRead = () => {
-    if (activeTab === 'alerts' && unreadTicketCount > 0) markAll.mutate();
-    if (activeTab === 'announcements' && unreadAnnouncementCount > 0) markAllBroadcastsRead();
+  // Mark-all-read must clear BOTH data sources (DB notifications AND broadcast
+  // reads) unconditionally, not just the active tab's. Two reasons:
+  //   1) gold_rate broadcasts render under the Alerts tab (kind='ticket') but
+  //      live in the broadcasts table, so a tab-scoped markAll on 'alerts'
+  //      would miss them.
+  //   2) Users hit this button to clear the entire unread state — a tab-scoped
+  //      clear leaves the OTHER tab's badge unresolved, so on the next sign-in
+  //      the count still shows unread and the fix feels like it did nothing.
+  // Also awaits the DB write and refetches, so a silent RLS block or network
+  // failure surfaces a specific error instead of a silent optimistic-only
+  // clear that resurrects on next sign-in.
+  const markAllRead = async () => {
+    if (!anyUnread) return;
+    const totalBefore = unreadTicketCount + unreadAnnouncementCount;
+    try {
+      const jobs: Promise<unknown>[] = [];
+      // Use mutateAsync so optimistic-update + rollback in useMarkRead still
+      // run; a bare API call would leave stale unread flags in the cache on
+      // failure.
+      if (unreadTicketCount > 0) jobs.push(markAll.mutateAsync());
+      if (unreadAnnouncementCount > 0) jobs.push(markAllBroadcastsRead());
+      await Promise.all(jobs);
+      // Force-refetch is deliberately outside the mutation onSettled: a silent
+      // RLS block on the UPDATE returns 0 rows, no error — the optimistic
+      // clear then survives locally while DB still has is_read=false, so on
+      // next sign-in the alerts resurrect as unread. Refetching reconciles.
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: QUERY_KEYS.notifications(userId) }),
+        qc.invalidateQueries({ queryKey: QUERY_KEYS.broadcastReads(userId) }),
+      ]);
+      showToast(`Marked ${totalBefore} as read`, 'success');
+    } catch (err) {
+      showToast(
+        `Could not mark all read: ${err instanceof Error ? err.message : String(err)}`,
+        'error',
+      );
+    }
   };
 
   const clearAll = useMutation({

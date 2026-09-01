@@ -91,6 +91,10 @@ export function useMarkRead(userId: string) {
       if (ctx?.prev) qc.setQueryData(QUERY_KEYS.notifications(userId), ctx.prev);
       showAlert('Could not mark all read', err instanceof Error ? err.message : String(err));
     },
+    // Refetch is critical: if the DB write silently no-ops (RLS misconfig,
+    // stale JWT, etc.), the optimistic cache stays "all read" while the DB
+    // still has is_read=false, so next sign-in resurrects them all as unread.
+    // A hard refetch immediately reconciles cache with DB truth.
     onSettled: () => qc.invalidateQueries({ queryKey: QUERY_KEYS.notifications(userId) }),
   });
 
