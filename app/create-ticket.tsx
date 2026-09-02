@@ -299,19 +299,21 @@ export default function CreateTicket() {
         </View>
       );
     }
-    if (msg.kind === 'classify') return <ClassifyCard key={msg.id} />;
-    if (msg.kind === 'attach') return <AttachCard key={msg.id} />;
-    if (msg.kind === 'contact') return <ContactCard key={msg.id} />;
-    if (msg.kind === 'summary') return <SummaryCard key={msg.id} />;
+    if (msg.kind === 'classify') return <React.Fragment key={msg.id}>{renderClassifyCard()}</React.Fragment>;
+    if (msg.kind === 'attach') return <React.Fragment key={msg.id}>{renderAttachCard()}</React.Fragment>;
+    if (msg.kind === 'contact') return <React.Fragment key={msg.id}>{renderContactCard()}</React.Fragment>;
+    if (msg.kind === 'summary') return <React.Fragment key={msg.id}>{renderSummaryCard()}</React.Fragment>;
     return null;
   };
 
-  // ── Inline cards — declared inline so they close over the create-ticket state
-  // without a Context/prop-drilling ceremony. Each renders directly under the
-  // latest bot bubble that anchors it.
+  // ── Inline cards — plain JSX-returning functions, NOT nested React
+  // components. A nested component's identity is fresh on every parent
+  // re-render, which unmounts + remounts every child on every keystroke —
+  // that's why the phone-number TextInput kept losing focus and the numpad
+  // closed after each digit. Returning JSX keeps the same element instances
+  // across renders, so the TextInput stays mounted and focused.
 
-  function ClassifyCard() {
-    return (
+  const renderClassifyCard = () => (
       <View style={styles.card}>
         <Text style={styles.cardLabel}>PRIORITY</Text>
         <View style={styles.pillRow}>
@@ -405,11 +407,9 @@ export default function CreateTicket() {
           <Text style={styles.primaryBtnText}>Confirm</Text>
         </SoftPress>
       </View>
-    );
-  }
+  );
 
-  function AttachCard() {
-    return (
+  const renderAttachCard = () => (
       <View style={styles.card}>
         <View style={styles.attachRow}>
           <SoftPress style={styles.attachBtn} onPress={pickPhoto} disabled={remainingSlots <= 0}>
@@ -453,11 +453,9 @@ export default function CreateTicket() {
           </SoftPress>
         </View>
       </View>
-    );
-  }
+  );
 
-  function ContactCard() {
-    return (
+  const renderContactCard = () => (
       <View style={styles.card}>
         <TextInput
           style={styles.contactInput}
@@ -476,10 +474,9 @@ export default function CreateTicket() {
           <Text style={styles.primaryBtnText}>Continue</Text>
         </SoftPress>
       </View>
-    );
-  }
+  );
 
-  function SummaryCard() {
+  const renderSummaryCard = () => {
     const suggested = [category, subcategory, item].filter(Boolean).join(' > ');
     return (
       <View style={styles.card}>
@@ -511,7 +508,7 @@ export default function CreateTicket() {
         )}
       </View>
     );
-  }
+  };
 
   // ── Header discard confirmation ──────────────────────────────────────────
 
