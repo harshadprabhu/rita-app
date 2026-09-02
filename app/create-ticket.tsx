@@ -1,88 +1,94 @@
-import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image, ActivityIndicator, Modal, Pressable, FlatList, Platform } from 'react-native';
-import { useUiStore } from '../stores/uiStore';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image,
+  ActivityIndicator, Modal, Pressable, Platform, KeyboardAvoidingView,
+} from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
+import { useUiStore } from '../stores/uiStore';
 import { Screen } from '../components/common/Screen';
-import { AppHeader } from '../components/common/AppHeader';
 import { SoftPress } from '../components/common/SoftPress';
 import { createTicket, uploadAttachment, pushTicketToSampark } from '../lib/api/tickets';
 import { getTicketCategories } from '../lib/api/categories';
 import { parsePriority } from '../lib/utils/chatTicketParser';
 import { classifySamparkTicket } from '../lib/utils/samparkClassifier';
-import { useSpeechToText } from '../hooks/useSpeechToText';
 import { useAuthStore } from '../stores/authStore';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { ALL_PRIORITIES } from '../constants/ticket';
 import { TicketPriority } from '../types';
-import { webNoOutline, theme } from '../constants/theme';
+import { theme, webNoOutline } from '../constants/theme';
 import { showAlert } from '../lib/utils/alert';
 
-const MAX_ATTACHMENTS = 10;
+// A chat-style ticket creation flow. The UI feels like the user is
+// conversing with a support bot: they describe the issue, the bot suggests
+// a category/subcategory, they confirm or adjust, then choose whether to
+// attach files, and finally submit. All backend logic (classifier, mutation,
+// uploads) is unchanged from the previous form-based version.
+
+const MAX_ATTACHMENTS = 5;
+
+type Attachment = {
+  uri: string;
+  name: string;
+  kind: 'image' | 'video' | 'document';
+};
+
+type ChatItem =
+  | { id: string; kind: 'bot'; text: string }
+  | { id: string; kind: 'user'; text: string }
+  | { id: string; kind: 'classify' }
+  | { id: string; kind: 'attach' }
+  | { id: string; kind: 'contact' }
+  | { id: string; kind: 'summary' };
+
+type Step = 'awaiting_input' | 'classify' | 'attach' | 'contact' | 'ready';
 
 export default function CreateTicket() {
-  const { t } = useTranslation();
   const profile = useAuthStore((s) => s.profile);
   const queryClient = useQueryClient();
-  const [description, setDescription] = useState('');
-  // Priority + category are auto-assigned from the description by the local
-  // keyword parser. Priority stays overridable; once the user taps a pill,
-  // `priorityOverride` takes over and auto-sync stops.
-  const [priorityOverride, setPriorityOverride] = useState<TicketPriority | null>(null);
-  const [images, setImages] = useState<{ uri: string; name: string }[]>([]);
-  // Validation warnings only appear once the user has tried to submit.
-  const [submitAttempted, setSubmitAttempted] = useState(false);
-  const [contactNumber, setContactNumber] = useState('');
+  const showToast = useUiStore((s) => s.showToast);
 
-  // Category / subcategory / item are auto-detected but fully overridable —
-  // all three are Sampark taxonomy values (from ticket_categories), matched by
-  // the samparkClassifier engine below.
+  // Description + all downstream classification state — same shape as before
+  // so the mutation, classifier, and Sampark upload paths are untouched.
+  const [description, setDescription] = useState('');
+  const [priorityOverride, setPriorityOverride] = useState<TicketPriority | null>(null);
   const [categoryOverride, setCategoryOverride] = useState<string | null>(null);
   const [subcategoryOverride, setSubcategoryOverride] = useState<string | null>(null);
   const [itemOverride, setItemOverride] = useState<string | null>(null);
-  const [picker, setPicker] = useState<null | 'category' | 'subcategory' | 'item'>(null);
-  const [pickerSearch, setPickerSearch] = useState('');
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [contactNumber, setContactNumber] = useState(profile?.phone ?? '');
+
+  // Chat flow state — drives which inline card appears under the latest bot
+  // message. Every user tap that advances the flow appends a new bot bubble +
+  // switches step, so the transcript reads top-down like a real conversation.
+  const [step, setStep] = useState<Step>('awaiting_input');
+  const [draft, setDraft] = useState('');
+  const scrollRef = useRef<ScrollView | null>(null);
+  const [messages, setMessages] = useState<ChatItem[]>([
+    { id: 'greet', kind: 'bot', text: "Hello! Describe your issue and I'll raise a ticket for you." },
+  ]);
 
   const { data: allCategories } = useQuery({ queryKey: ['ticketCategories'], queryFn: getTicketCategories });
   const categories = useMemo(() => (allCategories ?? []).filter((c) => !c.is_subcategory), [allCategories]);
 
-  // Voice-to-text: append each recognised phrase to the description.
-  const speech = useSpeechToText((text) => {
-    setDescription((prev) => (prev ? `${prev.trim()} ${text}` : text));
-  });
-
-  // A single classifier pass over the live Sampark taxonomy drives all three
-  // auto-detected fields — it's data-driven (learned from real historical
-  // tickets), so it re-scores category, subcategory, and item together rather
-  // than three independent heuristics that could disagree with each other.
+  // Live classification of the (possibly-multiple-turn) description.
   const classified = useMemo(() => classifySamparkTicket(description, allCategories ?? []), [description, allCategories]);
   const autoPriority = useMemo(() => parsePriority(description), [description]);
   const priority = priorityOverride ?? autoPriority;
-  // No silent default to the first category anymore — if the classifier
-  // didn't confidently detect one, it stays unset and becomes a required
-  // manual pick (see canSubmit below), rather than quietly filing under
-  // whichever category happens to sort first.
   const category = categoryOverride ?? classified.category;
 
-  // Subcategories belonging to the currently-selected category.
   const subcategories = useMemo(() => {
     const parent = categories.find((c) => c.name === category);
     if (!parent) return [];
     return (allCategories ?? []).filter((c) => c.is_subcategory && !c.is_item && c.parent_id === parent.id);
   }, [allCategories, categories, category]);
 
-  // Only trust the classifier's auto-subcategory when it's for the same
-  // category currently in effect (it may differ once the user overrides
-  // category manually, at which point the picker takes over).
   const autoSubcategory = !categoryOverride || classified.category === categoryOverride ? classified.subcategory : null;
   const subcategory = subcategoryOverride ?? autoSubcategory;
 
-  // Items belonging to the currently-selected subcategory (Sampark's finest
-  // classification level — e.g. Subcategory "POS" → Item "MPOS").
   const items = useMemo(() => {
     const parent = subcategories.find((c) => c.name === subcategory);
     if (!parent) return [];
@@ -91,41 +97,14 @@ export default function CreateTicket() {
   const autoItem = !subcategoryOverride && (!categoryOverride || classified.category === categoryOverride) ? classified.item : null;
   const item = itemOverride ?? autoItem;
 
-  // Category, subcategory, item, and contact number are all mandatory —
-  // either auto-parsed with confidence or manually picked/typed. A field only
-  // stays optional when there's genuinely nothing to pick from (no
-  // subcategories/items under the current category).
-  const categoryMissing = !category;
-  const subcategoryMissing = subcategories.length > 0 && !subcategory;
-  const itemMissing = items.length > 0 && !item;
-  const contactMissing = !contactNumber.trim();
-  const canSubmit =
-    !!description.trim() && !categoryMissing && !subcategoryMissing && !itemMissing && !contactMissing;
+  // Auto-scroll to the bottom whenever new messages/cards land.
+  useEffect(() => {
+    const id = setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 60);
+    return () => clearTimeout(id);
+  }, [messages.length, step, attachments.length]);
 
-  // The list shown in the picker modal, filtered by the search box.
-  const pickerItems = useMemo(() => {
-    const source = picker === 'category' ? categories : picker === 'subcategory' ? subcategories : items;
-    const q = pickerSearch.trim().toLowerCase();
-    const names = source.map((c) => c.name);
-    return q ? names.filter((n) => n.toLowerCase().includes(q)) : names;
-  }, [picker, categories, subcategories, items, pickerSearch]);
-
-  const openPicker = (mode: 'category' | 'subcategory' | 'item') => { setPickerSearch(''); setPicker(mode); };
-  const selectPicked = (name: string) => {
-    if (picker === 'category') { setCategoryOverride(name); setSubcategoryOverride(null); setItemOverride(null); }
-    else if (picker === 'subcategory') { setSubcategoryOverride(name); setItemOverride(null); }
-    else setItemOverride(name);
-    setPicker(null);
-  };
-
-  // If a prior submit created the DB row but Sampark push failed and the
-  // user retries, we must NOT insert a second ticket. Remembering the id
-  // across retries makes the mutation idempotent — a retry only re-attempts
-  // the Sampark push.
+  // Idempotency + double-tap guard — same rationale as the previous form.
   const createdTicketIdRef = useRef<string | null>(null);
-  // Belt-and-braces double-tap guard. The button already disables on
-  // isPending, but a rapid double-tap in the same JS tick has been observed
-  // to sneak past that check and create duplicate tickets.
   const inFlightRef = useRef(false);
 
   const submit = useMutation({
@@ -133,9 +112,8 @@ export default function CreateTicket() {
       if (!profile?.store_id) throw new Error('No store assigned to your account');
 
       let ticketId = createdTicketIdRef.current;
-      let ticket: Awaited<ReturnType<typeof createTicket>> | null = null;
       if (!ticketId) {
-        ticket = await createTicket({
+        const ticket = await createTicket({
           requester_id: profile.id,
           store_id: profile.store_id,
           description,
@@ -148,15 +126,11 @@ export default function CreateTicket() {
         });
         ticketId = ticket.id;
         createdTicketIdRef.current = ticketId;
-        for (const img of images) {
-          await uploadAttachment(ticketId, img.uri, img.name, 'image');
+        for (const a of attachments) {
+          await uploadAttachment(ticketId, a.uri, a.name, a.kind);
         }
       }
 
-      // Sampark push happens after the DB row exists. On failure, we want to
-      // surface the error so the user can retry — but the retry uses the
-      // ref above so it never creates a second RITA row. sampark-poll's
-      // backstop poller is a secondary safety net.
       let samparkDisplayId: string | null = null;
       try {
         const res = await pushTicketToSampark(ticketId);
@@ -169,154 +143,166 @@ export default function CreateTicket() {
     onSuccess: ({ ticketId, samparkDisplayId }) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tickets() });
       inFlightRef.current = false;
-      // Clear the idempotency ref so navigating away and creating a NEW
-      // ticket later isn't blocked by the previous one.
       createdTicketIdRef.current = null;
-
-      const idLabel = samparkDisplayId ? `#${samparkDisplayId}` : 'Ticket created (Sampark sync pending)';
-      const alertBody = samparkDisplayId
-        ? `Your ticket ${idLabel} has been created and registered at Sampark.`
-        : 'Your ticket has been created. The Sampark sync will complete in the background.';
-      useUiStore.getState().showToast(`Ticket created ${samparkDisplayId ? idLabel : ''}`.trim(), 'success');
-      showAlert('Ticket created', alertBody, [
-        { text: 'OK', onPress: () => router.replace(`/tickets/${ticketId}`) },
-      ]);
+      const idLabel = samparkDisplayId ? `#${samparkDisplayId}` : 'created';
+      showToast(`Ticket ${idLabel}`, 'success');
+      showAlert(
+        'Ticket created',
+        samparkDisplayId
+          ? `Your ticket #${samparkDisplayId} has been created and registered at Sampark.`
+          : 'Your ticket has been created. The Sampark sync will complete in the background.',
+        [{ text: 'OK', onPress: () => router.replace(`/tickets/${ticketId}`) }],
+      );
     },
-    onError: () => {
-      inFlightRef.current = false;
-    },
+    onError: () => { inFlightRef.current = false; },
   });
 
-  const addAsset = (asset: ImagePicker.ImagePickerAsset) => {
-    setImages((prev) => [...prev, { uri: asset.uri, name: asset.fileName ?? `photo_${Date.now()}.jpg` }]);
+  // ── Chat step transitions ────────────────────────────────────────────────
+
+  const sendDraft = () => {
+    const text = draft.trim();
+    if (!text || step !== 'awaiting_input') return;
+    setDescription(text);
+    setDraft('');
+    // Bot reply is added asynchronously so classified props settle first.
+    setMessages((m) => [
+      ...m,
+      { id: `u-${Date.now()}`, kind: 'user', text },
+    ]);
+    setStep('classify');
+    setTimeout(() => {
+      setMessages((m) => [
+        ...m,
+        {
+          id: `b-classify-${Date.now()}`,
+          kind: 'bot',
+          text: "I've classified your issue. Does that look right? Adjust below if needed, then tap Confirm.",
+        },
+        { id: 'card-classify', kind: 'classify' },
+      ]);
+    }, 250);
   };
 
-  const removeImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
+  const confirmClassification = () => {
+    if (!category) {
+      showToast('Please choose a category first', 'error');
+      return;
+    }
+    const suggested = [category, subcategory].filter(Boolean).join(' > ');
+    // Remove the classify card, keep prior bubbles; append confirmation +
+    // attach card. Filtering the card is safer than tracking indices.
+    setMessages((m) => [
+      ...m.filter((x) => x.kind !== 'classify'),
+      { id: `b-attach-${Date.now()}`, kind: 'bot', text: `Got it — ${suggested}. Would you like to attach any files? (photos, videos, or documents — up to ${MAX_ATTACHMENTS})` },
+      { id: 'card-attach', kind: 'attach' },
+    ]);
+    setStep('attach');
   };
 
-  const openCamera = async () => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) return;
-    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
-    if (!result.canceled && result.assets[0]) addAsset(result.assets[0]);
+  const finishAttachStep = () => {
+    // If we don't have a contact number, ask for one before summary.
+    if (!contactNumber.trim()) {
+      setMessages((m) => [
+        ...m.filter((x) => x.kind !== 'attach'),
+        { id: `b-contact-${Date.now()}`, kind: 'bot', text: 'One more thing — what phone number should we use for follow-up on this ticket?' },
+        { id: 'card-contact', kind: 'contact' },
+      ]);
+      setStep('contact');
+      return;
+    }
+    proceedToSummary();
   };
 
-  const openGallery = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
-    if (!result.canceled && result.assets[0]) addAsset(result.assets[0]);
+  const proceedToSummary = () => {
+    setMessages((m) => [
+      ...m.filter((x) => x.kind !== 'attach' && x.kind !== 'contact'),
+      { id: `b-ready-${Date.now()}`, kind: 'bot', text: 'Ready to submit your ticket!' },
+      { id: 'card-summary', kind: 'summary' },
+    ]);
+    setStep('ready');
   };
 
-  // Let the user choose the camera or the gallery. On web there's no camera
-  // picker, so go straight to file selection.
-  const pickImage = () => {
-    if (images.length >= MAX_ATTACHMENTS) return;
-    if (Platform.OS === 'web') { openGallery(); return; }
+  const doSubmit = () => {
+    if (inFlightRef.current || submit.isPending) return;
+    if (!description.trim() || !category) return;
+    inFlightRef.current = true;
+    submit.mutate();
+  };
+
+  // ── Attachment picking ───────────────────────────────────────────────────
+
+  const remainingSlots = MAX_ATTACHMENTS - attachments.length;
+
+  const addAttachment = (a: Attachment) => setAttachments((prev) => [...prev, a]);
+  const removeAttachment = (i: number) => setAttachments((prev) => prev.filter((_, idx) => idx !== i));
+
+  const pickPhoto = async () => {
+    if (remainingSlots <= 0) return;
+    if (Platform.OS === 'web') {
+      const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+      if (!r.canceled && r.assets[0]) addAttachment({ uri: r.assets[0].uri, name: r.assets[0].fileName ?? `photo_${Date.now()}.jpg`, kind: 'image' });
+      return;
+    }
     showAlert('Add photo', 'Take a new photo or choose from your gallery.', [
-      { text: 'Camera', onPress: openCamera },
-      { text: 'Gallery', onPress: openGallery },
+      { text: 'Camera', onPress: async () => {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (!perm.granted) return;
+        const r = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+        if (!r.canceled && r.assets[0]) addAttachment({ uri: r.assets[0].uri, name: r.assets[0].fileName ?? `photo_${Date.now()}.jpg`, kind: 'image' });
+      } },
+      { text: 'Gallery', onPress: async () => {
+        const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8 });
+        if (!r.canceled && r.assets[0]) addAttachment({ uri: r.assets[0].uri, name: r.assets[0].fileName ?? `photo_${Date.now()}.jpg`, kind: 'image' });
+      } },
       { text: 'Cancel', style: 'cancel' },
     ]);
   };
 
-  return (
-    <Screen>
-      <AppHeader title="Report an Issue" showBack />
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="always">
-        <View style={styles.labelRow}>
-          <Text style={styles.label}>Describe the issue</Text>
-          {speech.supported && (
-            <TouchableOpacity
-              style={[styles.micBtn, speech.listening && styles.micBtnActive]}
-              onPress={() => (speech.listening ? speech.stop() : speech.start())}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name={speech.listening ? 'stop' : 'mic'}
-                size={14}
-                color={speech.listening ? '#fff' : theme.colors.brand}
-              />
-              <Text style={[styles.micBtnText, speech.listening && styles.micBtnTextActive]}>
-                {speech.listening ? 'Listening… tap to stop' : 'Speak'}
-              </Text>
-            </TouchableOpacity>
-          )}
+  const pickVideo = async () => {
+    if (remainingSlots <= 0) return;
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Videos, quality: 0.8 });
+    if (!r.canceled && r.assets[0]) addAttachment({ uri: r.assets[0].uri, name: r.assets[0].fileName ?? `video_${Date.now()}.mp4`, kind: 'video' });
+  };
+
+  const pickDocument = async () => {
+    if (remainingSlots <= 0) return;
+    const r = await DocumentPicker.getDocumentAsync({ multiple: false, copyToCacheDirectory: true });
+    if (!r.canceled && r.assets?.[0]) addAttachment({ uri: r.assets[0].uri, name: r.assets[0].name ?? `document_${Date.now()}`, kind: 'document' });
+  };
+
+  // ── Render helpers ───────────────────────────────────────────────────────
+
+  const renderMessage = (msg: ChatItem) => {
+    if (msg.kind === 'bot') {
+      return (
+        <View key={msg.id} style={styles.botRow}>
+          <View style={styles.botAvatar}><Ionicons name="hardware-chip-outline" size={16} color={theme.colors.brand} /></View>
+          <View style={styles.botBubble}><Text style={styles.botText}>{msg.text}</Text></View>
         </View>
-        <TextInput
-          style={styles.textArea}
-          value={description}
-          onChangeText={setDescription}
-          placeholder="What happened? Be as specific as possible…"
-          placeholderTextColor={theme.colors.textTertiary}
-          multiline
-          numberOfLines={5}
-        />
-        {speech.error ? <Text style={styles.micError}>{speech.error}</Text> : null}
+      );
+    }
+    if (msg.kind === 'user') {
+      return (
+        <View key={msg.id} style={styles.userRow}>
+          <View style={styles.userBubble}><Text style={styles.userText}>{msg.text}</Text></View>
+        </View>
+      );
+    }
+    if (msg.kind === 'classify') return <ClassifyCard key={msg.id} />;
+    if (msg.kind === 'attach') return <AttachCard key={msg.id} />;
+    if (msg.kind === 'contact') return <ContactCard key={msg.id} />;
+    if (msg.kind === 'summary') return <SummaryCard key={msg.id} />;
+    return null;
+  };
 
-        <Text style={[styles.label, styles.spaced]}>
-          Category (required) {categoryOverride ? '' : classified.category ? '· auto-detected' : ''}
-        </Text>
-        <TouchableOpacity
-          style={[styles.selectRow, submitAttempted && categoryMissing && styles.selectRowError]}
-          onPress={() => openPicker('category')}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="pricetag-outline" size={16} color={theme.colors.brand} />
-          <Text style={[styles.selectValue, !category && styles.selectPlaceholder]}>
-            {category ?? 'Select a category'}
-          </Text>
-          <Text style={styles.selectChange}>{category ? 'Change' : ''}</Text>
-          <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
-        </TouchableOpacity>
-        {submitAttempted && categoryMissing && <Text style={styles.micError}>Please choose a category.</Text>}
+  // ── Inline cards — declared inline so they close over the create-ticket state
+  // without a Context/prop-drilling ceremony. Each renders directly under the
+  // latest bot bubble that anchors it.
 
-        <Text style={[styles.label, styles.spaced]}>
-          Subcategory {subcategories.length > 0 ? '(required)' : ''}
-        </Text>
-        <TouchableOpacity
-          style={[styles.selectRow, submitAttempted && subcategoryMissing && styles.selectRowError]}
-          onPress={() => openPicker('subcategory')}
-          activeOpacity={0.7}
-          disabled={subcategories.length === 0}
-        >
-          <Ionicons name="git-branch-outline" size={16} color={subcategories.length ? theme.colors.brand : theme.colors.textTertiary} />
-          <Text style={[styles.selectValue, !subcategory && styles.selectPlaceholder]}>
-            {subcategory ?? (subcategories.length ? 'Select a subcategory' : 'None available')}
-          </Text>
-          {subcategories.length > 0 && <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />}
-        </TouchableOpacity>
-        {submitAttempted && subcategoryMissing && <Text style={styles.micError}>Please choose a subcategory.</Text>}
-
-        <Text style={[styles.label, styles.spaced]}>
-          Item {items.length > 0 ? '(required)' : ''}
-        </Text>
-        <TouchableOpacity
-          style={[styles.selectRow, submitAttempted && itemMissing && styles.selectRowError]}
-          onPress={() => openPicker('item')}
-          activeOpacity={0.7}
-          disabled={items.length === 0}
-        >
-          <Ionicons name="pricetags-outline" size={16} color={items.length ? theme.colors.brand : theme.colors.textTertiary} />
-          <Text style={[styles.selectValue, !item && styles.selectPlaceholder]}>
-            {item ?? (items.length ? 'Select an item' : 'None available')}
-          </Text>
-          {items.length > 0 && <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />}
-        </TouchableOpacity>
-        {submitAttempted && itemMissing && <Text style={styles.micError}>Please choose an item.</Text>}
-
-        <Text style={[styles.label, styles.spaced]}>Contact Number (required)</Text>
-        <TextInput
-          style={[styles.contactInput, submitAttempted && contactMissing && styles.selectRowError]}
-          value={contactNumber}
-          onChangeText={setContactNumber}
-          placeholder="Phone number for this ticket"
-          placeholderTextColor={theme.colors.textTertiary}
-          keyboardType="phone-pad"
-          autoComplete="tel"
-        />
-        {submitAttempted && contactMissing && <Text style={styles.micError}>Please enter a contact number.</Text>}
-
-        <Text style={[styles.label, styles.spaced]}>Priority</Text>
+  function ClassifyCard() {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.cardLabel}>PRIORITY</Text>
         <View style={styles.pillRow}>
           {ALL_PRIORITIES.map((p) => (
             <SoftPress
@@ -328,59 +314,230 @@ export default function CreateTicket() {
             </SoftPress>
           ))}
         </View>
-        <Text style={styles.hint}>
-          {priorityOverride ? 'Manually set — tap to change.' : 'Auto-detected from your description. Tap to override.'}
-        </Text>
 
-        <Text style={[styles.label, styles.spaced]}>Photos ({images.length}/{MAX_ATTACHMENTS})</Text>
-        <View style={styles.imagesRow}>
-          {images.map((img, i) => (
-            <View key={i} style={styles.thumbWrap}>
-              <Image source={{ uri: img.uri }} style={styles.thumb} />
-              <TouchableOpacity style={styles.removeThumbBtn} onPress={() => removeImage(i)} hitSlop={8}>
-                <Ionicons name="close" size={12} color="#fff" />
-              </TouchableOpacity>
+        <Text style={[styles.cardLabel, styles.cardLabelSpaced]}>CATEGORY</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          {categories.map((c) => {
+            const selected = category === c.name;
+            return (
+              <SoftPress
+                key={c.id}
+                style={[styles.chip, selected && styles.chipSelected]}
+                onPress={() => {
+                  setCategoryOverride(c.name);
+                  setSubcategoryOverride(null);
+                  setItemOverride(null);
+                }}
+              >
+                <Text style={[styles.chipText, selected && styles.chipTextSelected]} numberOfLines={1}>{c.name}</Text>
+              </SoftPress>
+            );
+          })}
+        </ScrollView>
+
+        {subcategories.length > 0 && (
+          <>
+            <Text style={[styles.cardLabel, styles.cardLabelSpaced]}>SUB-CATEGORY</Text>
+            <View style={styles.chipWrap}>
+              {subcategories.map((c) => {
+                const selected = subcategory === c.name;
+                return (
+                  <SoftPress
+                    key={c.id}
+                    style={[styles.chip, selected && styles.chipSelected]}
+                    onPress={() => {
+                      setSubcategoryOverride(c.name);
+                      setItemOverride(null);
+                    }}
+                  >
+                    <Text style={[styles.chipText, selected && styles.chipTextSelected]} numberOfLines={1}>{c.name}</Text>
+                  </SoftPress>
+                );
+              })}
             </View>
-          ))}
-          {images.length < MAX_ATTACHMENTS && (
-            <TouchableOpacity style={styles.addThumb} onPress={pickImage}>
-              <Ionicons name="camera-outline" size={22} color={theme.colors.brand} />
-            </TouchableOpacity>
-          )}
+          </>
+        )}
+
+        <SoftPress style={[styles.primaryBtn, !category && styles.primaryBtnDisabled]} onPress={confirmClassification}>
+          <Ionicons name="checkmark" size={16} color="#fff" />
+          <Text style={styles.primaryBtnText}>Confirm</Text>
+        </SoftPress>
+      </View>
+    );
+  }
+
+  function AttachCard() {
+    return (
+      <View style={styles.card}>
+        <View style={styles.attachRow}>
+          <SoftPress style={styles.attachBtn} onPress={pickPhoto} disabled={remainingSlots <= 0}>
+            <Ionicons name="camera-outline" size={20} color={theme.colors.brand} />
+            <Text style={styles.attachBtnText}>Photo</Text>
+          </SoftPress>
+          <SoftPress style={styles.attachBtn} onPress={pickVideo} disabled={remainingSlots <= 0}>
+            <Ionicons name="videocam-outline" size={20} color="#7C3AED" />
+            <Text style={[styles.attachBtnText, { color: '#7C3AED' }]}>Video</Text>
+          </SoftPress>
+          <SoftPress style={styles.attachBtn} onPress={pickDocument} disabled={remainingSlots <= 0}>
+            <Ionicons name="document-outline" size={20} color="#F59E0B" />
+            <Text style={[styles.attachBtnText, { color: '#F59E0B' }]}>Document</Text>
+          </SoftPress>
         </View>
 
+        {attachments.length > 0 && (
+          <View style={styles.attachedList}>
+            {attachments.map((a, i) => (
+              <View key={i} style={styles.attachedRow}>
+                {a.kind === 'image' ? (
+                  <Image source={{ uri: a.uri }} style={styles.attachedThumb} />
+                ) : (
+                  <View style={[styles.attachedThumb, styles.attachedIconThumb]}>
+                    <Ionicons name={a.kind === 'video' ? 'videocam' : 'document'} size={18} color={theme.colors.brand} />
+                  </View>
+                )}
+                <Text style={styles.attachedName} numberOfLines={1}>{a.name}</Text>
+                <TouchableOpacity onPress={() => removeAttachment(i)} hitSlop={8}>
+                  <Ionicons name="close-circle" size={20} color={theme.colors.textTertiary} />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+
+        <View style={styles.attachFooter}>
+          <Text style={styles.attachCount}>{attachments.length}/{MAX_ATTACHMENTS} files attached</Text>
+          <SoftPress style={styles.skipBtn} onPress={finishAttachStep}>
+            <Text style={styles.skipBtnText}>{attachments.length ? 'Continue' : 'Skip'}</Text>
+          </SoftPress>
+        </View>
+      </View>
+    );
+  }
+
+  function ContactCard() {
+    return (
+      <View style={styles.card}>
+        <TextInput
+          style={styles.contactInput}
+          value={contactNumber}
+          onChangeText={setContactNumber}
+          placeholder="Phone number"
+          placeholderTextColor={theme.colors.textTertiary}
+          keyboardType="phone-pad"
+          autoComplete="tel"
+        />
         <SoftPress
-          style={[styles.submitBtn, theme.shadows.md, submit.isPending && styles.submitBtnDisabled]}
-          onPress={() => {
-            if (inFlightRef.current || submit.isPending) return;
-            if (!canSubmit) { setSubmitAttempted(true); return; }
-            inFlightRef.current = true;
-            submit.mutate();
-          }}
-          disabled={submit.isPending || inFlightRef.current}
+          style={[styles.primaryBtn, !contactNumber.trim() && styles.primaryBtnDisabled]}
+          onPress={() => contactNumber.trim() && proceedToSummary()}
         >
-          <LinearGradient colors={theme.gradients.gold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.submitBtnInner}>
-            {submit.isPending ? <ActivityIndicator color={theme.colors.textPrimary} /> : (
-              <>
-                <Ionicons name="send" size={15} color={theme.colors.textPrimary} />
-                <Text style={styles.submitBtnText}>Submit Ticket</Text>
-              </>
-            )}
-          </LinearGradient>
+          <Ionicons name="checkmark" size={16} color="#fff" />
+          <Text style={styles.primaryBtnText}>Continue</Text>
+        </SoftPress>
+      </View>
+    );
+  }
+
+  function SummaryCard() {
+    const suggested = [category, subcategory, item].filter(Boolean).join(' > ');
+    return (
+      <View style={styles.card}>
+        <View style={styles.summaryBox}>
+          <Text style={styles.summaryHeading}>Summary</Text>
+          <Text style={styles.summaryDescription} numberOfLines={3}>{description}</Text>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryKey}>Category</Text>
+            <Text style={styles.summaryVal} numberOfLines={1}>{suggested || '—'}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryKey}>Priority</Text>
+            <Text style={[styles.summaryVal, { color: theme.priorityColors[priority] }]}>{priority}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryKey}>Attachments</Text>
+            <Text style={styles.summaryVal}>{attachments.length}</Text>
+          </View>
+        </View>
+        <SoftPress style={styles.submitBtn} onPress={doSubmit}>
+          <Ionicons name="send" size={16} color="#fff" />
+          <Text style={styles.submitBtnText}>Submit Ticket</Text>
         </SoftPress>
         {submit.isError && (
           <Text style={styles.error}>
             {String(submit.error)}
-            {createdTicketIdRef.current
-              ? '\n\nYour ticket was saved locally but the Sampark sync failed. Tap Submit again to retry — a duplicate ticket will NOT be created.'
-              : ''}
+            {createdTicketIdRef.current ? '\n\nTap Submit again to retry — no duplicate will be created.' : ''}
           </Text>
         )}
-      </ScrollView>
+      </View>
+    );
+  }
 
-      {/* Full-screen loader with the Indriya gazelle running while the ticket
-        * is being created + pushed to Sampark. Blocks all input so a second
-        * tap can't sneak in and create a duplicate. */}
+  // ── Header discard confirmation ──────────────────────────────────────────
+
+  const discard = () => {
+    if (step === 'awaiting_input' && !draft) { router.back(); return; }
+    showAlert('Discard ticket?', 'Your draft will be lost.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Discard', style: 'destructive', onPress: () => router.back() },
+    ]);
+  };
+
+  return (
+    <Screen edges={['top', 'left', 'right']}>
+      {/* Custom chat-style header — not the standard AppHeader, so the trash
+          "Discard" affordance can sit on the right at the same visual weight
+          as the back arrow. */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={discard} hitSlop={10} style={styles.headerSide}>
+          <Ionicons name="chevron-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>New Ticket</Text>
+        <TouchableOpacity onPress={discard} hitSlop={10} style={[styles.headerSide, styles.headerSideRight]}>
+          <Ionicons name="trash-outline" size={18} color="rgba(255,255,255,0.85)" />
+          <Text style={styles.headerDiscardText}>Discard</Text>
+        </TouchableOpacity>
+      </View>
+
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={80}
+      >
+        <ScrollView
+          ref={scrollRef}
+          style={styles.chat}
+          contentContainerStyle={styles.chatContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          {messages.map(renderMessage)}
+        </ScrollView>
+
+        {/* Bottom composer — only in the initial step. All other steps use the
+            inline card CTAs so the user has a single unambiguous next action. */}
+        {step === 'awaiting_input' && (
+          <View style={styles.composer}>
+            <TextInput
+              style={[styles.composerInput, webNoOutline]}
+              value={draft}
+              onChangeText={setDraft}
+              placeholder="Describe your issue"
+              placeholderTextColor={theme.colors.textTertiary}
+              multiline
+              onSubmitEditing={sendDraft}
+              blurOnSubmit={false}
+            />
+            <TouchableOpacity
+              style={[styles.sendBtn, !draft.trim() && styles.sendBtnDisabled]}
+              onPress={sendDraft}
+              disabled={!draft.trim()}
+            >
+              <Ionicons name="arrow-up" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        )}
+      </KeyboardAvoidingView>
+
+      {/* Full-screen loader while ticket is being registered + pushed. Same
+          gazelle GIF as before — blocks input to prevent a duplicate. */}
       <Modal visible={submit.isPending} transparent animationType="fade">
         <View style={styles.loaderBackdrop}>
           <Image source={require('../assets/Footer Gazelle.gif')} style={styles.loaderGazelle} resizeMode="contain" />
@@ -390,139 +547,154 @@ export default function CreateTicket() {
           </Text>
         </View>
       </Modal>
-
-      {/* Searchable category / subcategory picker */}
-      <Modal visible={picker !== null} transparent animationType="slide" onRequestClose={() => setPicker(null)}>
-        <Pressable style={styles.pickerBackdrop} onPress={() => setPicker(null)}>
-          <Pressable style={styles.pickerSheet} onPress={(e) => e.stopPropagation()}>
-            <View style={styles.pickerHeader}>
-              <Text style={styles.pickerTitle}>
-                {picker === 'category' ? 'Select category' : picker === 'subcategory' ? 'Select subcategory' : 'Select item'}
-              </Text>
-              <TouchableOpacity onPress={() => setPicker(null)} hitSlop={8}>
-                <Ionicons name="close" size={22} color={theme.colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.pickerSearchBox}>
-              <Ionicons name="search" size={16} color={theme.colors.textTertiary} />
-              <TextInput
-                style={[styles.pickerSearchInput, webNoOutline]}
-                value={pickerSearch}
-                onChangeText={setPickerSearch}
-                placeholder="Search…"
-                placeholderTextColor={theme.colors.textTertiary}
-                autoFocus
-                autoCorrect={false}
-              />
-            </View>
-            <FlatList
-              data={pickerItems}
-              keyExtractor={(name) => name}
-              keyboardShouldPersistTaps="handled"
-              style={{ maxHeight: 360 }}
-              renderItem={({ item: rowName }) => {
-                const selectedValue = picker === 'category' ? category : picker === 'subcategory' ? subcategory : item;
-                const selected = selectedValue === rowName;
-                return (
-                  <TouchableOpacity style={styles.pickerRow} onPress={() => selectPicked(rowName)} activeOpacity={0.7}>
-                    <Text style={[styles.pickerRowText, selected && styles.pickerRowTextSel]}>{rowName}</Text>
-                    {selected && <Ionicons name="checkmark" size={18} color={theme.colors.brand} />}
-                  </TouchableOpacity>
-                );
-              }}
-              ListEmptyComponent={<Text style={styles.pickerEmpty}>No matches</Text>}
-            />
-          </Pressable>
-        </Pressable>
-      </Modal>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { padding: theme.spacing.lg, paddingBottom: theme.spacing.xxl * 2 },
-  label: { fontSize: 11, fontWeight: '700', color: theme.colors.textSecondary, letterSpacing: 0.8, marginBottom: theme.spacing.xs },
-  labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  micBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: theme.colors.brand + '14', borderWidth: 1, borderColor: theme.colors.brand + '33',
-    borderRadius: theme.radius.full, paddingHorizontal: theme.spacing.sm + 2, paddingVertical: 5,
-    marginBottom: theme.spacing.xs,
+  // ── Header ─────────────────────────────────────────────────────────────
+  header: {
+    backgroundColor: theme.colors.brand,
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  micBtnActive: { backgroundColor: theme.colors.error, borderColor: theme.colors.error },
-  micBtnText: { fontSize: 12, fontWeight: '700', color: theme.colors.brand },
-  micBtnTextActive: { color: '#fff' },
-  micError: { fontSize: 12, color: theme.colors.error, marginTop: theme.spacing.xs },
-  spaced: { marginTop: theme.spacing.lg },
-  textArea: {
-    backgroundColor: theme.colors.surface2, borderWidth: 1.5, borderColor: theme.colors.border,
-    borderRadius: theme.radius.md, padding: theme.spacing.md, color: theme.colors.textPrimary,
-    fontSize: 14, minHeight: 110, textAlignVertical: 'top',
+  headerSide: { flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 80 },
+  headerSideRight: { justifyContent: 'flex-end' },
+  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700', letterSpacing: 0.2 },
+  headerDiscardText: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '600' },
+
+  // ── Chat scroll ────────────────────────────────────────────────────────
+  chat: { flex: 1, backgroundColor: '#F5F6FA' },
+  chatContent: { padding: theme.spacing.lg, gap: theme.spacing.md, paddingBottom: theme.spacing.xxl },
+
+  // ── Bot bubble ─────────────────────────────────────────────────────────
+  botRow: { flexDirection: 'row', alignItems: 'flex-start', gap: theme.spacing.sm, maxWidth: '92%' },
+  botAvatar: {
+    width: 30, height: 30, borderRadius: 8,
+    backgroundColor: theme.colors.brand + '15', borderWidth: 1, borderColor: theme.colors.brand + '30',
+    alignItems: 'center', justifyContent: 'center',
   },
-  pillRow: { flexDirection: 'row', gap: theme.spacing.sm },
+  botBubble: {
+    flex: 1, backgroundColor: '#fff', borderRadius: 14,
+    paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm + 2,
+    ...theme.shadows.xs,
+  },
+  botText: { fontSize: 14, color: theme.colors.textPrimary, lineHeight: 20 },
+
+  // ── User bubble ────────────────────────────────────────────────────────
+  userRow: { alignSelf: 'flex-end', maxWidth: '80%' },
+  userBubble: {
+    backgroundColor: theme.colors.brand, borderRadius: 14,
+    paddingHorizontal: theme.spacing.md, paddingVertical: theme.spacing.sm + 2,
+    ...theme.shadows.xs,
+  },
+  userText: { fontSize: 14, color: '#fff', lineHeight: 20 },
+
+  // ── Inline cards under a bot bubble ────────────────────────────────────
+  card: {
+    backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: theme.colors.border,
+    padding: theme.spacing.md, gap: theme.spacing.sm, ...theme.shadows.xs,
+  },
+  cardLabel: { fontSize: 11, fontWeight: '800', color: theme.colors.textSecondary, letterSpacing: 0.8 },
+  cardLabelSpaced: { marginTop: theme.spacing.sm },
+
+  pillRow: { flexDirection: 'row', gap: 6 },
   pill: {
-    flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10,
-    borderWidth: 1, backgroundColor: theme.colors.surface, borderColor: theme.colors.border,
+    flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 8,
+    borderWidth: 1, backgroundColor: '#fff', borderColor: theme.colors.border,
   },
-  pillText: { fontSize: 11, fontWeight: '700', color: theme.colors.textTertiary, textTransform: 'capitalize' },
+  pillText: { fontSize: 12, fontWeight: '700', color: theme.colors.textTertiary, textTransform: 'capitalize' },
+
+  chipRow: { gap: 6, paddingRight: theme.spacing.md },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  chip: {
+    paddingHorizontal: theme.spacing.md, paddingVertical: 8, borderRadius: 8,
+    borderWidth: 1, borderColor: theme.colors.border, backgroundColor: '#fff',
+    maxWidth: 220,
+  },
+  chipSelected: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
+  chipText: { fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary },
+  chipTextSelected: { color: '#fff' },
+
+  primaryBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: theme.colors.brand, borderRadius: 10, paddingVertical: 12, marginTop: theme.spacing.sm,
+  },
+  primaryBtnDisabled: { opacity: 0.5 },
+  primaryBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+
+  // ── Attach card ────────────────────────────────────────────────────────
+  attachRow: { flexDirection: 'row', gap: 8 },
+  attachBtn: {
+    flex: 1, alignItems: 'center', gap: 4, paddingVertical: theme.spacing.md,
+    borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border, backgroundColor: '#F8FAFC',
+  },
+  attachBtnText: { fontSize: 12, fontWeight: '700', color: theme.colors.brand },
+  attachedList: { gap: 8, marginTop: theme.spacing.sm },
+  attachedRow: {
+    flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
+    padding: theme.spacing.sm, backgroundColor: '#F8FAFC', borderRadius: 8,
+  },
+  attachedThumb: {
+    width: 36, height: 36, borderRadius: 6, backgroundColor: theme.colors.border,
+  },
+  attachedIconThumb: { alignItems: 'center', justifyContent: 'center' },
+  attachedName: { flex: 1, fontSize: 12, color: theme.colors.textPrimary },
+  attachFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: theme.spacing.sm },
+  attachCount: { fontSize: 12, color: theme.colors.textTertiary },
+  skipBtn: {
+    paddingHorizontal: theme.spacing.lg, paddingVertical: 8,
+    borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, backgroundColor: '#fff',
+  },
+  skipBtnText: { fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary },
+
+  // ── Contact card ───────────────────────────────────────────────────────
   contactInput: {
-    backgroundColor: theme.colors.surface2, borderWidth: 1.5, borderColor: theme.colors.border,
-    borderRadius: theme.radius.md, paddingHorizontal: theme.spacing.md, height: 48,
+    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: theme.colors.border,
+    borderRadius: 10, paddingHorizontal: theme.spacing.md, height: 44,
     color: theme.colors.textPrimary, fontSize: 14,
   },
-  selectRow: {
-    flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
-    backgroundColor: theme.colors.surface2, borderWidth: 1.5, borderColor: theme.colors.border,
-    borderRadius: theme.radius.md, paddingHorizontal: theme.spacing.md, height: 48,
+
+  // ── Summary card ───────────────────────────────────────────────────────
+  summaryBox: {
+    backgroundColor: '#EEF2FF', borderRadius: 10, padding: theme.spacing.md, gap: 6,
   },
-  selectRowError: { borderColor: theme.colors.error },
-  selectValue: { flex: 1, fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary },
-  selectPlaceholder: { color: theme.colors.textTertiary, fontWeight: '500' },
-  selectChange: { fontSize: 12, fontWeight: '700', color: theme.colors.brand },
-  hint: { fontSize: 11, color: theme.colors.textTertiary, marginTop: theme.spacing.xs },
-  pickerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-  pickerSheet: {
-    backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: theme.radius.xl, borderTopRightRadius: theme.radius.xl,
-    padding: theme.spacing.lg, paddingBottom: theme.spacing.xxl,
-  },
-  pickerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: theme.spacing.md },
-  pickerTitle: { fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary },
-  pickerSearchBox: {
-    flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
-    backgroundColor: theme.colors.surface2, borderWidth: 1.5, borderColor: theme.colors.border,
-    borderRadius: theme.radius.md, paddingHorizontal: theme.spacing.md, height: 44, marginBottom: theme.spacing.sm,
-  },
-  pickerSearchInput: { flex: 1, fontSize: 14, color: theme.colors.textPrimary, padding: 0 },
-  pickerRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border,
-  },
-  pickerRowText: { fontSize: 15, color: theme.colors.textPrimary, flex: 1 },
-  pickerRowTextSel: { color: theme.colors.brand, fontWeight: '700' },
-  pickerEmpty: { textAlign: 'center', color: theme.colors.textTertiary, paddingVertical: theme.spacing.xl },
-  imagesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm },
-  thumbWrap: { width: 72, height: 72 },
-  thumb: { width: 72, height: 72, borderRadius: theme.radius.sm, borderWidth: 1, borderColor: theme.colors.border },
-  removeThumbBtn: {
-    position: 'absolute', top: -6, right: -6, width: 20, height: 20, borderRadius: 10,
-    backgroundColor: theme.colors.error, alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: '#fff', zIndex: 1,
-  },
-  addThumb: {
-    width: 72, height: 72, borderRadius: theme.radius.sm, borderWidth: 1.5, borderColor: theme.colors.border,
-    borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: theme.colors.surface2,
-  },
+  summaryHeading: { fontSize: 13, fontWeight: '800', color: theme.colors.brand, marginBottom: 4 },
+  summaryDescription: { fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary, marginBottom: 6 },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  summaryKey: { fontSize: 12, color: theme.colors.textSecondary },
+  summaryVal: { fontSize: 12, fontWeight: '700', color: theme.colors.textPrimary, maxWidth: '65%', textAlign: 'right' },
+
   submitBtn: {
-    borderRadius: theme.radius.md, overflow: 'hidden', marginTop: theme.spacing.xl,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: theme.colors.brand, borderRadius: 10, paddingVertical: 14, marginTop: theme.spacing.sm,
   },
-  submitBtnInner: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: theme.spacing.sm, height: 52,
+  submitBtnText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  error: { color: theme.colors.error, fontSize: 12, marginTop: theme.spacing.sm, textAlign: 'center' },
+
+  // ── Bottom composer ────────────────────────────────────────────────────
+  composer: {
+    flexDirection: 'row', alignItems: 'flex-end', gap: theme.spacing.sm,
+    padding: theme.spacing.md, backgroundColor: '#fff',
+    borderTopWidth: 1, borderTopColor: theme.colors.border,
   },
-  submitBtnDisabled: { opacity: 0.5 },
-  submitBtnText: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
-  error: { color: theme.colors.error, fontSize: 13, marginTop: theme.spacing.md, textAlign: 'center' },
-  requiredHint: { color: theme.colors.error, fontSize: 12, marginTop: theme.spacing.md, textAlign: 'center', fontWeight: '600' },
+  composerInput: {
+    flex: 1, backgroundColor: '#F5F6FA', borderRadius: 22,
+    paddingHorizontal: theme.spacing.md, paddingVertical: 10,
+    fontSize: 14, color: theme.colors.textPrimary, maxHeight: 120,
+    borderWidth: 1, borderColor: theme.colors.border,
+  },
+  sendBtn: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: theme.colors.brand,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  sendBtnDisabled: { backgroundColor: theme.colors.textTertiary },
+
+  // ── Loader ─────────────────────────────────────────────────────────────
   loaderBackdrop: {
     flex: 1, backgroundColor: 'rgba(15,23,42,0.85)',
     alignItems: 'center', justifyContent: 'center', padding: theme.spacing.xl,
