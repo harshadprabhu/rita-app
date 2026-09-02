@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '../../components/common/Screen';
+import { subscribeToTicket } from '../../lib/realtime/ticketsChannel';
+import { supabase } from '../../lib/supabase';
 import { LoadingOverlay } from '../../components/common/LoadingOverlay';
 import { AttachmentGrid } from '../../components/tickets/AttachmentGrid';
 import { CommentBubble } from '../../components/tickets/CommentBubble';
@@ -49,6 +51,22 @@ export default function TicketDetail() {
   const { data: ticket, isLoading } = useQuery({ queryKey: QUERY_KEYS.ticket(id), queryFn: () => getTicketById(id) });
   const { data: comments } = useQuery({ queryKey: QUERY_KEYS.ticketComments(id), queryFn: () => getComments(id) });
   const { data: auditLog } = useQuery({ queryKey: QUERY_KEYS.ticketAuditLog(id), queryFn: () => getTicketAuditLog(id) });
+
+  // Realtime — any change on this ticket row, and any inserted comment on
+  // it, invalidates the local query so the chat updates without a manual
+  // refresh. The DB-side ticket_comments and tickets tables were just
+  // added to the supabase_realtime publication; before that, this channel
+  // was connecting successfully but the DB never emitted row events for
+  // them, which is why comments felt "not realtime" for so long.
+  useEffect(() => {
+    if (!id) return;
+    const channel = subscribeToTicket(id, () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ticket(id) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ticketComments(id) });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ticketAuditLog(id) });
+    });
+    return () => { supabase.removeChannel(channel); };
+  }, [id, queryClient]);
 
   const addCommentMutation = useMutation({
     mutationFn: (vars: { body: string; isInternal: boolean }) =>

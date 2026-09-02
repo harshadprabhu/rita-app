@@ -101,30 +101,44 @@ function AuthGate() {
   useEffect(() => {
     if (!profile) return;
     (async () => {
+      // Each step wrapped independently so ONE failure (channel setup on
+      // some OEMs, FCM token when Play services is stale, permission popup
+      // dismissed, ...) can't crash the app or block the rest. The previous
+      // "skip Android entirely" workaround came from a crash that was never
+      // root-caused; per-step try/catch + a top-level try lets us keep the
+      // steps that do work while the failing one silently no-ops. Errors
+      // reach console.warn so a real device's logcat still pinpoints them.
       try {
         if (Platform.OS === 'android') {
-          // TEMPORARY: the app crashes immediately after sign-in on the
-          // standalone Android build, and it persisted even after an
-          // earlier fix that only skipped getDevicePushTokenAsync() below —
-          // proof the crash isn't necessarily (or isn't only) that call.
-          // setNotificationChannelAsync() also touches native notification
-          // APIs and was still running unconditionally before that skip, so
-          // it's an equally live suspect. Skipping the ENTIRE Android
-          // notifications branch (channel setup + push token registration)
-          // until a real device crash log (adb logcat) pinpoints the actual
-          // native failure — this trades notifications on Android for an
-          // app that boots, which is the priority right now.
-          console.warn('[push] Android notification setup temporarily disabled — see comment above');
+          try {
+            await Notifications.setNotificationChannelAsync('default', {
+              name: 'Default',
+              importance: Notifications.AndroidImportance.HIGH,
+              sound: 'default',
+            });
+          } catch (e) {
+            console.warn('[push] setNotificationChannelAsync failed:', e);
+          }
+        }
+        let status: Notifications.PermissionStatus | undefined;
+        try {
+          const perm = await Notifications.requestPermissionsAsync();
+          status = perm.status;
+        } catch (e) {
+          console.warn('[push] requestPermissionsAsync failed:', e);
           return;
         }
-        const { status } = await Notifications.requestPermissionsAsync();
         if (status !== 'granted') return;
-        // The *device* (raw FCM) token, not an Expo one: send-push talks to
-        // FCM directly, so nothing routes through Expo's servers.
-        const token = await Notifications.getDevicePushTokenAsync();
-        await updatePushToken(profile.id, token.data).catch(() => null);
-      } catch {
-        // Push token registration is non-critical — never crash the app over it
+        try {
+          // The *device* (raw FCM) token, not an Expo one: send-push talks to
+          // FCM directly, so nothing routes through Expo's servers.
+          const token = await Notifications.getDevicePushTokenAsync();
+          await updatePushToken(profile.id, token.data).catch(() => null);
+        } catch (e) {
+          console.warn('[push] getDevicePushTokenAsync failed:', e);
+        }
+      } catch (e) {
+        console.warn('[push] outer init failed:', e);
       }
     })();
   }, [profile?.id]);
