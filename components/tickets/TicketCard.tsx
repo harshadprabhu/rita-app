@@ -180,7 +180,7 @@ function MenuItem({ icon, color, label, onPress, busy }: { icon: keyof typeof Io
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 16, marginHorizontal: theme.spacing.lg, marginVertical: 5 },
+  card: { borderRadius: 16, marginHorizontal: theme.spacing.lg, marginVertical: 6 },
   // FlatList paints each row over the previous one in list order, so a
   // card's absolutely-positioned menu (below) was getting covered by the
   // NEXT card in the list, which has no zIndex/elevation of its own to lose
@@ -190,32 +190,32 @@ const styles = StyleSheet.create({
   cardMenuOpen: { zIndex: 50, elevation: 12 },
   inner: {
     backgroundColor: theme.colors.surface, borderRadius: 16,
-    paddingVertical: 12, paddingHorizontal: 14, borderWidth: 1, borderColor: theme.colors.border,
+    paddingVertical: 16, paddingHorizontal: 16, borderWidth: 1, borderColor: theme.colors.border,
   },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  title: { flex: 1, fontWeight: '600', fontSize: 13, color: theme.colors.textPrimary, lineHeight: 18 },
-  rightCol: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  priorityPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5 },
-  priorityText: { fontSize: 8, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase' },
-  menuBtn: { padding: 2 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
-  ticketNumber: { fontWeight: '600', fontSize: 9, color: theme.colors.textTertiary, letterSpacing: 0.2 },
-  metaDot: { fontSize: 9, color: theme.colors.textTertiary },
-  metaText: { fontSize: 9, color: theme.colors.textTertiary, maxWidth: 110 },
-  timeAgo: { fontSize: 9, color: theme.colors.textTertiary, fontWeight: '500' },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  title: { flex: 1, fontWeight: '700', fontSize: 15, color: theme.colors.textPrimary, lineHeight: 20 },
+  rightCol: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  priorityPill: { paddingHorizontal: 9, paddingVertical: 4, borderRadius: 7 },
+  priorityText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.6, textTransform: 'uppercase' },
+  menuBtn: { padding: 4 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  ticketNumber: { fontWeight: '700', fontSize: 12, color: theme.colors.textSecondary, letterSpacing: 0.2 },
+  metaDot: { fontSize: 12, color: theme.colors.textTertiary },
+  metaText: { fontSize: 12, color: theme.colors.textSecondary, maxWidth: 140, fontWeight: '500' },
+  timeAgo: { fontSize: 12, color: theme.colors.textTertiary, fontWeight: '500' },
   slaBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: theme.colors.errorBg, paddingHorizontal: 6, paddingVertical: 2,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: theme.colors.errorBg, paddingHorizontal: 8, paddingVertical: 3,
     borderRadius: theme.radius.full,
   },
-  slaBreach: { fontSize: 8, fontWeight: '800', color: theme.priorityColors.high, letterSpacing: 0.4 },
+  slaBreach: { fontSize: 10, fontWeight: '800', color: theme.priorityColors.high, letterSpacing: 0.4 },
   resolvedBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: theme.statusColors.resolved.bg,
-    paddingHorizontal: 6, paddingVertical: 2, borderRadius: theme.radius.full,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: theme.radius.full,
   },
-  resolvedText: { fontSize: 9, fontWeight: '800', color: theme.statusColors.resolved.text, letterSpacing: 0.2 },
+  resolvedText: { fontSize: 11, fontWeight: '800', color: theme.statusColors.resolved.text, letterSpacing: 0.2 },
   // Action menu
   menu: {
     position: 'absolute', top: 40, right: theme.spacing.md, zIndex: 20, elevation: 20,
