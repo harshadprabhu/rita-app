@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, KeyboardAvoidingView } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -131,6 +131,19 @@ export default function TicketDetail() {
 
   return (
     <Screen edges={['top', 'left', 'right']}>
+      {/* KeyboardAvoidingView wraps the ENTIRE screen — not just the chat
+        * area — so when the keyboard opens the hero + subject + tabs slide
+        * up together with the comments list, keeping the CommentInput
+        * visible above the keyboard. The previous scoped wrap left the
+        * input hidden on Android because behavior={undefined} there just
+        * relies on windowSoftInputMode="adjustResize", which doesn't push
+        * a nested flex subtree upward when there's a fixed-height header
+        * above it. `padding` works reliably on both platforms this way. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior="padding"
+        keyboardVerticalOffset={0}
+      >
       {/* ── Navy hero header ─────────────────────────────────────────── */}
       <View style={styles.hero}>
         <TouchableOpacity onPress={() => router.back()} hitSlop={10} style={styles.heroBack}>
@@ -169,11 +182,6 @@ export default function TicketDetail() {
         </TouchableOpacity>
       </View>
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={90}
-      >
         {tab === 'comments' ? (
           <>
             <ScrollView contentContainerStyle={styles.commentsScroll} keyboardShouldPersistTaps="always">
