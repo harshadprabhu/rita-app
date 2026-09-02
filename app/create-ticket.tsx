@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Image,
-  ActivityIndicator, Modal, Pressable, Platform, KeyboardAvoidingView,
+  ActivityIndicator, Modal, Pressable, Platform, KeyboardAvoidingView, FlatList,
 } from 'react-native';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -66,6 +66,12 @@ export default function CreateTicket() {
   // switches step, so the transcript reads top-down like a real conversation.
   const [step, setStep] = useState<Step>('awaiting_input');
   const [draft, setDraft] = useState('');
+  // Searchable picker modal — mirrors what the original form had, so the
+  // three-level taxonomy stays browsable when the auto-parse is wrong. The
+  // dropdown rows themselves just show the current value + a chevron; tapping
+  // opens this modal, which is scrollable and search-filtered.
+  const [picker, setPicker] = useState<null | 'category' | 'subcategory' | 'item'>(null);
+  const [pickerSearch, setPickerSearch] = useState('');
   const scrollRef = useRef<ScrollView | null>(null);
   const [messages, setMessages] = useState<ChatItem[]>([
     { id: 'greet', kind: 'bot', text: "Hello! Describe your issue and I'll raise a ticket for you." },
@@ -328,71 +334,51 @@ export default function CreateTicket() {
           ))}
         </View>
 
+        {/* Dropdown-style select rows. The auto-parsed classifier picks
+            populate the selected value by default; the user only opens the
+            picker if they think the auto-parse is wrong. Same modal used at
+            all three levels (see renderPickerModal below). */}
         <Text style={[styles.cardLabel, styles.cardLabelSpaced]}>CATEGORY</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          {categories.map((c) => {
-            const selected = category === c.name;
-            return (
-              <SoftPress
-                key={c.id}
-                style={[styles.chip, selected && styles.chipSelected]}
-                onPress={() => {
-                  setCategoryOverride(c.name);
-                  setSubcategoryOverride(null);
-                  setItemOverride(null);
-                }}
-              >
-                <Text style={[styles.chipText, selected && styles.chipTextSelected]} numberOfLines={1}>{c.name}</Text>
-              </SoftPress>
-            );
-          })}
-        </ScrollView>
+        <TouchableOpacity
+          style={styles.selectRow}
+          onPress={() => { setPickerSearch(''); setPicker('category'); }}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.selectValue, !category && styles.selectPlaceholder]} numberOfLines={1}>
+            {category ?? 'Select a category'}
+          </Text>
+          <Ionicons name="chevron-down" size={18} color={theme.colors.textTertiary} />
+        </TouchableOpacity>
 
         {subcategories.length > 0 && (
           <>
             <Text style={[styles.cardLabel, styles.cardLabelSpaced]}>SUB-CATEGORY</Text>
-            <View style={styles.chipWrap}>
-              {subcategories.map((c) => {
-                const selected = subcategory === c.name;
-                return (
-                  <SoftPress
-                    key={c.id}
-                    style={[styles.chip, selected && styles.chipSelected]}
-                    onPress={() => {
-                      setSubcategoryOverride(c.name);
-                      setItemOverride(null);
-                    }}
-                  >
-                    <Text style={[styles.chipText, selected && styles.chipTextSelected]} numberOfLines={1}>{c.name}</Text>
-                  </SoftPress>
-                );
-              })}
-            </View>
+            <TouchableOpacity
+              style={styles.selectRow}
+              onPress={() => { setPickerSearch(''); setPicker('subcategory'); }}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.selectValue, !subcategory && styles.selectPlaceholder]} numberOfLines={1}>
+                {subcategory ?? 'Select a sub-category'}
+              </Text>
+              <Ionicons name="chevron-down" size={18} color={theme.colors.textTertiary} />
+            </TouchableOpacity>
           </>
         )}
 
-        {/* Item — third level of the Sampark taxonomy. The classifier picks
-            an auto-item that's already reflected in the summary; this row lets
-            the user override it in-chat, matching what the original form did
-            with its picker modal. Only rendered when the current sub-category
-            actually has items — many don't. */}
         {items.length > 0 && (
           <>
             <Text style={[styles.cardLabel, styles.cardLabelSpaced]}>ITEM</Text>
-            <View style={styles.chipWrap}>
-              {items.map((c) => {
-                const selected = item === c.name;
-                return (
-                  <SoftPress
-                    key={c.id}
-                    style={[styles.chip, selected && styles.chipSelected]}
-                    onPress={() => setItemOverride(c.name)}
-                  >
-                    <Text style={[styles.chipText, selected && styles.chipTextSelected]} numberOfLines={1}>{c.name}</Text>
-                  </SoftPress>
-                );
-              })}
-            </View>
+            <TouchableOpacity
+              style={styles.selectRow}
+              onPress={() => { setPickerSearch(''); setPicker('item'); }}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.selectValue, !item && styles.selectPlaceholder]} numberOfLines={1}>
+                {item ?? 'Select an item'}
+              </Text>
+              <Ionicons name="chevron-down" size={18} color={theme.colors.textTertiary} />
+            </TouchableOpacity>
           </>
         )}
 
@@ -575,6 +561,75 @@ export default function CreateTicket() {
         )}
       </KeyboardAvoidingView>
 
+      {/* Searchable category / subcategory / item picker — same UX as the
+          original form. Choosing category resets sub/item; choosing sub
+          resets item; each pick becomes the corresponding override so the
+          classifier's suggestion is only ever a starting point. */}
+      <Modal visible={picker !== null} transparent animationType="slide" onRequestClose={() => setPicker(null)}>
+        <Pressable style={styles.pickerBackdrop} onPress={() => setPicker(null)}>
+          <Pressable style={styles.pickerSheet} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>
+                {picker === 'category' ? 'Select category' : picker === 'subcategory' ? 'Select sub-category' : 'Select item'}
+              </Text>
+              <TouchableOpacity onPress={() => setPicker(null)} hitSlop={8}>
+                <Ionicons name="close" size={22} color={theme.colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.pickerSearchBox}>
+              <Ionicons name="search" size={16} color={theme.colors.textTertiary} />
+              <TextInput
+                style={[styles.pickerSearchInput, webNoOutline]}
+                value={pickerSearch}
+                onChangeText={setPickerSearch}
+                placeholder="Search…"
+                placeholderTextColor={theme.colors.textTertiary}
+                autoFocus
+                autoCorrect={false}
+              />
+            </View>
+            <FlatList
+              data={(() => {
+                const source = picker === 'category' ? categories : picker === 'subcategory' ? subcategories : items;
+                const q = pickerSearch.trim().toLowerCase();
+                const names = source.map((c) => c.name);
+                return q ? names.filter((n) => n.toLowerCase().includes(q)) : names;
+              })()}
+              keyExtractor={(name) => name}
+              keyboardShouldPersistTaps="handled"
+              style={{ maxHeight: 360 }}
+              renderItem={({ item: rowName }) => {
+                const selectedValue = picker === 'category' ? category : picker === 'subcategory' ? subcategory : item;
+                const selected = selectedValue === rowName;
+                return (
+                  <TouchableOpacity
+                    style={styles.pickerRow}
+                    onPress={() => {
+                      if (picker === 'category') {
+                        setCategoryOverride(rowName);
+                        setSubcategoryOverride(null);
+                        setItemOverride(null);
+                      } else if (picker === 'subcategory') {
+                        setSubcategoryOverride(rowName);
+                        setItemOverride(null);
+                      } else {
+                        setItemOverride(rowName);
+                      }
+                      setPicker(null);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.pickerRowText, selected && styles.pickerRowTextSel]}>{rowName}</Text>
+                    {selected && <Ionicons name="checkmark" size={18} color={theme.colors.brand} />}
+                  </TouchableOpacity>
+                );
+              }}
+              ListEmptyComponent={<Text style={styles.pickerEmpty}>No matches</Text>}
+            />
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* Full-screen loader while ticket is being registered + pushed. Same
           gazelle GIF as before — blocks input to prevent a duplicate. */}
       <Modal visible={submit.isPending} transparent animationType="fade">
@@ -648,16 +703,42 @@ const styles = StyleSheet.create({
   },
   pillText: { fontSize: 12, fontWeight: '700', color: theme.colors.textTertiary, textTransform: 'capitalize' },
 
-  chipRow: { gap: 6, paddingRight: theme.spacing.md },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: {
-    paddingHorizontal: theme.spacing.md, paddingVertical: 8, borderRadius: 8,
-    borderWidth: 1, borderColor: theme.colors.border, backgroundColor: '#fff',
-    maxWidth: 220,
+  // Dropdown-style select row shown for each taxonomy level. Chevron on the
+  // right hints the whole row is tappable → opens the searchable modal.
+  selectRow: {
+    flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
+    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: theme.colors.border,
+    borderRadius: 10, paddingHorizontal: theme.spacing.md, height: 44,
   },
-  chipSelected: { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
-  chipText: { fontSize: 12, fontWeight: '600', color: theme.colors.textSecondary },
-  chipTextSelected: { color: '#fff' },
+  selectValue: { flex: 1, fontSize: 14, fontWeight: '600', color: theme.colors.textPrimary },
+  selectPlaceholder: { color: theme.colors.textTertiary, fontWeight: '500' },
+
+  // Bottom-sheet picker modal styles.
+  pickerBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  pickerSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: theme.radius.xl, borderTopRightRadius: theme.radius.xl,
+    padding: theme.spacing.lg, paddingBottom: theme.spacing.xxl,
+  },
+  pickerHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
+  },
+  pickerTitle: { fontSize: 16, fontWeight: '800', color: theme.colors.textPrimary },
+  pickerSearchBox: {
+    flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
+    backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: theme.colors.border,
+    borderRadius: 10, paddingHorizontal: theme.spacing.md, height: 44,
+    marginBottom: theme.spacing.sm,
+  },
+  pickerSearchInput: { flex: 1, fontSize: 14, color: theme.colors.textPrimary, padding: 0 },
+  pickerRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: theme.spacing.md, borderBottomWidth: 1, borderBottomColor: theme.colors.border,
+  },
+  pickerRowText: { fontSize: 15, color: theme.colors.textPrimary, flex: 1 },
+  pickerRowTextSel: { color: theme.colors.brand, fontWeight: '700' },
+  pickerEmpty: { textAlign: 'center', color: theme.colors.textTertiary, paddingVertical: theme.spacing.xl },
 
   primaryBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,

@@ -7,7 +7,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Screen } from '../common/Screen';
-import { SoftPress } from '../common/SoftPress';
 import { AppHeader } from '../common/AppHeader';
 import { ProfileIconButton } from '../common/ProfileIconButton';
 import { EmptyState } from '../common/EmptyState';
@@ -17,10 +16,7 @@ import { getTickets } from '../../lib/api/tickets';
 import { exportTicketsToSpreadsheet } from '../../lib/utils/export';
 import { useAuthStore } from '../../stores/authStore';
 import { QUERY_KEYS } from '../../constants/queryKeys';
-import { ALL_PRIORITIES } from '../../constants/ticket';
-import { TicketPriority } from '../../types';
 import { theme, webNoOutline } from '../../constants/theme';
-import { NumericText } from '../common/NumericText';
 
 interface Props {
   title: string;
@@ -44,7 +40,6 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | (typeof STATUSES)[number]>('all');
-  const [priorityFilter, setPriorityFilter] = useState<'all' | TicketPriority>('all');
   const slaOnly = params.sla === '1';
   // Lifted here (not owned per-card) so opening one ticket's action menu
   // closes whichever other one was open, instead of each TicketCard tracking
@@ -77,7 +72,6 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
     let list = tickets ?? [];
     if (slaOnly) list = list.filter((tk) => tk.sla_breached);
     if (statusFilter !== 'all') list = list.filter((t) => t.status === statusFilter);
-    if (priorityFilter !== 'all') list = list.filter((t) => t.priority === priorityFilter);
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter((t) =>
@@ -98,7 +92,7 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
       );
     }
     return list;
-  }, [tickets, search, statusFilter, priorityFilter, slaOnly]);
+  }, [tickets, search, statusFilter, slaOnly]);
 
   // Status pill label: "in_progress" reads as "Active" in the mockup.
   const statusLabel = (s: (typeof STATUSES)[number]) => (s === 'in_progress' ? 'Active' : t(`status.${s}`));
@@ -143,16 +137,6 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
           <Text style={styles.exportText}>Export</Text>
         </TouchableOpacity>
       </View>
-    </View>
-  );
-
-  const priorityRail = (
-    <View style={styles.rail}>
-      <Text style={styles.railHeader}>PRIORITY</Text>
-      <RailBtn label="all" color={theme.colors.brand} active={priorityFilter === 'all'} onPress={() => setPriorityFilter('all')} />
-      {ALL_PRIORITIES.map((p) => (
-        <RailBtn key={p} label={p} color={theme.priorityColors[p]} active={priorityFilter === p} onPress={() => setPriorityFilter(p)} />
-      ))}
     </View>
   );
 
@@ -204,10 +188,7 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
       ) : enableFilters ? (
         <>
           {renderTopFilters()}
-          <View style={styles.railRow}>
-            {priorityRail}
-            {list}
-          </View>
+          {list}
         </>
       ) : (
         <>
@@ -247,18 +228,6 @@ function StatusPill({ label, active, onPress }: { label: string; active: boolean
   );
 }
 
-// Vertical priority side-rail button: colored tint + outline when active.
-function RailBtn({ label, color, active, onPress }: { label: string; color: string; active: boolean; onPress: () => void }) {
-  return (
-    <SoftPress
-      onPress={onPress}
-      style={[styles.railBtn, active ? { backgroundColor: color + '18', borderColor: color } : { backgroundColor: theme.colors.surface, borderColor: theme.colors.border }]}
-    >
-      <Text style={[styles.railBtnText, { color: active ? color : theme.colors.textSecondary }]}>{label}</Text>
-    </SoftPress>
-  );
-}
-
 const styles = StyleSheet.create({
   list: { paddingVertical: theme.spacing.sm, flexGrow: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center' },
@@ -293,11 +262,6 @@ const styles = StyleSheet.create({
   },
   pillText: { fontSize: 13, fontWeight: '700', color: theme.colors.textSecondary },
   pillTextActive: { color: '#fff' },
-  railRow: { flex: 1, flexDirection: 'row' },
-  rail: { width: 66, paddingLeft: theme.spacing.lg, paddingRight: theme.spacing.sm, paddingTop: theme.spacing.xs, gap: 6 },
-  railHeader: { fontSize: 8, fontWeight: '800', color: theme.colors.textTertiary, letterSpacing: 1, marginBottom: 2, marginLeft: 2 },
-  railBtn: { borderWidth: 1, borderRadius: 9, paddingHorizontal: 8, paddingVertical: 7 },
-  railBtnText: { fontSize: 9, fontWeight: '700', textTransform: 'capitalize' },
   countRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 4 },
   count: { fontSize: 12, color: theme.colors.textTertiary, fontWeight: '600' },
   exportBtn: {
