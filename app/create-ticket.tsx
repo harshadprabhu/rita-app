@@ -188,7 +188,18 @@ export default function CreateTicket() {
       showToast('Please choose a category first', 'error');
       return;
     }
-    const suggested = [category, subcategory].filter(Boolean).join(' > ');
+    // Require sub-category and item when the taxonomy has them — matches the
+    // original form's `canSubmit` check so we never submit an "under-specified"
+    // ticket that Sampark would reject or auto-file wrongly.
+    if (subcategories.length > 0 && !subcategory) {
+      showToast('Please choose a sub-category', 'error');
+      return;
+    }
+    if (items.length > 0 && !item) {
+      showToast('Please choose an item', 'error');
+      return;
+    }
+    const suggested = [category, subcategory, item].filter(Boolean).join(' > ');
     // Remove the classify card, keep prior bubbles; append confirmation +
     // attach card. Filtering the card is safer than tracking indices.
     setMessages((m) => [
@@ -358,7 +369,38 @@ export default function CreateTicket() {
           </>
         )}
 
-        <SoftPress style={[styles.primaryBtn, !category && styles.primaryBtnDisabled]} onPress={confirmClassification}>
+        {/* Item — third level of the Sampark taxonomy. The classifier picks
+            an auto-item that's already reflected in the summary; this row lets
+            the user override it in-chat, matching what the original form did
+            with its picker modal. Only rendered when the current sub-category
+            actually has items — many don't. */}
+        {items.length > 0 && (
+          <>
+            <Text style={[styles.cardLabel, styles.cardLabelSpaced]}>ITEM</Text>
+            <View style={styles.chipWrap}>
+              {items.map((c) => {
+                const selected = item === c.name;
+                return (
+                  <SoftPress
+                    key={c.id}
+                    style={[styles.chip, selected && styles.chipSelected]}
+                    onPress={() => setItemOverride(c.name)}
+                  >
+                    <Text style={[styles.chipText, selected && styles.chipTextSelected]} numberOfLines={1}>{c.name}</Text>
+                  </SoftPress>
+                );
+              })}
+            </View>
+          </>
+        )}
+
+        <SoftPress
+          style={[
+            styles.primaryBtn,
+            (!category || (subcategories.length > 0 && !subcategory) || (items.length > 0 && !item)) && styles.primaryBtnDisabled,
+          ]}
+          onPress={confirmClassification}
+        >
           <Ionicons name="checkmark" size={16} color="#fff" />
           <Text style={styles.primaryBtnText}>Confirm</Text>
         </SoftPress>
