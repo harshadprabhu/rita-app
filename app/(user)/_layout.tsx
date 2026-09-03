@@ -24,6 +24,7 @@ export default function UserLayout() {
     >
       <Tabs.Screen name="home" options={{ title: t('tabs.home'), tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" size={size} color={color} /> }} />
       <Tabs.Screen name="tickets" options={{ title: t('tabs.myTickets'), tabBarIcon: ({ color, size }) => <Ionicons name="ticket-outline" size={size} color={color} /> }} />
+      <Tabs.Screen name="connect" options={{ title: 'Connect', tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" size={size} color={color} /> }} />
       <Tabs.Screen
         name="notifications"
         options={{

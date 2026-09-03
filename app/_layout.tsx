@@ -17,6 +17,7 @@ import { useUiStore } from '../stores/uiStore';
 import { useAuth } from '../hooks/useAuth';
 import { useUnifiedNotifications } from '../hooks/useUnifiedNotifications';
 import { useAuthStore } from '../stores/authStore';
+import { useBroadcastPresence } from '../hooks/useTechnicianPresence';
 import { updatePushToken } from '../lib/api/profiles';
 import { signOut } from '../lib/auth/session';
 import { LoadingOverlay } from '../components/common/LoadingOverlay';
@@ -82,6 +83,11 @@ function AuthGate() {
   // both ticket alerts and announcement unread counts before the user opens the
   // Alerts tab. React Query caches results, so the tab reuses them for free.
   useUnifiedNotifications(profile?.id ?? '', profile?.store_id ?? null);
+
+  // Technicians (and admins/managers who work tickets) announce their live
+  // presence so users see a green "Available now" dot on the Connect screen.
+  // No-op for plain users.
+  useBroadcastPresence(profile ?? null);
 
   // Tapping an OS push notification deep-links into the relevant screen. The
   // push payload carries either a ticketId (→ ticket detail) or an explicit
