@@ -69,6 +69,12 @@ async function getToken(cfg: Cfg, supabase: ReturnType<typeof createClient>): Pr
  * Sampark's raw structure is huge; we distill it to what the UI actually
  * needs so the local AsyncStorage cache stays lean.
  */
+interface AppMedia {
+  name: string;
+  contentType: string;      // e.g. image/jpeg, video/mp4, application/pdf
+  url: string;              // proxy URL back through THIS function (needs app auth)
+  kind: 'image' | 'video' | 'document';
+}
 interface AppNote {
   id: string;               // Sampark's note id
   author: string;           // "Yajuvender Rawat" or "harshad prabhu (RITA)"
@@ -77,6 +83,20 @@ interface AppNote {
   createdAt: string;        // ISO timestamp
   fromRita: boolean;        // Was this note written from the RITA app side?
   showToRequester: boolean; // Public vs. internal in Sampark
+  media?: AppMedia | null;  // attached file, if this note carries one
+}
+
+// A note that carries a file is posted with a plain-ASCII marker in the body:
+// "[file] <filename>". ASCII (not an emoji) so it survives every encoding hop
+// through URLSearchParams → Sampark → GET intact. The 📎 shown to the
+// technician is appended AFTER the marker so their view still reads nicely.
+const MEDIA_MARKER = '[file]';
+function mediaKind(contentType: string, name: string): 'image' | 'video' | 'document' {
+  const ct = (contentType || '').toLowerCase();
+  const n = (name || '').toLowerCase();
+  if (ct.startsWith('image/') || /\.(png|jpe?g|gif|webp|heic|bmp)$/.test(n)) return 'image';
+  if (ct.startsWith('video/') || /\.(mp4|mov|m4v|3gp|webm|avi)$/.test(n)) return 'video';
+  return 'document';
 }
 
 // Handles two SDP shapes:
@@ -140,6 +160,10 @@ Deno.serve(async (req) => {
   }
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  // Public URL of THIS function — req.url inside the edge runtime points at an
+  // internal host missing /functions/v1, so build the proxy base from the
+  // project URL instead. Attachment links are rendered by the app against this.
+  const selfUrl = `${(Deno.env.get('SUPABASE_URL') || '').replace(/\/+$/, '')}/functions/v1/sampark-notes`;
 
   try {
     const cfg = await loadCfg(supabase);
@@ -156,6 +180,26 @@ Deno.serve(async (req) => {
       if (r.err) return new Response(JSON.stringify({ error: r.err }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
       const token = await getToken(cfg, supabase);
 
+      // ── Attachment proxy ──────────────────────────────────────────────
+      // Sampark attachment bytes require the Zoho token, which the app must
+      // never hold. So the app requests `?ticket_id=…&file_id=…` and we stream
+      // the file back over the app's own (already-authorized) call. Images/
+      // videos render inline; documents download.
+      const fileId = url.searchParams.get('file_id');
+      if (fileId) {
+        const up = await fetch(
+          `${cfg.serviceUrl}/app/${cfg.portal}/api/v3/requests/${r.requestId}/_uploads/${encodeURIComponent(fileId)}`,
+          { headers: { Authorization: `Zoho-oauthtoken ${token}`, Accept: SDP_ACCEPT } },
+        );
+        if (!up.ok) {
+          return new Response(JSON.stringify({ error: `attachment ${up.status}` }), { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } });
+        }
+        const ct = up.headers.get('content-type') || 'application/octet-stream';
+        return new Response(up.body, {
+          headers: { ...CORS, 'Content-Type': ct, 'Cache-Control': 'private, max-age=3600' },
+        });
+      }
+
       const sdp = async (path: string): Promise<any> => {
         const rr = await fetch(`${cfg.serviceUrl}/app/${cfg.portal}/api/v3${path}`, {
           headers: { Authorization: `Zoho-oauthtoken ${token}`, Accept: SDP_ACCEPT },
@@ -164,6 +208,7 @@ Deno.serve(async (req) => {
         if (!rr.ok) throw new Error(`GET ${path} ${rr.status}: ${t.slice(0, 200)}`);
         return JSON.parse(t);
       };
+
 
       // 1) /notes — the "Notes" tab in Sampark. Contains RITA-authored
       //    messages (posted via POST below) + any note a technician typed
@@ -196,6 +241,19 @@ Deno.serve(async (req) => {
         }
       } catch (e) { console.warn('[sampark-notes] conversations fetch failed:', e); }
 
+      // 3) request.attachments — files uploaded to the request (incl. ones we
+      //    attach to a note via POST below). SDP doesn't return a note→file
+      //    link on GET, so we match a "📎 <filename>" media note to its file
+      //    by name (claiming each file once, newest first, to survive dup
+      //    names). Every attachment carries a proxy URL the app can fetch.
+      let attachments: { file_id: string; name: string; content_type: string }[] = [];
+      try {
+        const reqJson = await sdp(`/requests/${r.requestId}`);
+        attachments = ((reqJson.request?.attachments ?? []) as Record<string, any>[])
+          .map((a) => ({ file_id: String(a.file_id ?? ''), name: String(a.name ?? ''), content_type: String(a.content_type ?? '') }))
+          .filter((a) => a.file_id);
+      } catch (e) { console.warn('[sampark-notes] attachments fetch failed:', e); }
+
       // Merge, dedupe by id, sort oldest-first for natural chat append.
       const seen = new Set<string>();
       const merged: AppNote[] = [];
@@ -207,12 +265,116 @@ Deno.serve(async (req) => {
       }
       merged.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
+      // Attach media to marker notes. Process newest-first so the most recent
+      // upload of a dup-named file binds to the most recent marker note.
+      const claimed = new Set<string>();
+      const findFile = (name: string) => {
+        for (let i = attachments.length - 1; i >= 0; i--) {
+          const a = attachments[i];
+          if (a.name === name && !claimed.has(a.file_id)) { claimed.add(a.file_id); return a; }
+        }
+        return null;
+      };
+      for (let i = merged.length - 1; i >= 0; i--) {
+        const n = merged[i];
+        const body = n.body.trim();
+        const mIdx = body.indexOf(MEDIA_MARKER);
+        if (mIdx < 0) continue;
+        // filename is everything after the marker (drop a leading 📎 if present)
+        const fname = body.slice(mIdx + MEDIA_MARKER.length).replace(/^\s*📎?\s*/, '').trim();
+        const file = findFile(fname);
+        if (!file) continue;
+        n.media = {
+          name: file.name,
+          contentType: file.content_type,
+          url: `${selfUrl}?ticket_id=${encodeURIComponent(ticketId)}&file_id=${encodeURIComponent(file.file_id)}`,
+          kind: mediaKind(file.content_type, file.name),
+        };
+        n.body = ''; // marker text is replaced by the rendered media
+      }
+
       return new Response(JSON.stringify({ ok: true, notes: merged }), {
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });
     }
 
     if (req.method === 'POST') {
+      const contentType = req.headers.get('content-type') || '';
+
+      // ── File upload (multipart) ───────────────────────────────────────
+      // Upload the file to Sampark's request, then post a note that carries
+      // it + a "📎 <filename>" marker body so it renders as a chat message
+      // AND the technician sees the file in Sampark. Two-step per SDP v3.
+      if (contentType.includes('multipart/form-data')) {
+        const fd = await req.formData();
+        const ticketId = String(fd.get('ticket_id') ?? '');
+        const requesterName = String(fd.get('requester_name') ?? '');
+        const file = fd.get('file');
+        if (!ticketId || !(file instanceof File)) {
+          return new Response(JSON.stringify({ error: 'ticket_id and file required' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
+        }
+        const r = await resolveRequestId(supabase, ticketId);
+        if (r.err) return new Response(JSON.stringify({ error: r.err }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
+        const token = await getToken(cfg, supabase);
+
+        // 1) upload the bytes → attaches to the request, returns a file id
+        const upForm = new FormData();
+        upForm.append('filename', file, file.name || `upload_${Date.now()}`);
+        upForm.append('addtoattachment', 'true');
+        const upRes = await fetch(`${cfg.serviceUrl}/app/${cfg.portal}/api/v3/requests/${r.requestId}/_uploads`, {
+          method: 'POST',
+          headers: { Authorization: `Zoho-oauthtoken ${token}`, Accept: SDP_ACCEPT },
+          body: upForm,
+        });
+        const upText = await upRes.text();
+        if (!upRes.ok) {
+          return new Response(JSON.stringify({ error: `upload ${upRes.status}`, detail: upText.slice(0, 400) }), { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } });
+        }
+        const uploaded = (JSON.parse(upText).files ?? [])[0] ?? {};
+        const fileId = String(uploaded.file_id ?? uploaded.id ?? '');
+        const attId = String(uploaded.id ?? '');
+        const fname = String(uploaded.name ?? file.name ?? 'file');
+
+        // 2) post a note carrying the file + the media marker body
+        // Pure ASCII — Sampark truncates a note description at an emoji, which
+        // silently dropped the filename. "[file] <name>" reads fine for the
+        // technician and round-trips intact.
+        const authoredBody = requesterName
+          ? `${requesterName} (RITA): ${MEDIA_MARKER} ${fname}`
+          : `${MEDIA_MARKER} ${fname}`;
+        const noteForm = new URLSearchParams({
+          input_data: JSON.stringify({
+            request_note: {
+              description: authoredBody,
+              show_to_requester: true,
+              mark_first_response: false,
+              add_to_linked_requests: false,
+              notify_technician: false,
+              ...(attId ? { attachments: [{ id: attId }] } : {}),
+            },
+          }),
+        });
+        const noteRes = await fetch(`${cfg.serviceUrl}/app/${cfg.portal}/api/v3/requests/${r.requestId}/notes`, {
+          method: 'POST',
+          headers: { Authorization: `Zoho-oauthtoken ${token}`, Accept: SDP_ACCEPT, 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: noteForm,
+        });
+        const noteText = await noteRes.text();
+        if (!noteRes.ok) {
+          return new Response(JSON.stringify({ error: `note ${noteRes.status}`, detail: noteText.slice(0, 400) }), { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } });
+        }
+        const noteRaw = JSON.parse(noteText).request_note ?? {};
+        const note = normalize(noteRaw);
+        note.body = '';
+        note.media = {
+          name: fname,
+          contentType: String(uploaded.content_type ?? file.type ?? 'application/octet-stream'),
+          url: `${selfUrl}?ticket_id=${encodeURIComponent(ticketId)}&file_id=${encodeURIComponent(fileId)}`,
+          kind: mediaKind(String(uploaded.content_type ?? file.type ?? ''), fname),
+        };
+        return new Response(JSON.stringify({ ok: true, note }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
+      }
+
       const payload = await req.json().catch(() => ({}));
       const { ticket_id, body, requester_name } = payload as { ticket_id?: string; body?: string; requester_name?: string };
       if (!ticket_id || !body?.trim()) {

@@ -12,9 +12,12 @@ interface Props {
   onSubmit: (body: string, isInternal: boolean) => Promise<unknown> | unknown;
   isSubmitting?: boolean;
   canMarkInternal?: boolean;
+  /** Tapped the attach (📎) button — parent opens the camera/gallery/doc
+   *  picker and uploads. Attachments are a separate flow from text. */
+  onAttach?: () => void;
 }
 
-export function CommentInput({ onSubmit, isSubmitting, canMarkInternal }: Props) {
+export function CommentInput({ onSubmit, isSubmitting, canMarkInternal, onAttach }: Props) {
   const { t } = useTranslation();
   const [body, setBody] = useState('');
   const [isInternal, setIsInternal] = useState(false);
@@ -56,6 +59,11 @@ export function CommentInput({ onSubmit, isSubmitting, canMarkInternal }: Props)
       )}
 
       <View style={styles.inputRow}>
+        {onAttach && (
+          <TouchableOpacity onPress={onAttach} style={styles.attachBtn} activeOpacity={0.7} hitSlop={6}>
+            <Ionicons name="add" size={24} color={theme.colors.brand} />
+          </TouchableOpacity>
+        )}
         <View style={[styles.inputWrap, { borderColor }]}>
           <TextInput
             value={body}
@@ -116,6 +124,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: theme.spacing.sm,
+  },
+  attachBtn: {
+    width: 44, height: 44, borderRadius: theme.radius.full,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: theme.colors.surface2,
+    borderWidth: 1.5, borderColor: theme.colors.border,
   },
   inputWrap: {
     flex: 1,

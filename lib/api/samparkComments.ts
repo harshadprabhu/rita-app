@@ -7,6 +7,15 @@ import { supabase } from '../supabase';
 // a short interval while the screen is focused so incoming Sampark notes
 // appear without a manual refresh.
 
+export interface SamparkMedia {
+  name: string;
+  contentType: string;
+  /** Auth'd proxy URL back through the edge function. Fetch with the user's
+   *  bearer token (pass it as an Image/Video source header on native). */
+  url: string;
+  kind: 'image' | 'video' | 'document';
+}
+
 export interface SamparkNote {
   id: string;
   author: string;
@@ -15,6 +24,7 @@ export interface SamparkNote {
   createdAt: string;
   fromRita: boolean;
   showToRequester: boolean;
+  media?: SamparkMedia | null;
   /** Client-only transient flag. True on the optimistic echo of a message
    *  we just POSTed, before a fresh Sampark GET confirms it round-tripped.
    *  Never set by the server — used to drive the "sent" (single-tick) state.
@@ -81,5 +91,46 @@ export async function addSamparkNote(
   }
   const note = (JSON.parse(text) as { note?: SamparkNote })?.note;
   if (!note) throw new Error('Message not sent: Sampark returned no note');
+  return note;
+}
+
+// The bearer token an <Image>/<Video> needs to fetch a media proxy URL on
+// native (RN source headers). Exposed so the chat can render attachments.
+export async function samparkMediaAuthHeader(): Promise<Record<string, string>> {
+  return { Authorization: `Bearer ${await authToken()}` };
+}
+
+export async function addSamparkAttachment(
+  ticketId: string,
+  file: { uri: string; name: string; type: string },
+  requesterName: string | null,
+): Promise<SamparkNote> {
+  const token = await authToken();
+  const form = new FormData();
+  form.append('ticket_id', ticketId);
+  if (requesterName) form.append('requester_name', requesterName);
+  // React Native's FormData takes { uri, name, type }; on web we need a Blob,
+  // so fetch the local uri into one first.
+  if (file.uri.startsWith('blob:') || file.uri.startsWith('data:') || typeof document !== 'undefined') {
+    const blob = await (await fetch(file.uri)).blob();
+    form.append('file', blob, file.name);
+  } else {
+    // @ts-expect-error RN FormData file part
+    form.append('file', { uri: file.uri, name: file.name, type: file.type });
+  }
+  // 60s — media uploads can be larger than a text note.
+  const res = await fetchWithTimeout(functionsUrl('sampark-notes'), {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }, // let fetch set multipart boundary
+    body: form,
+  }, 60000);
+  const text = await res.text().catch(() => '');
+  if (!res.ok) {
+    let detail = text.slice(0, 160);
+    try { const j = JSON.parse(text); detail = j.error || j.detail || detail; } catch { /* keep raw */ }
+    throw new Error(`Attachment not sent (${res.status}): ${detail}`);
+  }
+  const note = (JSON.parse(text) as { note?: SamparkNote })?.note;
+  if (!note) throw new Error('Attachment not sent: Sampark returned no note');
   return note;
 }

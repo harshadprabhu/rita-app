@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, KeyboardAvoidingView, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, KeyboardAvoidingView, ActivityIndicator, Platform } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -14,7 +16,8 @@ import { CommentInput } from '../../components/tickets/CommentInput';
 import { TicketRatingCard } from '../../components/tickets/TicketRatingCard';
 import { getTicketById, updateTicket, claimTicket, reassignTicket } from '../../lib/api/tickets';
 import { getTechnicians } from '../../lib/api/profiles';
-import { getSamparkNotes, addSamparkNote, SamparkNote } from '../../lib/api/samparkComments';
+import { getSamparkNotes, addSamparkNote, addSamparkAttachment, samparkMediaAuthHeader, SamparkNote } from '../../lib/api/samparkComments';
+import { showAlert } from '../../lib/utils/alert';
 import { getTicketAuditLog } from '../../lib/api/auditLog';
 import { useAuthStore } from '../../stores/authStore';
 import { useUiStore } from '../../stores/uiStore';
@@ -168,6 +171,85 @@ export default function TicketDetail() {
     const ids = new Set((notes ?? []).map((n) => n.id));
     setPendingNotes((prev) => prev.filter((n) => !(n.realId && ids.has(n.realId))));
   }, [notes]);
+
+  // Bearer header the media proxy URLs need to render (native Image/Video).
+  const { data: mediaAuthHeader } = useQuery({
+    queryKey: ['sampark-media-auth'],
+    queryFn: samparkMediaAuthHeader,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // ── Attachments: photo (camera/gallery) · video (5–10s) · document ──────
+  const uploadFile = (file: { uri: string; name: string; type: string }, kind: 'image' | 'video' | 'document') => {
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    // Optimistic bubble with a LOCAL preview uri so it shows instantly.
+    setPendingNotes((prev) => [
+      ...prev,
+      {
+        id: tempId, author: profile?.display_name ?? 'You', authorEmail: null,
+        body: '', createdAt: new Date().toISOString(), fromRita: true,
+        showToRequester: true, pending: true,
+        media: { name: file.name, contentType: file.type, url: file.uri, kind },
+      } as any,
+    ]);
+    uploadMutation.mutate({ file, tempId });
+  };
+
+  const uploadMutation = useMutation({
+    mutationFn: (vars: { file: { uri: string; name: string; type: string }; tempId: string }) =>
+      addSamparkAttachment(id, vars.file, profile?.display_name ?? null),
+    onSuccess: (newNote, vars) => {
+      setPendingNotes((prev) => prev.map((n) =>
+        n.id === vars.tempId ? { ...n, realId: newNote.id, media: newNote.media ?? n.media, failed: false } : n));
+      refetchNotes();
+    },
+    onError: (err, vars) => {
+      setPendingNotes((prev) => prev.map((n) => (n.id === vars.tempId ? { ...n, failed: true } : n)));
+      showToast(err instanceof Error ? err.message : 'Attachment not sent', 'error');
+    },
+  });
+
+  const MAX_VIDEO_SEC = 10;
+  const pickAttachment = () => {
+    const opts = [
+      { text: 'Camera', onPress: () => launchCamera() },
+      { text: 'Photo / Video', onPress: () => launchLibrary() },
+      { text: 'Document', onPress: () => launchDocument() },
+      { text: 'Cancel', style: 'cancel' as const },
+    ];
+    // On web there's no camera flow; go straight to the file library.
+    if (Platform.OS === 'web') { launchLibrary(); return; }
+    showAlert('Add to chat', 'Send a photo, a short video (max 10s), or a document.', opts);
+  };
+
+  const launchCamera = async () => {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) { showToast('Camera permission denied', 'error'); return; }
+    const r = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.7, videoMaxDuration: MAX_VIDEO_SEC });
+    handlePicked(r);
+  };
+  const launchLibrary = async () => {
+    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.7, videoMaxDuration: MAX_VIDEO_SEC });
+    handlePicked(r);
+  };
+  const handlePicked = (r: ImagePicker.ImagePickerResult) => {
+    if (r.canceled || !r.assets?.[0]) return;
+    const a = r.assets[0];
+    const isVideo = a.type === 'video';
+    if (isVideo && a.duration && a.duration > (MAX_VIDEO_SEC + 1) * 1000) {
+      showToast(`Video too long — keep it under ${MAX_VIDEO_SEC}s`, 'error');
+      return;
+    }
+    const name = a.fileName ?? `${isVideo ? 'video' : 'photo'}_${Date.now()}.${isVideo ? 'mp4' : 'jpg'}`;
+    const type = a.mimeType ?? (isVideo ? 'video/mp4' : 'image/jpeg');
+    uploadFile({ uri: a.uri, name, type }, isVideo ? 'video' : 'image');
+  };
+  const launchDocument = async () => {
+    const r = await DocumentPicker.getDocumentAsync({ multiple: false, copyToCacheDirectory: true });
+    if (r.canceled || !r.assets?.[0]) return;
+    const a = r.assets[0];
+    uploadFile({ uri: a.uri, name: a.name ?? `document_${Date.now()}`, type: a.mimeType ?? 'application/octet-stream' }, 'document');
+  };
 
   const updateLifecycle = useMutation({
     mutationFn: (lifecycle: typeof ALL_LIFECYCLES[number]) =>
@@ -340,7 +422,13 @@ export default function TicketDetail() {
                     source={n.fromRita ? 'rita' : 'sampark'}
                     deliveryStatus={deliveryStatus}
                     failed={failed}
-                    onRetry={failed ? () => retryMessage(n.id, n.body) : undefined}
+                    onRetry={failed ? () => {
+                      const m = (n as any).media;
+                      if (m) { setPendingNotes((prev) => prev.filter((x) => x.id !== n.id)); uploadFile({ uri: m.url, name: m.name, type: m.contentType }, m.kind); }
+                      else retryMessage(n.id, n.body);
+                    } : undefined}
+                    media={(n as any).media ?? null}
+                    mediaAuthHeader={mediaAuthHeader}
                     comment={{
                       id: n.id,
                       ticket_id: id,
@@ -361,6 +449,7 @@ export default function TicketDetail() {
               canMarkInternal={false}
               // Fire-and-forget optimistic send — never blocks the composer.
               onSubmit={(body) => sendMessage(body)}
+              onAttach={pickAttachment}
             />
           </>
         ) : (

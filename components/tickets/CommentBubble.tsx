@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { CommentWithAuthor } from '../../types/ticket';
+import { SamparkMedia } from '../../lib/api/samparkComments';
 import { timeAgo } from '../../lib/utils/date';
 import { theme } from '../../constants/theme';
 
@@ -21,9 +22,13 @@ interface Props {
   /** Outgoing message failed to send — show a red retry affordance. */
   failed?: boolean;
   onRetry?: () => void;
+  /** Attached file (photo / video / document) carried by this message. */
+  media?: SamparkMedia | null;
+  /** Auth header the media proxy URL needs to load (native Image/Video). */
+  mediaAuthHeader?: Record<string, string>;
 }
 
-export function CommentBubble({ comment, isOwnComment, source = 'rita', deliveryStatus, failed, onRetry }: Props) {
+export function CommentBubble({ comment, isOwnComment, source = 'rita', deliveryStatus, failed, onRetry, media, mediaAuthHeader }: Props) {
   const { t } = useTranslation();
   const isInternal = comment.is_internal;
   const isSampark = source === 'sampark';
@@ -72,7 +77,8 @@ export function CommentBubble({ comment, isOwnComment, source = 'rita', delivery
             {isOwnComment ? t('comments.you') : authorName}
           </Text>
         </View>
-        <Text style={[styles.body, isOwnComment && styles.bodyOwn]}>{comment.body}</Text>
+        {media ? <MediaBlock media={media} authHeader={mediaAuthHeader} isOwn={isOwnComment} /> : null}
+        {comment.body ? <Text style={[styles.body, isOwnComment && styles.bodyOwn]}>{comment.body}</Text> : null}
         <View style={styles.metaRow}>
           <Text style={[styles.time, isOwnComment && styles.timeOwn]}>{timeAgo(comment.created_at)}</Text>
           {isOwnComment && failed ? (
@@ -97,6 +103,44 @@ export function CommentBubble({ comment, isOwnComment, source = 'rita', delivery
     </View>
   );
 }
+
+// Renders an attached photo (inline, tap to open), video, or document. The
+// proxy URL needs the user's bearer token, passed as an Image source header on
+// native; on web the header can't ride an <img>, so we tap-to-open instead.
+function MediaBlock({ media, authHeader, isOwn }: { media: SamparkMedia; authHeader?: Record<string, string>; isOwn: boolean }) {
+  const open = () => Linking.openURL(media.url).catch(() => {});
+  if (media.kind === 'image') {
+    return (
+      <TouchableOpacity onPress={open} activeOpacity={0.85} style={mediaStyles.imageWrap}>
+        <Image
+          source={{ uri: media.url, headers: authHeader }}
+          style={mediaStyles.image}
+          resizeMode="cover"
+        />
+      </TouchableOpacity>
+    );
+  }
+  const icon = media.kind === 'video' ? 'videocam' : 'document-text';
+  return (
+    <TouchableOpacity onPress={open} activeOpacity={0.8} style={[mediaStyles.fileChip, isOwn && mediaStyles.fileChipOwn]}>
+      <Ionicons name={icon} size={22} color={isOwn ? '#fff' : theme.colors.brand} />
+      <Text style={[mediaStyles.fileName, isOwn && { color: '#fff' }]} numberOfLines={1}>{media.name}</Text>
+      <Ionicons name={media.kind === 'video' ? 'play-circle' : 'download-outline'} size={18} color={isOwn ? 'rgba(255,255,255,0.85)' : theme.colors.textTertiary} />
+    </TouchableOpacity>
+  );
+}
+
+const mediaStyles = StyleSheet.create({
+  imageWrap: { borderRadius: 10, overflow: 'hidden', marginBottom: 4, backgroundColor: 'rgba(0,0,0,0.05)' },
+  image: { width: 210, height: 210, maxWidth: '100%' },
+  fileChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4,
+    backgroundColor: theme.colors.surface2, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8,
+    minWidth: 180,
+  },
+  fileChipOwn: { backgroundColor: 'rgba(255,255,255,0.18)' },
+  fileName: { flex: 1, fontSize: 13, fontWeight: '600', color: theme.colors.textPrimary },
+});
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', marginHorizontal: theme.spacing.md, marginVertical: theme.spacing.xs, alignItems: 'flex-end', gap: theme.spacing.sm },
