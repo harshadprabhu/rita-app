@@ -91,6 +91,28 @@ export default function TicketDetail() {
     return () => { supabase.removeChannel(channel); };
   }, [id, queryClient]);
 
+  // Inbound-message realtime: the sampark-poll cron (every minute) is what
+  // DETECTS a new Sampark reply and inserts a `notifications` row for it.
+  // That INSERT arrives here over Supabase realtime instantly — so the
+  // moment detection happens we pull the fresh chat from Sampark rather than
+  // waiting for the next 2s poll tick. Bounds "Hemant replied" → "shows in
+  // my open chat" to (poll detection ≤60s) + (~0s realtime hop), instead of
+  // (≤60s) + (up to 2s). Filtered to THIS ticket so unrelated notifications
+  // don't thrash the fetch.
+  useEffect(() => {
+    if (!id) return;
+    const name = `ticket-notes-rt:${id}:${Math.random().toString(36).slice(2, 9)}`;
+    const channel = supabase
+      .channel(name)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications', filter: `ticket_id=eq.${id}` },
+        () => { refetchNotes(); },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [id]);
+
   // Send a comment straight to Sampark. Internal notes toggle is no longer
   // wired — Sampark public notes are all we deal with here; if RITA needs
   // internal staff notes later they'd need their own storage separate from

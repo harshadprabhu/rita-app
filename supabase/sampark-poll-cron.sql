@@ -7,18 +7,26 @@
 -- trigger can't leave an update stranded. Cheap — it only touches active
 -- tickets, not the whole history.
 --
--- Every 5 minutes (not 2 hours) — confirmed live that the Custom Trigger
--- side isn't reliably firing (a resolved-on-Sampark ticket sat unsynced in
--- RITA for 25+ minutes with zero notification), so until that's verified
--- fixed on the Sampark/ManageEngine admin side, this is effectively the
--- primary inbound path, not just a rare-case backstop.
+-- Every 1 minute (was 5, was 2 hours) — the Sampark Custom Trigger (the
+-- truly-instant webhook path) isn't reliably firing (a resolved-on-Sampark
+-- ticket sat unsynced for 25+ minutes with zero notification), so this poll
+-- is effectively the PRIMARY inbound path. At 1-minute cadence an inbound
+-- technician reply/notification lands within ≤60s. The open chat screen
+-- then refetches instantly off the resulting notifications INSERT
+-- (Supabase realtime), and its own 2s poll covers the screen-open case.
+-- Notifications are deduped by sampark_note_id (partial unique index), so a
+-- 1-min re-scan never re-notifies an already-seen message. Only active
+-- (open/in_progress) linked tickets are scanned, bounding the API load.
+--
+-- True instant delivery requires the ManageEngine Custom Trigger to POST
+-- sampark-webhook on note-add/reply — a Sampark-admin config, not code.
 --
 -- Requires: pg_cron + pg_net. Replace <ANON_KEY>.
 -- =====================================================================
 
 select cron.schedule(
   'sampark-poll',
-  '*/5 * * * *',
+  '* * * * *',
   $$
   select net.http_post(
     url     := 'https://ftzczoiucqrirkcpzdyl.supabase.co/functions/v1/sampark-poll',
