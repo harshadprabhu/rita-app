@@ -24,13 +24,18 @@ interface Props {
   showCreateButton?: boolean;
   /** Enables the search box + status/priority filter chips (admin registry). */
   enableFilters?: boolean;
+  /** Adds an Assignment row (All / Unassigned / Mine) — for technicians who
+   *  work a queue: find unassigned tickets to pick up, or see their own. */
+  enableAssignmentFilter?: boolean;
 }
 
 const STATUSES = ['open', 'in_progress', 'resolved'] as const;
+type AssignmentFilter = 'all' | 'unassigned' | 'mine';
 
-export function TicketListScreen({ title, filters, enableFilters }: Props) {
+export function TicketListScreen({ title, filters, enableFilters, enableAssignmentFilter }: Props) {
   const { t } = useTranslation();
   const profile = useAuthStore((s) => s.profile);
+  const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilter>('all');
   // A home stat tile can deep-link here pre-filtered, e.g. ?status=open or ?sla=1.
   const params = useLocalSearchParams<{ status?: string; sla?: string }>();
   const { data: tickets, isLoading, refetch, isRefetching } = useQuery({
@@ -72,6 +77,10 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
     let list = tickets ?? [];
     if (slaOnly) list = list.filter((tk) => tk.sla_breached);
     if (statusFilter !== 'all') list = list.filter((t) => t.status === statusFilter);
+    if (enableAssignmentFilter) {
+      if (assignmentFilter === 'unassigned') list = list.filter((t) => !t.assignee_id);
+      else if (assignmentFilter === 'mine') list = list.filter((t) => t.assignee_id === profile?.id);
+    }
     const q = search.trim().toLowerCase();
     if (q) {
       list = list.filter((t) =>
@@ -92,7 +101,7 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
       );
     }
     return list;
-  }, [tickets, search, statusFilter, slaOnly]);
+  }, [tickets, search, statusFilter, slaOnly, enableAssignmentFilter, assignmentFilter, profile?.id]);
 
   // Status pill label: "in_progress" reads as "Active" in the mockup.
   const statusLabel = (s: (typeof STATUSES)[number]) => (s === 'in_progress' ? 'Active' : t(`status.${s}`));
@@ -123,6 +132,14 @@ export function TicketListScreen({ title, filters, enableFilters }: Props) {
           <StatusPill key={s} label={statusLabel(s)} active={statusFilter === s} onPress={() => setStatusFilter(s)} />
         ))}
       </ScrollView>
+
+      {enableAssignmentFilter && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+          {([['all', 'All'], ['unassigned', 'Unassigned'], ['mine', 'Assigned to me']] as const).map(([key, label]) => (
+            <StatusPill key={key} label={label} active={assignmentFilter === key} onPress={() => setAssignmentFilter(key)} />
+          ))}
+        </ScrollView>
+      )}
 
       <View style={styles.countRow}>
         <Text style={styles.count}>

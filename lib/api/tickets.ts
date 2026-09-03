@@ -15,6 +15,23 @@ interface TicketFilters {
   sla_breached?: boolean;
 }
 
+// Mirror a RITA-side ticket action onto the linked Sampark request. Fire-and-
+// forget from the caller's perspective — a Sampark hiccup must NOT fail the
+// RITA action (the inbound poll will reconcile). Never throws.
+export async function mirrorToSampark(
+  ticketId: string,
+  patch: { status?: TicketStatus; technician_id?: string },
+): Promise<void> {
+  try {
+    await supabase.functions.invoke('sampark-update', {
+      method: 'POST',
+      body: { ticket_id: ticketId, ...patch },
+    });
+  } catch (err) {
+    console.warn('[mirrorToSampark] deferred to inbound sync:', err);
+  }
+}
+
 const TICKET_SELECT = `
   *,
   requester:profiles!tickets_requester_id_fkey(id, display_name, designation),
@@ -166,6 +183,12 @@ export async function updateTicket(
     }
   }
 
+  // Mirror a status change to Sampark (resolve / reopen / etc.). Assignee
+  // changes route through claim/reassign which mirror themselves.
+  if (updates.status && (!before || before.status !== data.status)) {
+    await mirrorToSampark(id, { status: data.status as TicketStatus });
+  }
+
   // Notify every user at the ticket's store whenever the status changes, so
   // the whole store team stays aware (not just the original requester).
   // Excludes the actor to avoid self-pinging.
@@ -196,6 +219,8 @@ export async function claimTicket(ticketId: string, technicianId: string): Promi
     .single();
   if (error) throw error;
   await logTicketAction(ticketId, technicianId, 'self_assigned', 'unassigned', technicianId);
+  // Mirror the pickup to Sampark: assign the technician + move to In Progress.
+  await mirrorToSampark(ticketId, { status: 'in_progress', technician_id: technicianId });
   return data as DbTicket;
 }
 
@@ -224,6 +249,8 @@ export async function reassignTicket(
     before?.assignee_id ?? 'unassigned',
     technicianId,
   );
+  // Mirror the reassignment to Sampark.
+  await mirrorToSampark(ticketId, { status: 'in_progress', technician_id: technicianId });
   return data as DbTicket;
 }
 
