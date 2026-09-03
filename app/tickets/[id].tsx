@@ -119,23 +119,55 @@ export default function TicketDetail() {
   // Sampark. Optimistic append gives instant echo; the next 3s poll picks
   // up the authoritative note (or corrects if Sampark reformatted it).
   const showToast = useUiStore((s) => s.showToast);
+
+  // Local overlay of in-flight / failed outbound messages. Kept OUTSIDE the
+  // Sampark query cache so the 2s poll (which replaces the whole notes array)
+  // can never wipe a message that's still sending or has failed. Each carries
+  // a temp id; once Sampark's authoritative note shows up in the GET, the
+  // matching pending entry is pruned (effect below).
+  const [pendingNotes, setPendingNotes] = useState<(SamparkNote & { failed?: boolean; realId?: string })[]>([]);
+
   const addCommentMutation = useMutation({
-    mutationFn: (vars: { body: string }) =>
+    mutationFn: (vars: { body: string; tempId: string }) =>
       addSamparkNote(id, vars.body, profile?.display_name ?? null),
-    onSuccess: (newNote) => {
-      // Mark the optimistic echo `pending` so it shows a single "sent" tick
-      // until the next Sampark GET confirms it round-tripped (→ delivered).
-      queryClient.setQueryData<SamparkNote[] | undefined>(['sampark-notes', id], (prev) =>
-        prev ? [...prev, { ...newNote, pending: true }] : [{ ...newNote, pending: true }],
-      );
+    onSuccess: (newNote, vars) => {
+      // Record the real Sampark id so the prune-effect can retire this overlay
+      // entry once the same note arrives from the GET (avoids a flicker/dupe).
+      setPendingNotes((prev) => prev.map((n) => (n.id === vars.tempId ? { ...n, realId: newNote.id, failed: false } : n)));
       refetchNotes();
     },
-    onError: (err) => {
-      // Surface every failure — a silently-swallowed POST error was the
-      // root cause of "typed a message and it went blank" on #63949.
-      showToast(err instanceof Error ? err.message : 'Failed to send', 'error');
+    onError: (err, vars) => {
+      setPendingNotes((prev) => prev.map((n) => (n.id === vars.tempId ? { ...n, failed: true } : n)));
+      showToast(err instanceof Error ? err.message : 'Message not sent — tap to retry', 'error');
     },
   });
+
+  const sendMessage = (body: string) => {
+    // Optimistic: message appears INSTANTLY (single "sent" tick), input stays
+    // usable — no waiting on the Sampark round trip.
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    setPendingNotes((prev) => [
+      ...prev,
+      {
+        id: tempId, author: profile?.display_name ?? 'You', authorEmail: null,
+        body, createdAt: new Date().toISOString(), fromRita: true,
+        showToRequester: true, pending: true,
+      },
+    ]);
+    addCommentMutation.mutate({ body, tempId });
+  };
+
+  const retryMessage = (tempId: string, body: string) => {
+    setPendingNotes((prev) => prev.filter((n) => n.id !== tempId));
+    sendMessage(body);
+  };
+
+  // Prune overlay entries once Sampark's GET returns the real note (matched by
+  // the realId we stored on success).
+  useEffect(() => {
+    const ids = new Set((notes ?? []).map((n) => n.id));
+    setPendingNotes((prev) => prev.filter((n) => !(n.realId && ids.has(n.realId))));
+  }, [notes]);
 
   const updateLifecycle = useMutation({
     mutationFn: (lifecycle: typeof ALL_LIFECYCLES[number]) =>
@@ -177,7 +209,13 @@ export default function TicketDetail() {
   // Sampark notes have no "internal" concept from RITA's side — all
   // public-visible technician notes flow through. The former internal-notes
   // toggle in CommentInput is disabled by omitting canMarkInternal below.
-  const visibleNotes = notes ?? [];
+  // Merge Sampark's authoritative notes with the local optimistic/failed
+  // overlay. Drop any overlay entry whose real note is already in the GET
+  // (the prune-effect also does this, but this guards the render-frame race).
+  const confirmedIds = new Set((notes ?? []).map((n) => n.id));
+  const overlay = pendingNotes.filter((n) => !(n.realId && confirmedIds.has(n.realId)));
+  const visibleNotes = [...(notes ?? []), ...overlay].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
   // Timestamp of the most recent INBOUND (technician / Sampark) message. Any
   // of my messages at or before it is treated as "read" — the tech clearly
   // engaged with the thread after it. Drives the blue double-tick.
@@ -287,7 +325,8 @@ export default function TicketDetail() {
                   //               (best available proxy; Sampark exposes no
                   //               per-note read receipt, so a silent read that
                   //               isn't followed by a reply stays "delivered").
-                  const deliveryStatus = isOwn
+                  const failed = (n as any).failed === true;
+                  const deliveryStatus = isOwn && !failed
                     ? n.pending
                       ? 'sent' as const
                       : lastInboundAt && n.createdAt <= lastInboundAt
@@ -300,6 +339,8 @@ export default function TicketDetail() {
                     isOwnComment={isOwn}
                     source={n.fromRita ? 'rita' : 'sampark'}
                     deliveryStatus={deliveryStatus}
+                    failed={failed}
+                    onRetry={failed ? () => retryMessage(n.id, n.body) : undefined}
                     comment={{
                       id: n.id,
                       ticket_id: id,
@@ -318,9 +359,8 @@ export default function TicketDetail() {
             </ScrollView>
             <CommentInput
               canMarkInternal={false}
-              isSubmitting={addCommentMutation.isPending}
-              // mutateAsync so the composer can await + clear only on success.
-              onSubmit={(body) => addCommentMutation.mutateAsync({ body })}
+              // Fire-and-forget optimistic send — never blocks the composer.
+              onSubmit={(body) => sendMessage(body)}
             />
           </>
         ) : (

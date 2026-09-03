@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { CommentWithAuthor } from '../../types/ticket';
@@ -18,9 +18,12 @@ interface Props {
   /** WhatsApp-style delivery ticks — only meaningful on own (outgoing)
    *  messages. undefined hides ticks entirely (inbound / other users). */
   deliveryStatus?: DeliveryStatus;
+  /** Outgoing message failed to send — show a red retry affordance. */
+  failed?: boolean;
+  onRetry?: () => void;
 }
 
-export function CommentBubble({ comment, isOwnComment, source = 'rita', deliveryStatus }: Props) {
+export function CommentBubble({ comment, isOwnComment, source = 'rita', deliveryStatus, failed, onRetry }: Props) {
   const { t } = useTranslation();
   const isInternal = comment.is_internal;
   const isSampark = source === 'sampark';
@@ -72,7 +75,12 @@ export function CommentBubble({ comment, isOwnComment, source = 'rita', delivery
         <Text style={[styles.body, isOwnComment && styles.bodyOwn]}>{comment.body}</Text>
         <View style={styles.metaRow}>
           <Text style={[styles.time, isOwnComment && styles.timeOwn]}>{timeAgo(comment.created_at)}</Text>
-          {isOwnComment && deliveryStatus && (
+          {isOwnComment && failed ? (
+            <TouchableOpacity onPress={onRetry} hitSlop={8} style={styles.retryWrap}>
+              <Ionicons name="alert-circle" size={14} color="#FCA5A5" />
+              <Text style={styles.retryText}>Failed — tap to retry</Text>
+            </TouchableOpacity>
+          ) : isOwnComment && deliveryStatus ? (
             <Ionicons
               // Single tick = sent (POSTed, not yet re-confirmed by Sampark).
               // Double tick = delivered (round-tripped through Sampark).
@@ -82,7 +90,7 @@ export function CommentBubble({ comment, isOwnComment, source = 'rita', delivery
               color={deliveryStatus === 'read' ? '#34B7F1' : 'rgba(255,255,255,0.7)'}
               style={styles.tick}
             />
-          )}
+          ) : null}
         </View>
       </View>
       {isOwnComment && avatarEl}
@@ -125,4 +133,6 @@ const styles = StyleSheet.create({
   time: { fontSize: 11, color: theme.colors.textTertiary, textAlign: 'right' },
   timeOwn: { color: 'rgba(255,255,255,0.6)' },
   tick: { marginBottom: -1 },
+  retryWrap: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  retryText: { fontSize: 10, fontWeight: '700', color: '#FCA5A5' },
 });

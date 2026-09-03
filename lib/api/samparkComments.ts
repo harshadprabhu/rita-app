@@ -22,25 +22,41 @@ export interface SamparkNote {
   pending?: boolean;
 }
 
+// Direct fetch against the edge function. We deliberately DON'T use
+// supabase.functions.invoke here: its wrapper (a) strips the query string on
+// GET, and (b) was intermittently returning a FunctionsFetchError under rapid
+// sends that left the send mutation stuck "pending" (button greyed, "failed to
+// send a request to the Edge Function"). A plain fetch with an explicit
+// AbortController timeout is reliable, gives a real HTTP status, and can never
+// hang the UI forever.
+function functionsUrl(path: string): string {
+  const base = (process.env.EXPO_PUBLIC_SUPABASE_URL ?? '').replace(/\/+$/, '');
+  return `${base}/functions/v1/${path}`;
+}
+
+async function authToken(): Promise<string> {
+  const session = (await supabase.auth.getSession()).data.session;
+  return session?.access_token ?? (process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '');
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit, ms = 15000): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function getSamparkNotes(ticketId: string): Promise<SamparkNote[]> {
-  const { data, error } = await supabase.functions.invoke('sampark-notes', {
-    method: 'GET',
-    // supabase-js's invoke doesn't expose query params directly for GET, so
-    // pass ticket_id through headers — the edge function reads it either way.
-    // Actually: use body-less GET with query string via the raw URL builder.
-    // Falling back to a body-in-GET is nonstandard; instead use the URL:
-    // we hit supabase.functions.invoke with a manual fetch below.
-  });
-  if (!error && data) return (data as { notes: SamparkNote[] }).notes ?? [];
-  // Fallback: direct fetch with query string. `invoke` in some client
-  // versions strips the query part; a raw fetch preserves it.
-  const url = new URL(`${supabaseFunctionsUrl()}/sampark-notes`);
-  url.searchParams.set('ticket_id', ticketId);
-  const token = (await supabase.auth.getSession()).data.session?.access_token ?? getAnonKey();
-  const res = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error(`sampark-notes GET failed: ${res.status}`);
+  const token = await authToken();
+  const url = `${functionsUrl('sampark-notes')}?ticket_id=${encodeURIComponent(ticketId)}`;
+  const res = await fetchWithTimeout(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Couldn't load chat (${res.status}) ${text.slice(0, 120)}`);
+  }
   const json = await res.json();
   return (json.notes ?? []) as SamparkNote[];
 }
@@ -50,21 +66,20 @@ export async function addSamparkNote(
   body: string,
   requesterName: string | null,
 ): Promise<SamparkNote> {
-  const { data, error } = await supabase.functions.invoke('sampark-notes', {
+  const token = await authToken();
+  const res = await fetchWithTimeout(functionsUrl('sampark-notes'), {
     method: 'POST',
-    body: { ticket_id: ticketId, body, requester_name: requesterName },
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ticket_id: ticketId, body, requester_name: requesterName }),
   });
-  if (error) throw new Error(error.message || 'sampark-notes POST failed');
-  const note = (data as { note?: SamparkNote })?.note;
-  if (!note) throw new Error('sampark-notes POST returned no note');
+  const text = await res.text().catch(() => '');
+  if (!res.ok) {
+    // Surface Sampark's own message where possible so it's diagnosable.
+    let detail = text.slice(0, 160);
+    try { const j = JSON.parse(text); detail = j.error || j.detail || detail; } catch { /* keep raw */ }
+    throw new Error(`Message not sent (${res.status}): ${detail}`);
+  }
+  const note = (JSON.parse(text) as { note?: SamparkNote })?.note;
+  if (!note) throw new Error('Message not sent: Sampark returned no note');
   return note;
-}
-
-// Helpers — kept local so this file has no cross-cutting deps.
-function supabaseFunctionsUrl(): string {
-  const base = (process.env.EXPO_PUBLIC_SUPABASE_URL ?? '').replace(/\/+$/, '');
-  return `${base}/functions/v1`;
-}
-function getAnonKey(): string {
-  return process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 }

@@ -20,17 +20,22 @@ export function CommentInput({ onSubmit, isSubmitting, canMarkInternal }: Props)
   const [isInternal, setIsInternal] = useState(false);
   const [focused, setFocused] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!body.trim() || isSubmitting) return;
-    try {
-      await onSubmit(body.trim(), isInternal);
-      setBody(''); // clear ONLY on success — silent failures used to blank the field
-    } catch {
-      // Parent's mutation.onError will surface a toast; keep the draft.
-    }
+  const handleSubmit = () => {
+    const text = body.trim();
+    if (!text) return;
+    // Fire-and-forget: clear the field IMMEDIATELY and let the parent handle
+    // the send optimistically (the message shows right away with a pending
+    // tick and reconciles/marks-failed on its own). We intentionally do NOT
+    // await or gate on `isSubmitting` here — awaiting a slow/hung Sampark POST
+    // was what left the button greyed after a couple of messages. WhatsApp
+    // lets you keep typing while a message is still in flight; so do we.
+    onSubmit(text, isInternal);
+    setBody('');
   };
 
-  const canSend = !!body.trim() && !isSubmitting;
+  // Only gate on having text — never on in-flight state, so the button can't
+  // get stuck disabled if a previous send is slow or failed.
+  const canSend = !!body.trim();
   const activeBorderColor = isInternal ? '#8B5CF6' : theme.colors.brand;
   const borderColor = focused ? activeBorderColor : theme.colors.border;
 
