@@ -73,23 +73,72 @@ async function sdpGet(cfg: Cfg, token: string, path: string): Promise<any> {
   return JSON.parse(text);
 }
 
+// Pull a Sampark request id out of whatever shape the trigger sends. SDP
+// custom triggers can post the id under several different keys/nestings and
+// sometimes as a list, so we probe all of them rather than assume one.
+function extractRequestId(payload: any, url: URL): string {
+  const candidates = [
+    payload?.request_id,
+    payload?.id,
+    payload?.request?.id,
+    payload?.requests?.[0]?.id,
+    payload?.data?.request?.id,
+    payload?.entity_id,
+    payload?.workerorder_id,
+    url.searchParams.get('request_id'),
+    url.searchParams.get('id'),
+  ];
+  for (const c of candidates) {
+    const v = String(c ?? '').trim();
+    if (v && v !== 'undefined' && v !== 'null') return v;
+  }
+  return '';
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
 
   const url = new URL(req.url);
-  const token = url.searchParams.get('token');
-  if (!token || token !== Deno.env.get('SAMPARK_WEBHOOK_SECRET')) {
+  const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+  // Read the body ONCE as text so we can both log it raw and parse it. A
+  // trigger that posts form-encoded or a nonstandard JSON shape is still
+  // captured verbatim for diagnosis.
+  const rawBody = await req.text().catch(() => '');
+  let payload: any = {};
+  try { payload = rawBody ? JSON.parse(rawBody) : {}; } catch { /* keep raw */ }
+
+  // Accept the shared secret from the query string OR an Authorization/x-webhook
+  // header OR a body field — SDP's webhook builder doesn't always let you put it
+  // in the URL, and a token that only travels in a header was silently 403'd
+  // before, which would make every trigger call fail while the poll masked it.
+  const secret = Deno.env.get('SAMPARK_WEBHOOK_SECRET') || '';
+  const headerToken = (req.headers.get('x-webhook-token')
+    || req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
+    || '').trim();
+  const suppliedToken = (url.searchParams.get('token') || headerToken || String(payload?.token ?? '')).trim();
+  const tokenOk = !!secret && suppliedToken === secret;
+
+  const requestId = extractRequestId(payload, url);
+
+  // Log EVERY inbound hit (even rejected ones) so we can see whether Sampark's
+  // trigger is actually calling us, with what payload, and whether the token
+  // matched. Fire-and-forget; never let logging failure break the webhook.
+  supabase.from('sampark_webhook_hits').insert({
+    method: req.method,
+    url: req.url,
+    token_present: !!suppliedToken,
+    token_ok: tokenOk,
+    parsed_request_id: requestId || null,
+    raw_body: rawBody.slice(0, 2000),
+    content_type: req.headers.get('content-type'),
+  }).then(() => {}, () => {});
+
+  if (!tokenOk) {
     return new Response(JSON.stringify({ error: 'forbidden' }), { status: 403, headers: { ...CORS, 'Content-Type': 'application/json' } });
   }
 
-  const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-
   try {
-    // The trigger sends the request id (accept a few field names / nesting).
-    const payload = await req.json().catch(() => ({}));
-    const requestId = String(
-      payload.request_id ?? payload.id ?? payload.request?.id ?? url.searchParams.get('request_id') ?? '',
-    ).trim();
     if (!requestId) return new Response(JSON.stringify({ ok: false, error: 'no_request_id' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
     // Find the RITA ticket linked to this Sampark request.
