@@ -43,11 +43,29 @@ async function loadCfg(supabase: ReturnType<typeof createClient>): Promise<Cfg> 
   };
 }
 
-async function getToken(cfg: Cfg): Promise<string> {
+// Uses integration_settings-cached Zoho access token when still valid ≥5 min,
+// refreshes once and stores back otherwise. Shared across every sampark-*
+// edge fn + every instance so the OAuth endpoint never gets hammered.
+async function getToken(cfg: Cfg, supabase: ReturnType<typeof createClient>): Promise<string> {
+  const { data: cached } = await supabase
+    .from('integration_settings')
+    .select('sampark_access_token, sampark_access_expires_at')
+    .eq('id', 1).maybeSingle();
+  const c = (cached ?? {}) as { sampark_access_token?: string | null; sampark_access_expires_at?: string | null };
+  if (c.sampark_access_token && c.sampark_access_expires_at) {
+    const ms = new Date(c.sampark_access_expires_at).getTime();
+    if (ms - Date.now() > 5 * 60 * 1000) return c.sampark_access_token;
+  }
   const body = new URLSearchParams({ refresh_token: cfg.refreshToken, client_id: cfg.clientId, client_secret: cfg.clientSecret, grant_type: 'refresh_token' });
   const res = await fetch(`https://accounts.zoho.${cfg.dataCenter}/oauth/v2/token`, { method: 'POST', body });
-  if (!res.ok) throw new Error(`token refresh ${res.status}`);
-  return (await res.json()).access_token as string;
+  const text = await res.text();
+  if (!res.ok) throw new Error(`token refresh ${res.status}: ${text.slice(0, 200)}`);
+  const parsed = JSON.parse(text);
+  const t = parsed.access_token as string | undefined;
+  if (!t) throw new Error(`no access_token: ${text.slice(0, 200)}`);
+  const expiresAt = new Date(Date.now() + (Number(parsed.expires_in) || 3600) * 1000).toISOString();
+  await supabase.from('integration_settings').update({ sampark_access_token: t, sampark_access_expires_at: expiresAt }).eq('id', 1);
+  return t;
 }
 
 async function sdpGet(cfg: Cfg, token: string, path: string): Promise<any> {
@@ -132,34 +150,47 @@ async function syncOne(
       if (notifErr) console.warn('[sampark-poll] notification insert failed:', notifErr);
     }
   }
-  // Same policy as sampark-webhook: only emit a notifications row (for the
-  // OS push), never store the note body in RITA. Dedup on
-  // (recipient_id, sampark_note_id) keeps repeat polls quiet.
+  // Notes + REQREPLY conversations. sampark-webhook has the same logic;
+  // this cron is the backstop for a dropped webhook fire.
   let notesAdded = 0;
+  const emit = async (id: string, author: string, body: string) => {
+    if (!ticket.requester_id || !id || !body) return;
+    const displayId = ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : 'ticket';
+    const { error } = await supabase.from('notifications').insert({
+      recipient_id: ticket.requester_id,
+      ticket_id: ticket.id,
+      title: `${author} commented on ${displayId}`,
+      body: body.slice(0, 140),
+      type: 'ticket_comment',
+      sampark_note_id: id,
+    });
+    if (!error) notesAdded++;
+  };
   try {
     const notesRes = await sdpGet(cfg, token, `/requests/${reqId}/notes`);
     for (const note of (notesRes.notes ?? []) as Record<string, any>[]) {
       if (note.show_to_requester === false) continue;
-      const noteId = String(note.id ?? '');
-      if (!noteId) continue;
       const rawBody = String(note.description ?? '').replace(/<[^>]+>/g, '').trim();
-      if (!rawBody) continue;
-      if (/^.+?\s+\(RITA\):/i.test(rawBody)) continue; // don't ping people about their own outbound
-      const authorName = note.created_by?.name ? String(note.created_by.name) : 'Support';
-      if (ticket.requester_id) {
-        const displayId = ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : 'ticket';
-        const { error } = await supabase.from('notifications').insert({
-          recipient_id: ticket.requester_id,
-          ticket_id: ticket.id,
-          title: `${authorName} commented on ${displayId}`,
-          body: rawBody.slice(0, 140),
-          type: 'ticket_comment',
-          sampark_note_id: noteId,
-        });
-        if (!error) notesAdded++;
-      }
+      if (!rawBody || /^.+?\s+\(RITA\):/i.test(rawBody)) continue;
+      await emit(String(note.id ?? ''), String(note.created_by?.name || 'Support'), rawBody);
     }
   } catch { /* notes optional */ }
+  try {
+    const convRes = await sdpGet(cfg, token, `/requests/${reqId}/conversations`);
+    for (const c of (convRes.conversations ?? []) as Record<string, any>[]) {
+      if (c.type !== 'REQREPLY' || c.show_to_requester === false) continue;
+      try {
+        const detail = await sdpGet(cfg, token, `/requests/${reqId}/notifications/${c.id}`);
+        const n = detail.notification;
+        if (!n) continue;
+        const stripped = String(n.description ?? '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
+        const q = stripped.search(/^On\s+.+\swrote:$/mi);
+        const clean = (q > 0 ? stripped.slice(0, q) : stripped).trim();
+        if (!clean) continue;
+        await emit(String(c.id), String(n.sender?.name || 'Support'), clean);
+      } catch { /* per-reply optional */ }
+    }
+  } catch { /* conversations optional */ }
   return { statusChanged, assigneeChanged, notesAdded };
 }
 
@@ -179,9 +210,49 @@ Deno.serve(async (req) => {
   if (probeReqId) {
     try {
       const cfg = await loadCfg(supabase);
-      const token = await getToken(cfg);
-      const notesRes = await sdpGet(cfg, token, `/requests/${probeReqId}/notes`);
-      return new Response(JSON.stringify({ ok: true, notes: notesRes.notes ?? notesRes }, null, 2), {
+      const token = await getToken(cfg, supabase);
+      // Pull EVERYTHING SDP might store a technician reply as: notes,
+      // conversations (email thread), plus the request itself for its
+      // resolution field. Whatever the Sampark tech did lands in one of
+      // these three places, and the app needs to surface the right one.
+      const out: Record<string, unknown> = {};
+      try {
+        const notesRes = await sdpGet(cfg, token, `/requests/${probeReqId}/notes`);
+        out.notes = notesRes.notes ?? notesRes;
+      } catch (e) { out.notesError = String(e); }
+      try {
+        const convRes = await sdpGet(cfg, token, `/requests/${probeReqId}/conversations`);
+        out.conversations = convRes.conversations ?? convRes;
+        // For each visible REQREPLY, pull the detail to see what body field
+        // it exposes — needed to render the actual chat text.
+        const details: Record<string, unknown>[] = [];
+        // Try every SDP endpoint name that plausibly returns REQREPLY body.
+        const c0 = (convRes.conversations ?? []).find((c: any) => c.type === 'REQREPLY');
+        if (c0) {
+          for (const path of [
+            `/requests/${probeReqId}/replies/${c0.id}`,
+            `/requests/${probeReqId}/all_conversation/${c0.id}`,
+            `/requests/${probeReqId}/all_replies/${c0.id}`,
+            `/requests/${probeReqId}/notifications/${c0.id}`,
+            `/conversations/${c0.id}`,
+            `/replies/${c0.id}`,
+          ]) {
+            try {
+              const d = await sdpGet(cfg, token, path);
+              details.push({ path, ok: true, data: d });
+              break;
+            } catch (e) { details.push({ path, error: String(e).slice(0, 120) }); }
+          }
+        }
+        out.reqreplyDetails = details;
+      } catch (e) { out.conversationsError = String(e); }
+      try {
+        const detail = await sdpGet(cfg, token, `/requests/${probeReqId}`);
+        out.resolution = detail.request?.resolution ?? null;
+        out.responder = detail.request?.responder ?? null;
+        out.first_response_due_by_time = detail.request?.first_response_due_by_time ?? null;
+      } catch (e) { out.detailError = String(e); }
+      return new Response(JSON.stringify({ ok: true, ...out }, null, 2), {
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });
     } catch (err) {
@@ -207,7 +278,7 @@ Deno.serve(async (req) => {
     }
 
     const cfg = await loadCfg(supabase);
-    const token = await getToken(cfg);
+    const token = await getToken(cfg, supabase);
 
     let statusChanges = 0, assigneeChanges = 0, notes = 0, errors = 0;
     for (const t of list) {

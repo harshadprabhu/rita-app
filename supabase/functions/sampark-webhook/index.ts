@@ -41,11 +41,27 @@ async function loadCfg(supabase: ReturnType<typeof createClient>): Promise<Cfg> 
   };
 }
 
-async function getToken(cfg: Cfg): Promise<string> {
+// Uses integration_settings-cached access token; refresh only when ≤5 min left.
+async function getToken(cfg: Cfg, supabase: ReturnType<typeof createClient>): Promise<string> {
+  const { data: cached } = await supabase
+    .from('integration_settings')
+    .select('sampark_access_token, sampark_access_expires_at')
+    .eq('id', 1).maybeSingle();
+  const c = (cached ?? {}) as { sampark_access_token?: string | null; sampark_access_expires_at?: string | null };
+  if (c.sampark_access_token && c.sampark_access_expires_at) {
+    const ms = new Date(c.sampark_access_expires_at).getTime();
+    if (ms - Date.now() > 5 * 60 * 1000) return c.sampark_access_token;
+  }
   const body = new URLSearchParams({ refresh_token: cfg.refreshToken, client_id: cfg.clientId, client_secret: cfg.clientSecret, grant_type: 'refresh_token' });
   const res = await fetch(`https://accounts.zoho.${cfg.dataCenter}/oauth/v2/token`, { method: 'POST', body });
-  if (!res.ok) throw new Error(`token refresh ${res.status}`);
-  return (await res.json()).access_token as string;
+  const text = await res.text();
+  if (!res.ok) throw new Error(`token refresh ${res.status}: ${text.slice(0, 200)}`);
+  const parsed = JSON.parse(text);
+  const t = parsed.access_token as string | undefined;
+  if (!t) throw new Error(`no access_token: ${text.slice(0, 200)}`);
+  const expiresAt = new Date(Date.now() + (Number(parsed.expires_in) || 3600) * 1000).toISOString();
+  await supabase.from('integration_settings').update({ sampark_access_token: t, sampark_access_expires_at: expiresAt }).eq('id', 1);
+  return t;
 }
 
 async function sdpGet(cfg: Cfg, token: string, path: string): Promise<any> {
@@ -88,7 +104,7 @@ Deno.serve(async (req) => {
     const ticketId = t.id;
 
     const cfg = await loadCfg(supabase);
-    const accessToken = await getToken(cfg);
+    const accessToken = await getToken(cfg, supabase);
 
     // 1. Pull the request → sync status + technician assignment.
     const reqDetail = await sdpGet(cfg, accessToken, `/requests/${requestId}`);
@@ -175,49 +191,50 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 2. Pull notes → emit a notification row for each new one, so a push
-    //    lands on the requester's phone (WhatsApp-style alert). Note bodies
-    //    themselves are NEVER stored in RITA anymore — Sampark is the sole
-    //    source of truth and the app fetches the chat live on demand. The
-    //    notification row is the only DB write, and only so the existing
-    //    notification_push trigger can turn it into an OS push.
-    //
-    //    Dedup is by (recipient_id + sampark_note_id) — a unique index on
-    //    notifications.sampark_note_id (added alongside this change) turns
-    //    repeated pulls of the same note into a no-op insert failure that
-    //    we swallow.
+    // 2. Pull BOTH /notes and /conversations (REQREPLY items live there,
+    //    not in /notes — Sampark's technicians reply via email more often
+    //    than typing on the Notes tab). Emit a notification row for each
+    //    new visible message so a push lands on the requester's phone.
+    //    Bodies are NEVER stored in RITA (Sampark is sole source of truth).
     let notesAdded = 0;
+    const emit = async (id: string, author: string, body: string) => {
+      if (!t.requester_id || !id || !body) return;
+      const displayId = t.sampark_display_id ? `#${t.sampark_display_id}` : 'ticket';
+      const { error } = await supabase.from('notifications').insert({
+        recipient_id: t.requester_id,
+        ticket_id: ticketId,
+        title: `${author} commented on ${displayId}`,
+        body: body.slice(0, 140),
+        type: 'ticket_comment',
+        sampark_note_id: id,
+      });
+      if (!error) notesAdded++;
+    };
     try {
       const notesRes = await sdpGet(cfg, accessToken, `/requests/${requestId}/notes`);
-      const notes = (notesRes.notes ?? []) as Record<string, any>[];
-      for (const note of notes) {
+      for (const note of (notesRes.notes ?? []) as Record<string, any>[]) {
         if (note.show_to_requester === false) continue;
-        const noteId = String(note.id ?? '');
-        if (!noteId) continue;
         const rawBody = String(note.description ?? '').replace(/<[^>]+>/g, '').trim();
-        if (!rawBody) continue;
-        // Skip notes that were WRITTEN from RITA (the app itself just posted
-        // them via sampark-notes POST) — those are prefixed with "<user> (RITA):".
-        // Otherwise the requester would get a push notifying them of their
-        // own outgoing message.
-        if (/^.+?\s+\(RITA\):/i.test(rawBody)) continue;
-        const authorName = note.created_by?.name ? String(note.created_by.name) : 'Support';
-        if (t.requester_id) {
-          const displayId = t.sampark_display_id ? `#${t.sampark_display_id}` : 'ticket';
-          const { error } = await supabase.from('notifications').insert({
-            recipient_id: t.requester_id,
-            ticket_id: ticketId,
-            title: `${authorName} commented on ${displayId}`,
-            body: rawBody.slice(0, 140),
-            type: 'ticket_comment',
-            sampark_note_id: noteId,
-          });
-          if (!error) notesAdded++;
-        }
+        if (!rawBody || /^.+?\s+\(RITA\):/i.test(rawBody)) continue;
+        await emit(String(note.id ?? ''), String(note.created_by?.name || 'Support'), rawBody);
       }
-    } catch (e) {
-      console.warn('[sampark-webhook] notes pull failed:', e);
-    }
+    } catch (e) { console.warn('[sampark-webhook] notes pull failed:', e); }
+    try {
+      const convRes = await sdpGet(cfg, accessToken, `/requests/${requestId}/conversations`);
+      for (const c of (convRes.conversations ?? []) as Record<string, any>[]) {
+        if (c.type !== 'REQREPLY' || c.show_to_requester === false) continue;
+        try {
+          const detail = await sdpGet(cfg, accessToken, `/requests/${requestId}/notifications/${c.id}`);
+          const n = detail.notification;
+          if (!n) continue;
+          const stripped = String(n.description ?? '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
+          const q = stripped.search(/^On\s+.+\swrote:$/mi);
+          const clean = (q > 0 ? stripped.slice(0, q) : stripped).trim();
+          if (!clean) continue;
+          await emit(String(c.id), String(n.sender?.name || 'Support'), clean);
+        } catch (e) { console.warn('[sampark-webhook] reply detail failed:', c.id, e); }
+      }
+    } catch (e) { console.warn('[sampark-webhook] conversations pull failed:', e); }
 
     return new Response(JSON.stringify({ ok: true, ticketId, statusChanged, assigneeChanged, notesAdded, samparkTechnician: techName || null, matchedAssignee: assigneeName }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
   } catch (err) {

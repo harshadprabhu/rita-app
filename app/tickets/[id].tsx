@@ -61,7 +61,9 @@ export default function TicketDetail() {
     queryKey: ['sampark-notes', id],
     queryFn: () => getSamparkNotes(id),
     enabled: !!id,
-    refetchInterval: 3000,
+    // 5s (was 3s) — Sampark's /notes endpoint isn't hard-limited but the
+    // shared Zoho OAuth token IS, so we play nice with both.
+    refetchInterval: 5000,
     refetchOnWindowFocus: true,
   });
   const { data: auditLog } = useQuery({ queryKey: QUERY_KEYS.ticketAuditLog(id), queryFn: () => getTicketAuditLog(id) });

@@ -40,7 +40,17 @@ async function loadCfg(supabase: ReturnType<typeof createClient>): Promise<Cfg> 
   };
 }
 
-async function getToken(cfg: Cfg): Promise<string> {
+// Uses integration_settings-cached access token; refresh only when ≤5 min left.
+async function getToken(cfg: Cfg, supabase: ReturnType<typeof createClient>): Promise<string> {
+  const { data: cached } = await supabase
+    .from('integration_settings')
+    .select('sampark_access_token, sampark_access_expires_at')
+    .eq('id', 1).maybeSingle();
+  const c = (cached ?? {}) as { sampark_access_token?: string | null; sampark_access_expires_at?: string | null };
+  if (c.sampark_access_token && c.sampark_access_expires_at) {
+    const ms = new Date(c.sampark_access_expires_at).getTime();
+    if (ms - Date.now() > 5 * 60 * 1000) return c.sampark_access_token;
+  }
   const body = new URLSearchParams({
     refresh_token: cfg.refreshToken, client_id: cfg.clientId,
     client_secret: cfg.clientSecret, grant_type: 'refresh_token',
@@ -48,8 +58,11 @@ async function getToken(cfg: Cfg): Promise<string> {
   const res = await fetch(`https://accounts.zoho.${cfg.dataCenter}/oauth/v2/token`, { method: 'POST', body });
   const text = await res.text();
   if (!res.ok) throw new Error(`Zoho token refresh failed: ${res.status} ${text.slice(0, 200)}`);
-  const t = JSON.parse(text).access_token;
+  const parsed = JSON.parse(text);
+  const t = parsed.access_token;
   if (!t) throw new Error(`No access_token: ${text.slice(0, 200)}`);
+  const expiresAt = new Date(Date.now() + (Number(parsed.expires_in) || 3600) * 1000).toISOString();
+  await supabase.from('integration_settings').update({ sampark_access_token: t, sampark_access_expires_at: expiresAt }).eq('id', 1);
   return t;
 }
 
@@ -81,7 +94,7 @@ Deno.serve(async (req) => {
     const requesterName = (prof as { display_name?: string } | null)?.display_name || '';
 
     const cfg = await loadCfg(supabase);
-    const token = await getToken(cfg);
+    const token = await getToken(cfg, supabase);
 
     const desc = String((ticket as any).long_description || (ticket as any).description || '').trim();
     const subject = (desc.split('\n')[0] || 'RITA ticket').slice(0, 200);
