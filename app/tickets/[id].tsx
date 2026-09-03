@@ -61,10 +61,16 @@ export default function TicketDetail() {
     queryKey: ['sampark-notes', id],
     queryFn: () => getSamparkNotes(id),
     enabled: !!id,
-    // 5s (was 3s) — Sampark's /notes endpoint isn't hard-limited but the
-    // shared Zoho OAuth token IS, so we play nice with both.
-    refetchInterval: 5000,
+    // 2s — the Zoho token is DB-cached (one refresh per ~55 min shared across
+    // all sampark-* edge fns), so we no longer thrash the OAuth endpoint. The
+    // remaining budget is Sampark's own /notes + /conversations reads; 2s
+    // (≈30/min) is comfortably under any observed limit and gives the
+    // "chatting like WhatsApp" feel the user asked for. Also refetches on
+    // window focus so a background→foreground return is instant, not 2s.
+    refetchInterval: 2000,
+    refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
+    staleTime: 0,
   });
   const { data: auditLog } = useQuery({ queryKey: QUERY_KEYS.ticketAuditLog(id), queryFn: () => getTicketAuditLog(id) });
 

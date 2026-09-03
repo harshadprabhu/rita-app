@@ -59,7 +59,13 @@ export default function CreateTicket() {
   const [subcategoryOverride, setSubcategoryOverride] = useState<string | null>(null);
   const [itemOverride, setItemOverride] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [contactNumber, setContactNumber] = useState(profile?.phone ?? '');
+  // Contact number is strictly 10 digits, digits-only. Strip anything the
+  // user types that isn't 0-9 (paste from a formatted string, accidental
+  // dashes, etc.) and cap at 10. Prevents junk like "99##99###" that broke
+  // the earlier Sampark push retries.
+  const sanitizePhone = (s: string) => s.replace(/\D/g, '').slice(0, 10);
+  const [contactNumber, setContactNumber] = useState(sanitizePhone(profile?.phone ?? ''));
+  const isPhoneValid = contactNumber.length === 10;
 
   // Chat flow state — drives which inline card appears under the latest bot
   // message. Every user tap that advances the flow appends a new bot bubble +
@@ -217,8 +223,8 @@ export default function CreateTicket() {
   };
 
   const finishAttachStep = () => {
-    // If we don't have a contact number, ask for one before summary.
-    if (!contactNumber.trim()) {
+    // If we don't have a valid 10-digit contact number, ask for one before summary.
+    if (!isPhoneValid) {
       setMessages((m) => [
         ...m.filter((x) => x.kind !== 'attach'),
         { id: `b-contact-${Date.now()}`, kind: 'bot', text: 'One more thing — what phone number should we use for follow-up on this ticket?' },
@@ -242,6 +248,13 @@ export default function CreateTicket() {
   const doSubmit = () => {
     if (inFlightRef.current || submit.isPending) return;
     if (!description.trim() || !category) return;
+    // Contact number is optional at the API level, but if the user supplied
+    // anything at all it must be exactly 10 digits — block submit rather than
+    // ship "99##99###"-style junk to Sampark (which rejects it silently).
+    if (contactNumber.length > 0 && !isPhoneValid) {
+      showToast('Enter a valid 10-digit phone number', 'error');
+      return;
+    }
     inFlightRef.current = true;
     submit.mutate();
   };
@@ -441,26 +454,41 @@ export default function CreateTicket() {
       </View>
   );
 
-  const renderContactCard = () => (
+  const renderContactCard = () => {
+    const showError = contactNumber.length > 0 && !isPhoneValid;
+    return (
       <View style={styles.card}>
         <TextInput
-          style={styles.contactInput}
+          style={[styles.contactInput, showError && styles.contactInputError]}
           value={contactNumber}
-          onChangeText={setContactNumber}
-          placeholder="Phone number"
+          onChangeText={(t) => setContactNumber(sanitizePhone(t))}
+          placeholder="10-digit phone number"
           placeholderTextColor={theme.colors.textTertiary}
-          keyboardType="phone-pad"
+          keyboardType="number-pad"
           autoComplete="tel"
+          maxLength={10}
         />
+        <Text style={showError ? styles.contactHintError : styles.contactHint}>
+          {showError
+            ? `Please enter a valid 10-digit number (${contactNumber.length}/10).`
+            : 'Digits only. No spaces, dashes, or country code.'}
+        </Text>
         <SoftPress
-          style={[styles.primaryBtn, !contactNumber.trim() && styles.primaryBtnDisabled]}
-          onPress={() => contactNumber.trim() && proceedToSummary()}
+          style={[styles.primaryBtn, !isPhoneValid && styles.primaryBtnDisabled]}
+          onPress={() => {
+            if (!isPhoneValid) {
+              showToast('Enter a valid 10-digit phone number', 'error');
+              return;
+            }
+            proceedToSummary();
+          }}
         >
           <Ionicons name="checkmark" size={16} color="#fff" />
           <Text style={styles.primaryBtnText}>Continue</Text>
         </SoftPress>
       </View>
-  );
+    );
+  };
 
   const renderSummaryCard = () => {
     const suggested = [category, subcategory, item].filter(Boolean).join(' > ');
@@ -522,10 +550,14 @@ export default function CreateTicket() {
         </TouchableOpacity>
       </View>
 
+      {/* padding on BOTH platforms — behavior=undefined on Android relies on
+          windowSoftInputMode=adjustResize and fails when a fixed-height header
+          sits above the scroller (composer stays hidden behind the keyboard).
+          Offset 0 lines up with the ticket-detail chat fix. */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={80}
+        behavior="padding"
+        keyboardVerticalOffset={0}
       >
         <ScrollView
           ref={scrollRef}
@@ -778,6 +810,9 @@ const styles = StyleSheet.create({
     borderRadius: 10, paddingHorizontal: theme.spacing.md, height: 44,
     color: theme.colors.textPrimary, fontSize: 14,
   },
+  contactInputError: { borderColor: theme.colors.error },
+  contactHint: { fontSize: 11, color: theme.colors.textTertiary, marginTop: 4 },
+  contactHintError: { fontSize: 11, color: theme.colors.error, marginTop: 4, fontWeight: '600' },
 
   // ── Summary card ───────────────────────────────────────────────────────
   summaryBox: {
