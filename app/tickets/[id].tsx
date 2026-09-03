@@ -14,10 +14,10 @@ import { CommentInput } from '../../components/tickets/CommentInput';
 import { TicketRatingCard } from '../../components/tickets/TicketRatingCard';
 import { getTicketById, updateTicket, claimTicket, reassignTicket } from '../../lib/api/tickets';
 import { getTechnicians } from '../../lib/api/profiles';
-import { getComments, addComment } from '../../lib/api/comments';
+import { getSamparkNotes, addSamparkNote, SamparkNote } from '../../lib/api/samparkComments';
 import { getTicketAuditLog } from '../../lib/api/auditLog';
 import { useAuthStore } from '../../stores/authStore';
-import { canAssignTicket, canChangeStatus, canSeeInternalComments, canReassignTicket } from '../../lib/auth/permissions';
+import { canAssignTicket, canChangeStatus, canReassignTicket } from '../../lib/auth/permissions';
 import { ALL_LIFECYCLES, LIFECYCLE_TO_STATUS } from '../../constants/ticket';
 import { QUERY_KEYS } from '../../constants/queryKeys';
 import { timeAgo, formatDurationBetween } from '../../lib/utils/date';
@@ -49,29 +49,48 @@ export default function TicketDetail() {
   const [tab, setTab] = useState<Tab>('comments');
 
   const { data: ticket, isLoading } = useQuery({ queryKey: QUERY_KEYS.ticket(id), queryFn: () => getTicketById(id) });
-  const { data: comments } = useQuery({ queryKey: QUERY_KEYS.ticketComments(id), queryFn: () => getComments(id) });
+  // Comments come DIRECTLY from Sampark (single source of truth). RITA no
+  // longer stores chat bodies anywhere — not in the DB, not on device.
+  // A 3s refetch interval while the screen is open gives the WhatsApp-like
+  // liveness the user asked for, and refetchOnWindowFocus catches the
+  // background-to-foreground case.
+  const {
+    data: notes,
+    refetch: refetchNotes,
+  } = useQuery({
+    queryKey: ['sampark-notes', id],
+    queryFn: () => getSamparkNotes(id),
+    enabled: !!id,
+    refetchInterval: 3000,
+    refetchOnWindowFocus: true,
+  });
   const { data: auditLog } = useQuery({ queryKey: QUERY_KEYS.ticketAuditLog(id), queryFn: () => getTicketAuditLog(id) });
 
-  // Realtime — any change on this ticket row, and any inserted comment on
-  // it, invalidates the local query so the chat updates without a manual
-  // refresh. The DB-side ticket_comments and tickets tables were just
-  // added to the supabase_realtime publication; before that, this channel
-  // was connecting successfully but the DB never emitted row events for
-  // them, which is why comments felt "not realtime" for so long.
+  // Ticket status/assignee updates still come via Supabase realtime — those
+  // ARE stored in the DB. Comments no longer flow through this channel.
   useEffect(() => {
     if (!id) return;
     const channel = subscribeToTicket(id, () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ticket(id) });
-      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ticketComments(id) });
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ticketAuditLog(id) });
     });
     return () => { supabase.removeChannel(channel); };
   }, [id, queryClient]);
 
+  // Send a comment straight to Sampark. Internal notes toggle is no longer
+  // wired — Sampark public notes are all we deal with here; if RITA needs
+  // internal staff notes later they'd need their own storage separate from
+  // Sampark. Optimistic append gives instant echo; the next 3s poll picks
+  // up the authoritative note (or corrects if Sampark reformatted it).
   const addCommentMutation = useMutation({
-    mutationFn: (vars: { body: string; isInternal: boolean }) =>
-      addComment({ ticket_id: id, author_id: profile!.id, body: vars.body, is_internal: vars.isInternal }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.ticketComments(id) }),
+    mutationFn: (vars: { body: string }) =>
+      addSamparkNote(id, vars.body, profile?.display_name ?? null),
+    onSuccess: (newNote) => {
+      queryClient.setQueryData<SamparkNote[] | undefined>(['sampark-notes', id], (prev) =>
+        prev ? [...prev, newNote] : [newNote],
+      );
+      refetchNotes();
+    },
   });
 
   const updateLifecycle = useMutation({
@@ -111,8 +130,10 @@ export default function TicketDetail() {
   if (isLoading || !ticket || !profile) return <LoadingOverlay />;
 
   const canStatus = canChangeStatus(profile);
-  const canInternal = canSeeInternalComments(profile);
-  const visibleComments = (comments ?? []).filter((c) => !c.is_internal || canInternal);
+  // Sampark notes have no "internal" concept from RITA's side — all
+  // public-visible technician notes flow through. The former internal-notes
+  // toggle in CommentInput is disabled by omitting canMarkInternal below.
+  const visibleNotes = notes ?? [];
 
   // Ticket ID label: use Sampark's id when synced; fall back to "IND-####"
   // built from the RITA UUID's first block so the header always has SOMETHING
@@ -185,21 +206,41 @@ export default function TicketDetail() {
         {tab === 'comments' ? (
           <>
             <ScrollView contentContainerStyle={styles.commentsScroll} keyboardShouldPersistTaps="always">
-              {visibleComments.length === 0 ? (
+              {visibleNotes.length === 0 ? (
                 <View style={styles.emptyComments}>
                   <Ionicons name="chatbubble-ellipses-outline" size={40} color={theme.colors.textTertiary} />
                   <Text style={styles.emptyCommentsText}>No comments yet</Text>
                 </View>
               ) : (
-                visibleComments.map((c) => (
-                  <CommentBubble key={c.id} comment={c} isOwnComment={c.author_id === profile.id} />
+                // Adapt SamparkNote to CommentBubble's expected shape. The
+                // ownership check (fromRita AND author matches) mirrors the
+                // WhatsApp visual: "my messages on the right, theirs on the
+                // left". A note authored from RITA by anyone counts as
+                // "outgoing" from the requester's perspective, which is what
+                // the requester actually wants to see anyway.
+                visibleNotes.map((n) => (
+                  <CommentBubble
+                    key={n.id}
+                    isOwnComment={n.fromRita && n.author.toLowerCase() === (profile.display_name ?? '').toLowerCase()}
+                    comment={{
+                      id: n.id,
+                      ticket_id: id,
+                      author_id: null,
+                      external_author: n.fromRita ? `${n.author} (RITA)` : `${n.author} (Sampark)`,
+                      body: n.body,
+                      is_internal: false,
+                      created_at: n.createdAt,
+                      author: null,
+                      sampark_note_id: n.id,
+                    } as any}
+                  />
                 ))
               )}
             </ScrollView>
             <CommentInput
-              canMarkInternal={canInternal}
+              canMarkInternal={false}
               isSubmitting={addCommentMutation.isPending}
-              onSubmit={(body, isInternal) => addCommentMutation.mutate({ body, isInternal })}
+              onSubmit={(body) => addCommentMutation.mutate({ body })}
             />
           </>
         ) : (

@@ -175,8 +175,17 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 2. Pull notes → insert any not already synced. Only public (requester-
-    //    visible) notes flow back to the RITA ticket thread.
+    // 2. Pull notes → emit a notification row for each new one, so a push
+    //    lands on the requester's phone (WhatsApp-style alert). Note bodies
+    //    themselves are NEVER stored in RITA anymore — Sampark is the sole
+    //    source of truth and the app fetches the chat live on demand. The
+    //    notification row is the only DB write, and only so the existing
+    //    notification_push trigger can turn it into an OS push.
+    //
+    //    Dedup is by (recipient_id + sampark_note_id) — a unique index on
+    //    notifications.sampark_note_id (added alongside this change) turns
+    //    repeated pulls of the same note into a no-op insert failure that
+    //    we swallow.
     let notesAdded = 0;
     try {
       const notesRes = await sdpGet(cfg, accessToken, `/requests/${requestId}/notes`);
@@ -185,14 +194,26 @@ Deno.serve(async (req) => {
         if (note.show_to_requester === false) continue;
         const noteId = String(note.id ?? '');
         if (!noteId) continue;
-        const author = note.created_by?.name ? `${note.created_by.name} (Sampark)` : 'Sampark';
-        const bodyText = String(note.description ?? '').replace(/<[^>]+>/g, '').trim();
-        if (!bodyText) continue;
-        const { error } = await supabase.from('ticket_comments').insert({
-          ticket_id: ticketId, author_id: null, external_author: author,
-          body: bodyText, is_internal: false, sampark_note_id: noteId,
-        });
-        if (!error) notesAdded++; // unique index on sampark_note_id makes dupes a no-op error
+        const rawBody = String(note.description ?? '').replace(/<[^>]+>/g, '').trim();
+        if (!rawBody) continue;
+        // Skip notes that were WRITTEN from RITA (the app itself just posted
+        // them via sampark-notes POST) — those are prefixed with "<user> (RITA):".
+        // Otherwise the requester would get a push notifying them of their
+        // own outgoing message.
+        if (/^.+?\s+\(RITA\):/i.test(rawBody)) continue;
+        const authorName = note.created_by?.name ? String(note.created_by.name) : 'Support';
+        if (t.requester_id) {
+          const displayId = t.sampark_display_id ? `#${t.sampark_display_id}` : 'ticket';
+          const { error } = await supabase.from('notifications').insert({
+            recipient_id: t.requester_id,
+            ticket_id: ticketId,
+            title: `${authorName} commented on ${displayId}`,
+            body: rawBody.slice(0, 140),
+            type: 'ticket_comment',
+            sampark_note_id: noteId,
+          });
+          if (!error) notesAdded++;
+        }
       }
     } catch (e) {
       console.warn('[sampark-webhook] notes pull failed:', e);

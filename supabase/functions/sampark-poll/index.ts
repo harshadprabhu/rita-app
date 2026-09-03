@@ -61,7 +61,7 @@ async function sdpGet(cfg: Cfg, token: string, path: string): Promise<any> {
 
 async function syncOne(
   supabase: ReturnType<typeof createClient>, cfg: Cfg, token: string,
-  ticket: { id: string; status: string; sampark_request_id: string; requester_id: string | null; ticket_number: string; assignee_id: string | null; sampark_technician_name: string | null },
+  ticket: { id: string; status: string; sampark_request_id: string; sampark_display_id: string | null; requester_id: string | null; ticket_number: string; assignee_id: string | null; sampark_technician_name: string | null },
 ): Promise<{ statusChanged: boolean; assigneeChanged: boolean; notesAdded: number }> {
   const reqId = ticket.sampark_request_id;
   const detail = await sdpGet(cfg, token, `/requests/${reqId}`);
@@ -132,6 +132,9 @@ async function syncOne(
       if (notifErr) console.warn('[sampark-poll] notification insert failed:', notifErr);
     }
   }
+  // Same policy as sampark-webhook: only emit a notifications row (for the
+  // OS push), never store the note body in RITA. Dedup on
+  // (recipient_id, sampark_note_id) keeps repeat polls quiet.
   let notesAdded = 0;
   try {
     const notesRes = await sdpGet(cfg, token, `/requests/${reqId}/notes`);
@@ -139,14 +142,22 @@ async function syncOne(
       if (note.show_to_requester === false) continue;
       const noteId = String(note.id ?? '');
       if (!noteId) continue;
-      const author = note.created_by?.name ? `${note.created_by.name} (Sampark)` : 'Sampark';
-      const bodyText = String(note.description ?? '').replace(/<[^>]+>/g, '').trim();
-      if (!bodyText) continue;
-      const { error } = await supabase.from('ticket_comments').insert({
-        ticket_id: ticket.id, author_id: null, external_author: author,
-        body: bodyText, is_internal: false, sampark_note_id: noteId,
-      });
-      if (!error) notesAdded++;
+      const rawBody = String(note.description ?? '').replace(/<[^>]+>/g, '').trim();
+      if (!rawBody) continue;
+      if (/^.+?\s+\(RITA\):/i.test(rawBody)) continue; // don't ping people about their own outbound
+      const authorName = note.created_by?.name ? String(note.created_by.name) : 'Support';
+      if (ticket.requester_id) {
+        const displayId = ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : 'ticket';
+        const { error } = await supabase.from('notifications').insert({
+          recipient_id: ticket.requester_id,
+          ticket_id: ticket.id,
+          title: `${authorName} commented on ${displayId}`,
+          body: rawBody.slice(0, 140),
+          type: 'ticket_comment',
+          sampark_note_id: noteId,
+        });
+        if (!error) notesAdded++;
+      }
     }
   } catch { /* notes optional */ }
   return { statusChanged, assigneeChanged, notesAdded };
@@ -159,6 +170,26 @@ Deno.serve(async (req) => {
   }
 
   const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+  // Diagnostic: ?probe_notes=<sampark_request_id> dumps the raw notes response
+  // from Sampark for a given request, so we can confirm what Sampark's own API
+  // is returning (e.g. show_to_requester flag, note count) without any of our
+  // insert-side filtering. Doesn't touch the DB.
+  const probeReqId = new URL(req.url).searchParams.get('probe_notes');
+  if (probeReqId) {
+    try {
+      const cfg = await loadCfg(supabase);
+      const token = await getToken(cfg);
+      const notesRes = await sdpGet(cfg, token, `/requests/${probeReqId}/notes`);
+      return new Response(JSON.stringify({ ok: true, notes: notesRes.notes ?? notesRes }, null, 2), {
+        headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    } catch (err) {
+      return new Response(JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) }), {
+        status: 500, headers: { ...CORS, 'Content-Type': 'application/json' },
+      });
+    }
+  }
 
   try {
     // Active linked tickets only — resolved ones rarely change, so we skip them
