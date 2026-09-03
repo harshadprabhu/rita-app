@@ -9,7 +9,8 @@ import { LifecycleChip } from '../common/StatusChip';
 import { timeAgo, formatDurationBetween } from '../../lib/utils/date';
 import { useAuthStore } from '../../stores/authStore';
 import { getTechnicians } from '../../lib/api/profiles';
-import { updateTicket, reassignTicket, deleteTicket } from '../../lib/api/tickets';
+import { updateTicket, reassignTicket, deleteTicket, getTicketById } from '../../lib/api/tickets';
+import { getSamparkNotes } from '../../lib/api/samparkComments';
 import { QUERY_KEYS } from '../../constants/queryKeys';
 import { theme } from '../../constants/theme';
 import { NumericText } from '../common/NumericText';
@@ -89,7 +90,26 @@ export function TicketCard({ ticket, menuOpen, onToggleMenu, onCloseMenu }: Prop
 
   return (
     <View style={[styles.card, theme.shadows.sm, menuOpen && styles.cardMenuOpen]}>
-      <TouchableOpacity onPress={() => router.push(`/tickets/${ticket.id}`)} activeOpacity={0.7}>
+      <TouchableOpacity
+        onPress={() => {
+          // Fire ticket + Sampark-notes fetches BEFORE navigating so the detail
+          // screen usually mounts with data already in cache. Without this the
+          // user watches an empty chat pane for the 0.5-1s the Sampark round
+          // trip takes. prefetchQuery is a no-op if data is already fresh.
+          qc.prefetchQuery({
+            queryKey: QUERY_KEYS.ticket(ticket.id),
+            queryFn: () => getTicketById(ticket.id),
+            staleTime: 15 * 1000,
+          });
+          qc.prefetchQuery({
+            queryKey: ['sampark-notes', ticket.id],
+            queryFn: () => getSamparkNotes(ticket.id),
+            staleTime: 5 * 1000,
+          });
+          router.push(`/tickets/${ticket.id}`);
+        }}
+        activeOpacity={0.7}
+      >
         {/* Colored top strip driven by status — turns each row into a "tile"
           * visually consistent with the Home stat tiles (Open blue / In
           * Progress amber / Resolved green), so at a glance the status is the

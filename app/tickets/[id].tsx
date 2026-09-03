@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, KeyboardAvoidingView } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, KeyboardAvoidingView, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -57,6 +57,7 @@ export default function TicketDetail() {
   const {
     data: notes,
     refetch: refetchNotes,
+    isPending: notesPending,
   } = useQuery({
     queryKey: ['sampark-notes', id],
     queryFn: () => getSamparkNotes(id),
@@ -70,7 +71,11 @@ export default function TicketDetail() {
     refetchInterval: 2000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
-    staleTime: 0,
+    // 4s staleTime lets prefetch-on-tap results serve the just-opened screen
+    // instantly; the 2s poll still keeps chat fresh. Was 0 (always refetch on
+    // mount) which negated the prefetch and caused the "empty for a beat"
+    // flash on open.
+    staleTime: 4000,
   });
   const { data: auditLog } = useQuery({ queryKey: QUERY_KEYS.ticketAuditLog(id), queryFn: () => getTicketAuditLog(id) });
 
@@ -216,8 +221,17 @@ export default function TicketDetail() {
             <ScrollView contentContainerStyle={styles.commentsScroll} keyboardShouldPersistTaps="always">
               {visibleNotes.length === 0 ? (
                 <View style={styles.emptyComments}>
-                  <Ionicons name="chatbubble-ellipses-outline" size={40} color={theme.colors.textTertiary} />
-                  <Text style={styles.emptyCommentsText}>No comments yet</Text>
+                  {notesPending ? (
+                    <>
+                      <ActivityIndicator size="small" color={theme.colors.brand} />
+                      <Text style={styles.emptyCommentsText}>Loading chat…</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Ionicons name="chatbubble-ellipses-outline" size={40} color={theme.colors.textTertiary} />
+                      <Text style={styles.emptyCommentsText}>No comments yet</Text>
+                    </>
+                  )}
                 </View>
               ) : (
                 // Adapt SamparkNote to CommentBubble's expected shape. The
@@ -230,11 +244,12 @@ export default function TicketDetail() {
                   <CommentBubble
                     key={n.id}
                     isOwnComment={n.fromRita && n.author.toLowerCase() === (profile.display_name ?? '').toLowerCase()}
+                    source={n.fromRita ? 'rita' : 'sampark'}
                     comment={{
                       id: n.id,
                       ticket_id: id,
                       author_id: null,
-                      external_author: n.fromRita ? `${n.author} (RITA)` : `${n.author} (Sampark)`,
+                      external_author: n.fromRita ? `${n.author} (RITA)` : n.author,
                       body: n.body,
                       is_internal: false,
                       created_at: n.createdAt,
