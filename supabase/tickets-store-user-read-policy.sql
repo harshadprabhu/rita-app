@@ -5,10 +5,11 @@
 -- store should see every ticket raised from that store, so the whole
 -- store stays aware of status without side-channel discussion.
 --
--- Add a select policy for role in (user, in_store_manager) scoped to
--- their current store. The existing "own read" policy is kept as-is so
--- a user detached from a store (no current_store_id) still sees at
--- least their own tickets.
+-- Exception: HO (Head Office) users. Their "store" is a per-department
+-- bucket (id like 'HO-…') shared across many unrelated colleagues, so
+-- store-wide read leaks tickets between HO staff who shouldn't see each
+-- other's cases. HO accounts fall back to the base "tickets: own read"
+-- policy — their own tickets only.
 --
 -- Apply live with:
 --   supabase db query --linked < supabase/tickets-store-user-read-policy.sql
@@ -18,4 +19,5 @@ create policy "tickets: store user read" on tickets for select
   using (
     current_role_is(array['user','in_store_manager']::user_role[])
     and store_id = current_store_id()
+    and current_store_id() not like 'HO-%'
   );

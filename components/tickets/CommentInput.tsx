@@ -6,7 +6,10 @@ import { useTranslation } from 'react-i18next';
 import { theme } from '../../constants/theme';
 
 interface Props {
-  onSubmit: (body: string, isInternal: boolean) => void;
+  /** Return a promise so the composer can await the send and only clear on
+   *  resolve. Prevents the "typed, tapped send, message vanished" bug when
+   *  a POST silently fails — the draft stays in the field to retry. */
+  onSubmit: (body: string, isInternal: boolean) => Promise<unknown> | unknown;
   isSubmitting?: boolean;
   canMarkInternal?: boolean;
 }
@@ -17,10 +20,14 @@ export function CommentInput({ onSubmit, isSubmitting, canMarkInternal }: Props)
   const [isInternal, setIsInternal] = useState(false);
   const [focused, setFocused] = useState(false);
 
-  const handleSubmit = () => {
-    if (!body.trim()) return;
-    onSubmit(body.trim(), isInternal);
-    setBody('');
+  const handleSubmit = async () => {
+    if (!body.trim() || isSubmitting) return;
+    try {
+      await onSubmit(body.trim(), isInternal);
+      setBody(''); // clear ONLY on success — silent failures used to blank the field
+    } catch {
+      // Parent's mutation.onError will surface a toast; keep the draft.
+    }
   };
 
   const canSend = !!body.trim() && !isSubmitting;

@@ -17,6 +17,7 @@ import { getTechnicians } from '../../lib/api/profiles';
 import { getSamparkNotes, addSamparkNote, SamparkNote } from '../../lib/api/samparkComments';
 import { getTicketAuditLog } from '../../lib/api/auditLog';
 import { useAuthStore } from '../../stores/authStore';
+import { useUiStore } from '../../stores/uiStore';
 import { canAssignTicket, canChangeStatus, canReassignTicket } from '../../lib/auth/permissions';
 import { ALL_LIFECYCLES, LIFECYCLE_TO_STATUS } from '../../constants/ticket';
 import { QUERY_KEYS } from '../../constants/queryKeys';
@@ -95,6 +96,7 @@ export default function TicketDetail() {
   // internal staff notes later they'd need their own storage separate from
   // Sampark. Optimistic append gives instant echo; the next 3s poll picks
   // up the authoritative note (or corrects if Sampark reformatted it).
+  const showToast = useUiStore((s) => s.showToast);
   const addCommentMutation = useMutation({
     mutationFn: (vars: { body: string }) =>
       addSamparkNote(id, vars.body, profile?.display_name ?? null),
@@ -103,6 +105,11 @@ export default function TicketDetail() {
         prev ? [...prev, newNote] : [newNote],
       );
       refetchNotes();
+    },
+    onError: (err) => {
+      // Surface every failure — a silently-swallowed POST error was the
+      // root cause of "typed a message and it went blank" on #63949.
+      showToast(err instanceof Error ? err.message : 'Failed to send', 'error');
     },
   });
 
@@ -263,7 +270,8 @@ export default function TicketDetail() {
             <CommentInput
               canMarkInternal={false}
               isSubmitting={addCommentMutation.isPending}
-              onSubmit={(body) => addCommentMutation.mutate({ body })}
+              // mutateAsync so the composer can await + clear only on success.
+              onSubmit={(body) => addCommentMutation.mutateAsync({ body })}
             />
           </>
         ) : (

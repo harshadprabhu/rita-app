@@ -226,8 +226,21 @@ Deno.serve(async (req) => {
       // Prefix with `<user> (RITA):` so the normalize() step on any subsequent
       // GET flags it as fromRita — same convention sampark-comment-push used.
       const authoredBody = requester_name ? `${requester_name} (RITA): ${body.trim()}` : body.trim();
+      // SDP v3 wants `request_note` as the wrapper key, NOT `note`. Confirmed
+      // live: `{"note": …}` returns 400 EXTRA_KEY_FOUND_IN_JSON (field=note),
+      // which the app previously swallowed — the composer cleared, the POST
+      // silently failed, and nothing appeared in chat. Old working payload is
+      // preserved verbatim from the retired sampark-comment-push fn.
       const form = new URLSearchParams({
-        input_data: JSON.stringify({ note: { description: authoredBody, show_to_requester: true, mark_first_response: false, notify_technician: true } }),
+        input_data: JSON.stringify({
+          request_note: {
+            description: authoredBody,
+            show_to_requester: true,
+            mark_first_response: false,
+            add_to_linked_requests: false,
+            notify_technician: false,
+          },
+        }),
       });
       const posted = await fetch(`${cfg.serviceUrl}/app/${cfg.portal}/api/v3/requests/${r.requestId}/notes`, {
         method: 'POST',
@@ -245,7 +258,8 @@ Deno.serve(async (req) => {
         });
       }
       const json = JSON.parse(text);
-      const raw = json.note ?? {};
+      // Response mirrors the request wrapper: `request_note` on POST, not `note`.
+      const raw = json.request_note ?? json.note ?? {};
       return new Response(JSON.stringify({ ok: true, note: normalize(raw) }), {
         headers: { ...CORS, 'Content-Type': 'application/json' },
       });
