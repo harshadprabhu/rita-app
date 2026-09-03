@@ -15,6 +15,11 @@ export interface SamparkNote {
   createdAt: string;
   fromRita: boolean;
   showToRequester: boolean;
+  /** Client-only transient flag. True on the optimistic echo of a message
+   *  we just POSTed, before a fresh Sampark GET confirms it round-tripped.
+   *  Never set by the server — used to drive the "sent" (single-tick) state.
+   *  Once the note comes back from Sampark GET it's absent → "delivered". */
+  pending?: boolean;
 }
 
 export async function getSamparkNotes(ticketId: string): Promise<SamparkNote[]> {

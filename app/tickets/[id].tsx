@@ -123,8 +123,10 @@ export default function TicketDetail() {
     mutationFn: (vars: { body: string }) =>
       addSamparkNote(id, vars.body, profile?.display_name ?? null),
     onSuccess: (newNote) => {
+      // Mark the optimistic echo `pending` so it shows a single "sent" tick
+      // until the next Sampark GET confirms it round-tripped (→ delivered).
       queryClient.setQueryData<SamparkNote[] | undefined>(['sampark-notes', id], (prev) =>
-        prev ? [...prev, newNote] : [newNote],
+        prev ? [...prev, { ...newNote, pending: true }] : [{ ...newNote, pending: true }],
       );
       refetchNotes();
     },
@@ -176,6 +178,13 @@ export default function TicketDetail() {
   // public-visible technician notes flow through. The former internal-notes
   // toggle in CommentInput is disabled by omitting canMarkInternal below.
   const visibleNotes = notes ?? [];
+  // Timestamp of the most recent INBOUND (technician / Sampark) message. Any
+  // of my messages at or before it is treated as "read" — the tech clearly
+  // engaged with the thread after it. Drives the blue double-tick.
+  const lastInboundAt = visibleNotes.reduce<string | null>(
+    (acc, n) => (!n.fromRita && (!acc || n.createdAt > acc) ? n.createdAt : acc),
+    null,
+  );
 
   // Ticket ID label: use Sampark's id when synced; fall back to "IND-####"
   // built from the RITA UUID's first block so the header always has SOMETHING
@@ -269,11 +278,28 @@ export default function TicketDetail() {
                 // left". A note authored from RITA by anyone counts as
                 // "outgoing" from the requester's perspective, which is what
                 // the requester actually wants to see anyway.
-                visibleNotes.map((n) => (
+                visibleNotes.map((n) => {
+                  const isOwn = n.fromRita && n.author.toLowerCase() === (profile.display_name ?? '').toLowerCase();
+                  // WhatsApp-style delivery state for MY messages only:
+                  //   sent      → still pending (POSTed, not yet re-confirmed by Sampark)
+                  //   delivered → present in the authoritative Sampark GET
+                  //   read      → a technician replied AFTER this message
+                  //               (best available proxy; Sampark exposes no
+                  //               per-note read receipt, so a silent read that
+                  //               isn't followed by a reply stays "delivered").
+                  const deliveryStatus = isOwn
+                    ? n.pending
+                      ? 'sent' as const
+                      : lastInboundAt && n.createdAt <= lastInboundAt
+                        ? 'read' as const
+                        : 'delivered' as const
+                    : undefined;
+                  return (
                   <CommentBubble
                     key={n.id}
-                    isOwnComment={n.fromRita && n.author.toLowerCase() === (profile.display_name ?? '').toLowerCase()}
+                    isOwnComment={isOwn}
                     source={n.fromRita ? 'rita' : 'sampark'}
+                    deliveryStatus={deliveryStatus}
                     comment={{
                       id: n.id,
                       ticket_id: id,
@@ -286,7 +312,8 @@ export default function TicketDetail() {
                       sampark_note_id: n.id,
                     } as any}
                   />
-                ))
+                  );
+                })
               )}
             </ScrollView>
             <CommentInput

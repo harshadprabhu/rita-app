@@ -6,6 +6,8 @@ import { CommentWithAuthor } from '../../types/ticket';
 import { timeAgo } from '../../lib/utils/date';
 import { theme } from '../../constants/theme';
 
+export type DeliveryStatus = 'sent' | 'delivered' | 'read';
+
 interface Props {
   comment: CommentWithAuthor;
   isOwnComment: boolean;
@@ -13,9 +15,12 @@ interface Props {
    *  Sampark technicians are visually distinct, WhatsApp-style. Default
    *  'rita' preserves the old look for callers that don't yet pass it. */
   source?: 'rita' | 'sampark';
+  /** WhatsApp-style delivery ticks — only meaningful on own (outgoing)
+   *  messages. undefined hides ticks entirely (inbound / other users). */
+  deliveryStatus?: DeliveryStatus;
 }
 
-export function CommentBubble({ comment, isOwnComment, source = 'rita' }: Props) {
+export function CommentBubble({ comment, isOwnComment, source = 'rita', deliveryStatus }: Props) {
   const { t } = useTranslation();
   const isInternal = comment.is_internal;
   const isSampark = source === 'sampark';
@@ -65,7 +70,20 @@ export function CommentBubble({ comment, isOwnComment, source = 'rita' }: Props)
           </Text>
         </View>
         <Text style={[styles.body, isOwnComment && styles.bodyOwn]}>{comment.body}</Text>
-        <Text style={[styles.time, isOwnComment && styles.timeOwn]}>{timeAgo(comment.created_at)}</Text>
+        <View style={styles.metaRow}>
+          <Text style={[styles.time, isOwnComment && styles.timeOwn]}>{timeAgo(comment.created_at)}</Text>
+          {isOwnComment && deliveryStatus && (
+            <Ionicons
+              // Single tick = sent (POSTed, not yet re-confirmed by Sampark).
+              // Double tick = delivered (round-tripped through Sampark).
+              // Double BLUE tick = read (a technician replied after it).
+              name={deliveryStatus === 'sent' ? 'checkmark' : 'checkmark-done'}
+              size={15}
+              color={deliveryStatus === 'read' ? '#34B7F1' : 'rgba(255,255,255,0.7)'}
+              style={styles.tick}
+            />
+          )}
+        </View>
       </View>
       {isOwnComment && avatarEl}
     </View>
@@ -103,6 +121,8 @@ const styles = StyleSheet.create({
   authorOwn: { color: 'rgba(255,255,255,0.75)' },
   body: { fontSize: 15, color: theme.colors.textPrimary, lineHeight: 22 },
   bodyOwn: { color: '#fff' },
-  time: { fontSize: 11, color: theme.colors.textTertiary, marginTop: theme.spacing.xs, textAlign: 'right' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 3, marginTop: theme.spacing.xs },
+  time: { fontSize: 11, color: theme.colors.textTertiary, textAlign: 'right' },
   timeOwn: { color: 'rgba(255,255,255,0.6)' },
+  tick: { marginBottom: -1 },
 });
