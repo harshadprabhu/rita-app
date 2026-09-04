@@ -107,6 +107,8 @@ export async function createTicket(payload: {
   subcategory?: string | null;
   item?: string | null;
   contact_number?: string | null;
+  member_profile_id?: string | null;
+  member_profile_name?: string | null;
   source?: DbTicket['source'];
 }): Promise<DbTicket> {
   const sla_due_at = computeSlaDueAt(payload.priority).toISOString();

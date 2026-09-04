@@ -11,6 +11,7 @@ import { ProfileIconButton } from '../common/ProfileIconButton';
 import { GoldRateCard } from './GoldRateCard';
 import { getTicketCount } from '../../lib/api/tickets';
 import { useAuthStore } from '../../stores/authStore';
+import { useMemberProfileStore } from '../../stores/memberProfileStore';
 import { SoftPress } from '../common/SoftPress';
 import { QUERY_KEYS } from '../../constants/queryKeys';
 import { NumericText } from '../common/NumericText';
@@ -62,6 +63,8 @@ export function HomeDashboard({ stats, showGoldRate, quickActions }: Props) {
           </View>
         )}
 
+        {(profile?.role === 'user' || profile?.role === 'in_store_manager') && <ActiveProfileChip />}
+
         {showGoldRate && <GoldRateCard />}
 
         {quickActions && quickActions.length > 0 && (
@@ -84,6 +87,29 @@ export function HomeDashboard({ stats, showGoldRate, quickActions }: Props) {
         </View>
       </ScrollView>
     </Screen>
+  );
+}
+
+// Shows which member profile ("Netflix profile") is active on this device and
+// lets the user switch. Tickets they raise carry this profile's name + phone.
+function ActiveProfileChip() {
+  const active = useMemberProfileStore((s) => s.active);
+  return (
+    <SoftPress
+      style={[styles.profileChip, theme.shadows.xs]}
+      onPress={() => router.push('/select-profile' as never)}
+    >
+      <View style={[styles.profileAvatar, { backgroundColor: active?.avatarColor ?? theme.colors.border }]}>
+        <Text style={styles.profileAvatarText}>{active?.avatarEmoji ?? (active?.name?.slice(0, 1).toUpperCase() ?? '?')}</Text>
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.profileChipLabel}>{active ? 'Raising tickets as' : 'Choose your profile'}</Text>
+        <Text style={styles.profileChipName} numberOfLines={1}>
+          {active ? `${active.name}${active.phone ? ` · ${active.phone}` : ''}` : 'Tap to pick or add a profile'}
+        </Text>
+      </View>
+      <Ionicons name="swap-horizontal" size={18} color={theme.colors.brand} />
+    </SoftPress>
   );
 }
 
@@ -113,6 +139,15 @@ function StatCard({ label, filters, color, icon, href }: StatDef) {
 const styles = StyleSheet.create({
   body: { padding: theme.spacing.lg },
   topRow: { marginBottom: theme.spacing.lg },
+  profileChip: {
+    flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm,
+    backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border,
+    borderRadius: 14, padding: theme.spacing.sm + 2, marginBottom: theme.spacing.lg,
+  },
+  profileAvatar: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  profileAvatarText: { fontSize: 20, color: '#fff', fontWeight: '800' },
+  profileChipLabel: { fontSize: 11, color: theme.colors.textTertiary, fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase' },
+  profileChipName: { fontSize: 14, color: theme.colors.textPrimary, fontWeight: '700', marginTop: 1 },
   greeting: { fontSize: 26, fontFamily: 'BegumSans-Medium', color: theme.colors.textPrimary, letterSpacing: 0.2 },
   greetingSubtitle: { fontSize: 12, color: theme.colors.textSecondary, marginTop: 3, fontWeight: '500' },
   quickActionsRow: { flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.md },

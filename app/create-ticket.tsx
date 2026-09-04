@@ -16,6 +16,7 @@ import { getTicketCategories } from '../lib/api/categories';
 import { parsePriority } from '../lib/utils/chatTicketParser';
 import { classifySamparkTicket } from '../lib/utils/samparkClassifier';
 import { useAuthStore } from '../stores/authStore';
+import { useMemberProfileStore } from '../stores/memberProfileStore';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { ALL_PRIORITIES } from '../constants/ticket';
 import { TicketPriority } from '../types';
@@ -40,11 +41,9 @@ type ChatItem =
   | { id: string; kind: 'bot'; text: string }
   | { id: string; kind: 'user'; text: string }
   | { id: string; kind: 'classify' }
-  | { id: string; kind: 'attach' }
-  | { id: string; kind: 'contact' }
-  | { id: string; kind: 'summary' };
+  | { id: string; kind: 'attach' };
 
-type Step = 'awaiting_input' | 'classify' | 'attach' | 'contact' | 'ready';
+type Step = 'awaiting_input' | 'classify' | 'attach' | 'ready';
 
 export default function CreateTicket() {
   const profile = useAuthStore((s) => s.profile);
@@ -64,8 +63,28 @@ export default function CreateTicket() {
   // dashes, etc.) and cap at 10. Prevents junk like "99##99###" that broke
   // the earlier Sampark push retries.
   const sanitizePhone = (s: string) => s.replace(/\D/g, '').slice(0, 10);
-  const [contactNumber, setContactNumber] = useState(sanitizePhone(profile?.phone ?? ''));
+  // Contact number comes from the active member profile ("Netflix profile")
+  // when there is one, else the shared account's own phone. Auto-filled — the
+  // user is never asked for it in the chat any more.
+  const activeMember = useMemberProfileStore((s) => s.active);
+  const [contactNumber, setContactNumber] = useState(sanitizePhone(activeMember?.phone ?? profile?.phone ?? ''));
   const isPhoneValid = contactNumber.length === 10;
+
+  // Keep the contact number in sync if the active profile changes while this
+  // screen is mounted (e.g. user switched profile then came back).
+  useEffect(() => {
+    if (activeMember?.phone) setContactNumber(sanitizePhone(activeMember.phone));
+  }, [activeMember?.id]);
+
+  // Store users share one AD login, so a ticket must be attributed to the
+  // person raising it. If no member profile is active yet, send them to pick
+  // one (Netflix-style) before composing — its phone then auto-fills below.
+  const needsProfile = (profile?.role === 'user' || profile?.role === 'in_store_manager') && !activeMember;
+  useEffect(() => {
+    // replace (not push) so the composer isn't left in history behind the
+    // picker — back from the picker returns home, picking returns here.
+    if (needsProfile) router.replace({ pathname: '/select-profile', params: { next: 'create-ticket' } } as never);
+  }, [needsProfile]);
 
   // Chat flow state — drives which inline card appears under the latest bot
   // message. Every user tap that advances the flow appends a new bot bubble +
@@ -80,7 +99,7 @@ export default function CreateTicket() {
   const [pickerSearch, setPickerSearch] = useState('');
   const scrollRef = useRef<ScrollView | null>(null);
   const [messages, setMessages] = useState<ChatItem[]>([
-    { id: 'greet', kind: 'bot', text: "Hello! Describe your issue and I'll raise a ticket for you." },
+    { id: 'greet', kind: 'bot', text: 'Describe your issue.' },
   ]);
 
   const { data: allCategories } = useQuery({ queryKey: ['ticketCategories'], queryFn: getTicketCategories });
@@ -134,6 +153,8 @@ export default function CreateTicket() {
           subcategory,
           item,
           contact_number: contactNumber.trim() || null,
+          member_profile_id: activeMember?.id ?? null,
+          member_profile_name: activeMember?.name ?? null,
           source: 'form',
         });
         ticketId = ticket.id;
@@ -166,7 +187,12 @@ export default function CreateTicket() {
         [{ text: 'OK', onPress: () => router.replace(`/tickets/${ticketId}`) }],
       );
     },
-    onError: () => { inFlightRef.current = false; },
+    onError: (err) => {
+      inFlightRef.current = false;
+      // Summary step is gone, so surface failures inline as a bot bubble +
+      // toast; the attach card stays so the user can tap Skip to retry.
+      showToast(err instanceof Error ? err.message : 'Could not create ticket', 'error');
+    },
   });
 
   // ── Chat step transitions ────────────────────────────────────────────────
@@ -188,7 +214,7 @@ export default function CreateTicket() {
         {
           id: `b-classify-${Date.now()}`,
           kind: 'bot',
-          text: "I've classified your issue. Does that look right? Adjust below if needed, then tap Confirm.",
+          text: 'Select category.',
         },
         { id: 'card-classify', kind: 'classify' },
       ]);
@@ -211,38 +237,20 @@ export default function CreateTicket() {
       showToast('Please choose an item', 'error');
       return;
     }
-    const suggested = [category, subcategory, item].filter(Boolean).join(' > ');
-    // Remove the classify card, keep prior bubbles; append confirmation +
-    // attach card. Filtering the card is safer than tracking indices.
+    // Remove the classify card, keep prior bubbles; append attach card.
     setMessages((m) => [
       ...m.filter((x) => x.kind !== 'classify'),
-      { id: `b-attach-${Date.now()}`, kind: 'bot', text: `Got it — ${suggested}. Would you like to attach any files? (photos, videos, or documents — up to ${MAX_ATTACHMENTS})` },
+      { id: `b-attach-${Date.now()}`, kind: 'bot', text: 'Add files? (optional)' },
       { id: 'card-attach', kind: 'attach' },
     ]);
     setStep('attach');
   };
 
+  // Skip / Continue on the attach card submits the ticket directly. The
+  // contact number comes from the active profile (auto-filled), so there is
+  // no separate contact or summary step any more — one tap files the ticket.
   const finishAttachStep = () => {
-    // If we don't have a valid 10-digit contact number, ask for one before summary.
-    if (!isPhoneValid) {
-      setMessages((m) => [
-        ...m.filter((x) => x.kind !== 'attach'),
-        { id: `b-contact-${Date.now()}`, kind: 'bot', text: 'One more thing — what phone number should we use for follow-up on this ticket?' },
-        { id: 'card-contact', kind: 'contact' },
-      ]);
-      setStep('contact');
-      return;
-    }
-    proceedToSummary();
-  };
-
-  const proceedToSummary = () => {
-    setMessages((m) => [
-      ...m.filter((x) => x.kind !== 'attach' && x.kind !== 'contact'),
-      { id: `b-ready-${Date.now()}`, kind: 'bot', text: 'Ready to submit your ticket!' },
-      { id: 'card-summary', kind: 'summary' },
-    ]);
-    setStep('ready');
+    doSubmit();
   };
 
   const doSubmit = () => {
@@ -320,8 +328,6 @@ export default function CreateTicket() {
     }
     if (msg.kind === 'classify') return <React.Fragment key={msg.id}>{renderClassifyCard()}</React.Fragment>;
     if (msg.kind === 'attach') return <React.Fragment key={msg.id}>{renderAttachCard()}</React.Fragment>;
-    if (msg.kind === 'contact') return <React.Fragment key={msg.id}>{renderContactCard()}</React.Fragment>;
-    if (msg.kind === 'summary') return <React.Fragment key={msg.id}>{renderSummaryCard()}</React.Fragment>;
     return null;
   };
 
@@ -453,76 +459,6 @@ export default function CreateTicket() {
         </View>
       </View>
   );
-
-  const renderContactCard = () => {
-    const showError = contactNumber.length > 0 && !isPhoneValid;
-    return (
-      <View style={styles.card}>
-        <TextInput
-          style={[styles.contactInput, showError && styles.contactInputError]}
-          value={contactNumber}
-          onChangeText={(t) => setContactNumber(sanitizePhone(t))}
-          placeholder="10-digit phone number"
-          placeholderTextColor={theme.colors.textTertiary}
-          keyboardType="number-pad"
-          autoComplete="tel"
-          maxLength={10}
-        />
-        <Text style={showError ? styles.contactHintError : styles.contactHint}>
-          {showError
-            ? `Please enter a valid 10-digit number (${contactNumber.length}/10).`
-            : 'Digits only. No spaces, dashes, or country code.'}
-        </Text>
-        <SoftPress
-          style={[styles.primaryBtn, !isPhoneValid && styles.primaryBtnDisabled]}
-          onPress={() => {
-            if (!isPhoneValid) {
-              showToast('Enter a valid 10-digit phone number', 'error');
-              return;
-            }
-            proceedToSummary();
-          }}
-        >
-          <Ionicons name="checkmark" size={16} color="#fff" />
-          <Text style={styles.primaryBtnText}>Continue</Text>
-        </SoftPress>
-      </View>
-    );
-  };
-
-  const renderSummaryCard = () => {
-    const suggested = [category, subcategory, item].filter(Boolean).join(' > ');
-    return (
-      <View style={styles.card}>
-        <View style={styles.summaryBox}>
-          <Text style={styles.summaryHeading}>Summary</Text>
-          <Text style={styles.summaryDescription} numberOfLines={3}>{description}</Text>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryKey}>Category</Text>
-            <Text style={styles.summaryVal} numberOfLines={1}>{suggested || '—'}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryKey}>Priority</Text>
-            <Text style={[styles.summaryVal, { color: theme.priorityColors[priority] }]}>{priority}</Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryKey}>Attachments</Text>
-            <Text style={styles.summaryVal}>{attachments.length}</Text>
-          </View>
-        </View>
-        <SoftPress style={styles.submitBtn} onPress={doSubmit}>
-          <Ionicons name="send" size={16} color="#fff" />
-          <Text style={styles.submitBtnText}>Submit Ticket</Text>
-        </SoftPress>
-        {submit.isError && (
-          <Text style={styles.error}>
-            {String(submit.error)}
-            {createdTicketIdRef.current ? '\n\nTap Submit again to retry — no duplicate will be created.' : ''}
-          </Text>
-        )}
-      </View>
-    );
-  };
 
   // ── Header discard confirmation ──────────────────────────────────────────
 
