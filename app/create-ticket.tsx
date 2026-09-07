@@ -453,8 +453,9 @@ export default function CreateTicket() {
 
         <View style={styles.attachFooter}>
           <Text style={styles.attachCount}>{attachments.length}/{MAX_ATTACHMENTS} files attached</Text>
-          <SoftPress style={styles.skipBtn} onPress={finishAttachStep}>
-            <Text style={styles.skipBtnText}>{attachments.length ? 'Continue' : 'Skip'}</Text>
+          <SoftPress style={styles.submitInlineBtn} onPress={finishAttachStep}>
+            <Ionicons name="send" size={15} color="#fff" />
+            <Text style={styles.submitInlineText}>Submit</Text>
           </SoftPress>
         </View>
       </View>
@@ -734,11 +735,12 @@ const styles = StyleSheet.create({
   attachedName: { flex: 1, fontSize: 12, color: theme.colors.textPrimary },
   attachFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: theme.spacing.sm },
   attachCount: { fontSize: 12, color: theme.colors.textTertiary },
-  skipBtn: {
-    paddingHorizontal: theme.spacing.lg, paddingVertical: 8,
-    borderWidth: 1, borderColor: theme.colors.border, borderRadius: 8, backgroundColor: '#fff',
+  submitInlineBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: theme.spacing.lg, paddingVertical: 9,
+    borderRadius: 8, backgroundColor: theme.colors.brand,
   },
-  skipBtnText: { fontSize: 12, fontWeight: '700', color: theme.colors.textSecondary },
+  submitInlineText: { fontSize: 13, fontWeight: '800', color: '#fff' },
 
   // ── Contact card ───────────────────────────────────────────────────────
   contactInput: {

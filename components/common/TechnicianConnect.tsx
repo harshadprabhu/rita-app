@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Linking } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { getTechnicians } from '../../lib/api/profiles';
 import { getUnreadDmCounts } from '../../lib/api/directMessages';
 import { useOnlineTechnicians } from '../../hooks/useTechnicianPresence';
 import { useAuthStore } from '../../stores/authStore';
+import { useUiStore } from '../../stores/uiStore';
 import { DbProfile } from '../../types';
 import { theme } from '../../constants/theme';
 
@@ -22,6 +23,7 @@ import { theme } from '../../constants/theme';
 export function TechnicianConnect() {
   const me = useAuthStore((s) => s.profile);
   const online = useOnlineTechnicians();
+  const showToast = useUiStore((s) => s.showToast);
 
   const { data: technicians, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['technicians', 'connect'],
@@ -46,15 +48,18 @@ export function TechnicianConnect() {
 
   const availableCount = sorted.filter((t) => online.has(t.id)).length;
 
+  const call = (item: DbProfile) => {
+    const phone = (item.phone ?? '').replace(/[^0-9+]/g, '');
+    if (!phone) { showToast(`${item.display_name?.split(' ')[0] ?? 'This technician'} hasn't added a phone number yet`, 'error'); return; }
+    Linking.openURL(`tel:${phone}`).catch(() => showToast('Could not open dialer', 'error'));
+  };
+
   const renderItem = ({ item }: { item: DbProfile }) => {
     const isOnline = online.has(item.id);
     const unreadCount = unread?.[item.id] ?? 0;
+    const hasPhone = !!(item.phone && item.phone.trim());
     return (
-      <TouchableOpacity
-        style={[styles.card, !isOnline && styles.cardOffline]}
-        activeOpacity={0.75}
-        onPress={() => router.push(`/dm/${item.id}` as never)}
-      >
+      <View style={[styles.card, !isOnline && styles.cardOffline]}>
         <View style={styles.avatarWrap}>
           <View style={[styles.avatar, { backgroundColor: isOnline ? theme.colors.brand : '#9CA3AF' }]}>
             <Text style={styles.avatarText}>{(item.display_name ?? '?').slice(0, 2).toUpperCase()}</Text>
@@ -68,11 +73,26 @@ export function TechnicianConnect() {
             {item.designation ? ` · ${item.designation}` : ''}
           </Text>
         </View>
-        {unreadCount > 0 && (
-          <View style={styles.badge}><Text style={styles.badgeText}>{unreadCount}</Text></View>
-        )}
-        <Ionicons name="chatbubble-ellipses-outline" size={20} color={isOnline ? theme.colors.brand : theme.colors.textTertiary} />
-      </TouchableOpacity>
+
+        {/* Call — opens the dialer with the technician's number. */}
+        <TouchableOpacity
+          style={[styles.actionBtn, !hasPhone && styles.actionBtnDisabled]}
+          activeOpacity={0.7}
+          onPress={() => call(item)}
+        >
+          <Ionicons name="call" size={18} color={hasPhone ? '#16A34A' : theme.colors.textTertiary} />
+        </TouchableOpacity>
+
+        {/* Chat — in-app RITA direct message (not Sampark). */}
+        <TouchableOpacity
+          style={styles.actionBtn}
+          activeOpacity={0.7}
+          onPress={() => router.push(`/dm/${item.id}` as never)}
+        >
+          <Ionicons name="chatbubble-ellipses" size={18} color={theme.colors.brand} />
+          {unreadCount > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{unreadCount}</Text></View>}
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -115,6 +135,11 @@ const styles = StyleSheet.create({
   presenceDot: { position: 'absolute', right: -1, bottom: -1, width: 14, height: 14, borderRadius: 7, borderWidth: 2, borderColor: theme.colors.surface },
   name: { fontSize: 15, fontWeight: '700', color: theme.colors.textPrimary },
   status: { fontSize: 12, fontWeight: '600', marginTop: 2 },
-  badge: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: theme.colors.error, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
-  badgeText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  actionBtn: {
+    width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: theme.colors.surface2, borderWidth: 1, borderColor: theme.colors.border,
+  },
+  actionBtnDisabled: { opacity: 0.5 },
+  badge: { position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: theme.colors.error, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
 });
