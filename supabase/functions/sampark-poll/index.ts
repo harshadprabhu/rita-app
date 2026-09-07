@@ -153,7 +153,9 @@ async function syncOne(
   // Notes + REQREPLY conversations. sampark-webhook has the same logic;
   // this cron is the backstop for a dropped webhook fire.
   let notesAdded = 0;
+  const activeAuthors = new Set<string>();
   const emit = async (id: string, author: string, body: string) => {
+    if (author) activeAuthors.add(author);
     if (!ticket.requester_id || !id || !body) return;
     const displayId = ticket.sampark_display_id ? `#${ticket.sampark_display_id}` : 'ticket';
     const { error } = await supabase.from('notifications').insert({
@@ -191,6 +193,22 @@ async function syncOne(
       } catch { /* per-reply optional */ }
     }
   } catch { /* conversations optional */ }
+
+  // Stamp "active in Sampark" for technicians who just replied/noted (or own
+  // this active request), so Connect shows them online.
+  if (techName) activeAuthors.add(techName);
+  if (activeAuthors.size > 0) {
+    const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+    const { data: techs } = await supabase.from('profiles')
+      .select('id, display_name').in('role', ['technician', 'admin', 'manager', 'ops_manager']).eq('is_active', true);
+    const wanted = new Set(Array.from(activeAuthors).map(norm));
+    const ids = (techs as { id: string; display_name: string }[] | null ?? [])
+      .filter((p) => wanted.has(norm(p.display_name))).map((p) => p.id);
+    if (ids.length > 0) {
+      await supabase.from('profiles').update({ last_sampark_active_at: new Date().toISOString() }).in('id', ids);
+    }
+  }
+
   return { statusChanged, assigneeChanged, notesAdded };
 }
 

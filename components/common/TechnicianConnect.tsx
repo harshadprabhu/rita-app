@@ -26,6 +26,9 @@ export function TechnicianConnect() {
   const { data: technicians, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['technicians', 'connect'],
     queryFn: getTechnicians,
+    // Refresh so a technician who just became active in Sampark (stamped by
+    // the 1-min inbound poll) flips to online here without a manual pull.
+    refetchInterval: 30000,
   });
   const { data: unread } = useQuery({
     queryKey: ['dm-unread', me?.id],
@@ -34,20 +37,33 @@ export function TechnicianConnect() {
     refetchInterval: 15000,
   });
 
+  // Available = present in RITA right now (live presence) OR active in Sampark
+  // within the last 10 minutes (they replied/noted/own a request there). The
+  // second half is what makes "online in Sampark" show as online in RITA.
+  const SAMPARK_ACTIVE_MS = 10 * 60 * 1000;
+  const isAvailable = (t: DbProfile) => {
+    if (online.has(t.id)) return true;
+    if (t.last_sampark_active_at) {
+      return Date.now() - new Date(t.last_sampark_active_at).getTime() < SAMPARK_ACTIVE_MS;
+    }
+    return false;
+  };
+
   const sorted = useMemo(() => {
     const list = (technicians ?? []).filter((t) => t.id !== me?.id);
     return [...list].sort((a, b) => {
-      const ao = online.has(a.id) ? 0 : 1;
-      const bo = online.has(b.id) ? 0 : 1;
+      const ao = isAvailable(a) ? 0 : 1;
+      const bo = isAvailable(b) ? 0 : 1;
       if (ao !== bo) return ao - bo;              // available first
       return (a.display_name ?? '').localeCompare(b.display_name ?? '');
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [technicians, online, me?.id]);
 
-  const availableCount = sorted.filter((t) => online.has(t.id)).length;
+  const availableCount = sorted.filter(isAvailable).length;
 
   const renderItem = ({ item }: { item: DbProfile }) => {
-    const isOnline = online.has(item.id);
+    const isOnline = isAvailable(item);
     const unreadCount = unread?.[item.id] ?? 0;
     return (
       <TouchableOpacity

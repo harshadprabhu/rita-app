@@ -73,7 +73,11 @@ export default function DirectMessageScreen() {
 
   if (!me) return <LoadingOverlay />;
 
-  const isOnline = online.has(technicianId);
+  // Online = live RITA presence OR active in Sampark within the last 10 min.
+  const samparkActive = other?.last_sampark_active_at
+    ? Date.now() - new Date(other.last_sampark_active_at).getTime() < 10 * 60 * 1000
+    : false;
+  const isOnline = online.has(technicianId) || samparkActive;
   const all = [...(messages ?? []), ...pending.filter((p) => !(messages ?? []).some((m) => m.body === p.body && m.sender_id === p.sender_id))];
 
   return (

@@ -56,6 +56,9 @@ export interface DbProfile {
   approval_status: ApprovalStatus;
   is_active: boolean;
   expo_push_token: string | null;
+  /** When this technician last acted in Sampark (reply/note/owned request).
+   *  Used to show them "online" in Connect even without RITA presence. */
+  last_sampark_active_at?: string | null;
   created_at: string;
 }
 

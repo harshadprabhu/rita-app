@@ -246,7 +246,13 @@ Deno.serve(async (req) => {
     //    new visible message so a push lands on the requester's phone.
     //    Bodies are NEVER stored in RITA (Sampark is sole source of truth).
     let notesAdded = 0;
+    // Author names seen acting in Sampark (note authors / reply senders). Any
+    // that map to a RITA technician get their last_sampark_active_at bumped so
+    // Connect can show them "online" (active in Sampark), not just present in
+    // RITA. RITA-authored notes never reach here (filtered before emit).
+    const activeAuthors = new Set<string>();
     const emit = async (id: string, author: string, body: string) => {
+      if (author) activeAuthors.add(author);
       if (!t.requester_id || !id || !body) return;
       const displayId = t.sampark_display_id ? `#${t.sampark_display_id}` : 'ticket';
       const { error } = await supabase.from('notifications').insert({
@@ -284,6 +290,21 @@ Deno.serve(async (req) => {
         } catch (e) { console.warn('[sampark-webhook] reply detail failed:', c.id, e); }
       }
     } catch (e) { console.warn('[sampark-webhook] conversations pull failed:', e); }
+
+    // Stamp Sampark activity for any technician who just acted. The current
+    // request technician counts too (they're working it right now).
+    if (techName) activeAuthors.add(techName);
+    if (activeAuthors.size > 0) {
+      const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+      const { data: techs } = await supabase.from('profiles')
+        .select('id, display_name').in('role', ['technician', 'admin', 'manager', 'ops_manager']).eq('is_active', true);
+      const wanted = new Set(Array.from(activeAuthors).map(norm));
+      const ids = (techs as { id: string; display_name: string }[] | null ?? [])
+        .filter((p) => wanted.has(norm(p.display_name))).map((p) => p.id);
+      if (ids.length > 0) {
+        await supabase.from('profiles').update({ last_sampark_active_at: new Date().toISOString() }).in('id', ids);
+      }
+    }
 
     return new Response(JSON.stringify({ ok: true, ticketId, statusChanged, assigneeChanged, notesAdded, samparkTechnician: techName || null, matchedAssignee: assigneeName }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
   } catch (err) {
