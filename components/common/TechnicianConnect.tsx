@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from './Screen';
 import { AppHeader } from './AppHeader';
@@ -10,26 +10,39 @@ import { EmptyState } from './EmptyState';
 import { LoadingOverlay } from './LoadingOverlay';
 import { getTechnicians } from '../../lib/api/profiles';
 import { getUnreadDmCounts } from '../../lib/api/directMessages';
+import { getSamparkConnectTechnicians } from '../../lib/api/samparkTechnicians';
 import { useOnlineTechnicians } from '../../hooks/useTechnicianPresence';
+import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/authStore';
-import { DbProfile } from '../../types';
 import { theme } from '../../constants/theme';
 
-// "Connect with IT" — lists technicians (the Sampark roster, synced into
-// RITA profiles) with live availability from RITA presence. Available
-// technicians (green) sort to the top; offline ones (grey) fall to the
-// bottom. Tap to open a direct message.
+// A normalized Connect row, whichever source it came from.
+interface Row { id: string; name: string; online: boolean }
+
+// "Connect with IT" — lists technicians LICENSED IN SAMPARK (matched to a RITA
+// account by email so they're chattable), with availability from Sampark's own
+// signal. Until that roster is synced (Zoho users scope pending), it falls back
+// to RITA technician profiles with RITA-presence / recent-Sampark-activity.
+// Available technicians sort to the top; tap to open a direct message.
 export function TechnicianConnect() {
   const me = useAuthStore((s) => s.profile);
   const online = useOnlineTechnicians();
+  const qc = useQueryClient();
 
-  const { data: technicians, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['technicians', 'connect'],
-    queryFn: getTechnicians,
-    // Refresh so a technician who just became active in Sampark (stamped by
-    // the 1-min inbound poll) flips to online here without a manual pull.
+  // Primary source: the synced Sampark roster (empty until the scope lands).
+  const { data: samparkTechs } = useQuery({
+    queryKey: ['sampark-connect-techs'],
+    queryFn: getSamparkConnectTechnicians,
     refetchInterval: 30000,
   });
+
+  // Fallback source: RITA technician profiles.
+  const { data: ritaTechs, isLoading, refetch, isRefetching } = useQuery({
+    queryKey: ['technicians', 'connect'],
+    queryFn: getTechnicians,
+    refetchInterval: 30000,
+  });
+
   const { data: unread } = useQuery({
     queryKey: ['dm-unread', me?.id],
     queryFn: () => getUnreadDmCounts(me!.id),
@@ -37,51 +50,57 @@ export function TechnicianConnect() {
     refetchInterval: 15000,
   });
 
-  // Available = present in RITA right now (live presence) OR active in Sampark
-  // within the last 10 minutes (they replied/noted/own a request there). The
-  // second half is what makes "online in Sampark" show as online in RITA.
+  // Realtime: when the sync writes the roster/availability, refresh instantly.
+  useEffect(() => {
+    const ch = supabase
+      .channel(`sampark-techs:${Math.random().toString(36).slice(2, 7)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'sampark_technicians' },
+        () => qc.invalidateQueries({ queryKey: ['sampark-connect-techs'] }))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [qc]);
+
   const SAMPARK_ACTIVE_MS = 10 * 60 * 1000;
-  const isAvailable = (t: DbProfile) => {
-    if (online.has(t.id)) return true;
-    if (t.last_sampark_active_at) {
-      return Date.now() - new Date(t.last_sampark_active_at).getTime() < SAMPARK_ACTIVE_MS;
+  const rows = useMemo<Row[]>(() => {
+    const usingSampark = (samparkTechs?.length ?? 0) > 0;
+    let list: Row[];
+    if (usingSampark) {
+      // Availability = Sampark's own signal, OR live RITA presence as a bonus.
+      list = samparkTechs!.map((t) => ({ id: t.ritaProfileId, name: t.name, online: t.online || online.has(t.ritaProfileId) }));
+    } else {
+      // Fallback: RITA presence OR recent Sampark activity.
+      list = (ritaTechs ?? []).map((p) => ({
+        id: p.id,
+        name: p.display_name,
+        online: online.has(p.id) || (!!p.last_sampark_active_at && Date.now() - new Date(p.last_sampark_active_at).getTime() < SAMPARK_ACTIVE_MS),
+      }));
     }
-    return false;
-  };
-
-  const sorted = useMemo(() => {
-    const list = (technicians ?? []).filter((t) => t.id !== me?.id);
-    return [...list].sort((a, b) => {
-      const ao = isAvailable(a) ? 0 : 1;
-      const bo = isAvailable(b) ? 0 : 1;
-      if (ao !== bo) return ao - bo;              // available first
-      return (a.display_name ?? '').localeCompare(b.display_name ?? '');
-    });
+    return list
+      .filter((r) => r.id !== me?.id)
+      .sort((a, b) => (a.online === b.online ? a.name.localeCompare(b.name) : a.online ? -1 : 1));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [technicians, online, me?.id]);
+  }, [samparkTechs, ritaTechs, online, me?.id]);
 
-  const availableCount = sorted.filter(isAvailable).length;
+  const availableCount = rows.filter((r) => r.online).length;
 
-  const renderItem = ({ item }: { item: DbProfile }) => {
-    const isOnline = isAvailable(item);
+  const renderItem = ({ item }: { item: Row }) => {
     const unreadCount = unread?.[item.id] ?? 0;
     return (
       <TouchableOpacity
-        style={[styles.card, !isOnline && styles.cardOffline]}
+        style={[styles.card, !item.online && styles.cardOffline]}
         activeOpacity={0.75}
         onPress={() => router.push(`/dm/${item.id}` as never)}
       >
         <View style={styles.avatarWrap}>
-          <View style={[styles.avatar, { backgroundColor: isOnline ? theme.colors.brand : '#9CA3AF' }]}>
-            <Text style={styles.avatarText}>{(item.display_name ?? '?').slice(0, 2).toUpperCase()}</Text>
+          <View style={[styles.avatar, { backgroundColor: item.online ? theme.colors.brand : '#9CA3AF' }]}>
+            <Text style={styles.avatarText}>{(item.name ?? '?').slice(0, 2).toUpperCase()}</Text>
           </View>
-          <View style={[styles.presenceDot, { backgroundColor: isOnline ? '#22C55E' : '#9CA3AF' }]} />
+          <View style={[styles.presenceDot, { backgroundColor: item.online ? '#22C55E' : '#9CA3AF' }]} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.name} numberOfLines={1}>{item.display_name}</Text>
-          <Text style={[styles.status, { color: isOnline ? '#16A34A' : theme.colors.textTertiary }]}>
-            {isOnline ? 'Available now' : 'Offline'}
-            {item.designation ? ` · ${item.designation}` : ''}
+          <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
+          <Text style={[styles.status, { color: item.online ? '#16A34A' : theme.colors.textTertiary }]}>
+            {item.online ? 'Available now' : 'Offline'}
           </Text>
         </View>
 
@@ -101,7 +120,7 @@ export function TechnicianConnect() {
         <LoadingOverlay />
       ) : (
         <FlatList
-          data={sorted}
+          data={rows}
           keyExtractor={(t) => t.id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
