@@ -182,11 +182,20 @@ Deno.serve(async (req) => {
         .select('id, display_name').in('role', ['technician', 'admin', 'manager', 'ops_manager']).eq('is_active', true);
       console.log('[sampark-webhook] RITA staff names:', (techs ?? []).map(p => `"${p.display_name}"`).join(', '));
       console.log('[sampark-webhook] looking for normalized:', `"${norm(techName)}"`);
-      const match = (techs as { id: string; display_name: string }[] | null)?.find(
-        (p) => norm(p.display_name) === norm(techName),
-      );
+      // A person can have more than one RITA profile with the same name (e.g.
+      // "Harshad Prabhu" and "harshad prabhu"). If we naively .find() one, the
+      // pick is non-deterministic across runs and the assignee flip-flops
+      // between the duplicates every poll — each flip firing a spurious
+      // "Technician assigned" push. Guards:
+      //   1) if the CURRENT assignee already matches this technician, keep it
+      //      (no change, no notification);
+      //   2) otherwise pick deterministically (lowest id) so repeat runs agree.
+      const matches = ((techs as { id: string; display_name: string }[] | null) ?? [])
+        .filter((p) => norm(p.display_name) === norm(techName));
+      const keep = matches.find((p) => p.id === t.assignee_id);
+      const match = keep ?? [...matches].sort((a, b) => a.id.localeCompare(b.id))[0];
       if (match) {
-        console.log('[sampark-webhook] matched to:', match.display_name, match.id, 'current assignee:', t.assignee_id);
+        console.log('[sampark-webhook] matched to:', match.display_name, match.id, 'current assignee:', t.assignee_id, 'candidates:', matches.length);
         if (match.id !== t.assignee_id) {
           newAssigneeId = match.id;
           assigneeName = match.display_name;

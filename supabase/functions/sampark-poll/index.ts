@@ -104,15 +104,20 @@ async function syncOne(
     const { data: techs } = await supabase.from('profiles')
       .select('id, display_name').in('role', ['technician', 'admin', 'manager', 'ops_manager']).eq('is_active', true);
     console.log('[sampark-poll] RITA staff names:', (techs ?? []).map(p => `"${p.display_name}"`).join(', '));
-    const match = (techs as { id: string; display_name: string }[] | null)?.find(
-      (p) => norm(p.display_name) === norm(techName),
-    );
+    // Duplicate-name guard: keep the current assignee if it already matches
+    // this technician, else pick deterministically (lowest id). Without this,
+    // two same-name profiles make the assignee flip every poll and each flip
+    // fires a spurious "Technician assigned" push. (See sampark-webhook.)
+    const matches = ((techs as { id: string; display_name: string }[] | null) ?? [])
+      .filter((p) => norm(p.display_name) === norm(techName));
+    const keep = matches.find((p) => p.id === ticket.assignee_id);
+    const match = keep ?? [...matches].sort((a, b) => a.id.localeCompare(b.id))[0];
     if (match) {
       if (match.id !== ticket.assignee_id) {
         newAssigneeId = match.id;
         assigneeName = match.display_name;
         assigneeChanged = true;
-        console.log('[sampark-poll] assignment change:', match.display_name, '→', match.id);
+        console.log('[sampark-poll] assignment change:', match.display_name, '→', match.id, 'candidates:', matches.length);
       }
     } else {
       console.warn('[sampark-poll] NO MATCH for Sampark technician:', `"${techName}"`);
