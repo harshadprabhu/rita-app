@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // Probe: fetch SLA definitions from Sampark (ManageEngine SDP). Tries the known
 // v3 SLA endpoints and returns whichever responds, so we can mirror the config
-// in RITA. Reuses the same OAuth config as the other sampark-* functions.
+// in SARWAM. Reuses the same OAuth config as the other sampark-* functions.
 
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' };
 const SDP_ACCEPT = 'application/vnd.manageengine.sdp.v3+json';

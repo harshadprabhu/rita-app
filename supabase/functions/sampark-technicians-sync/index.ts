@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 // Sync Sampark's licensed technician roster into public.sampark_technicians,
-// pre-matching each to a RITA account by email (so Connect can DM them) and
+// pre-matching each to a SARWAM account by email (so Connect can DM them) and
 // capturing whatever availability signal the record carries.
 //
 // GATED: /technicians needs the SDPOnDemand.users scope on the Zoho token.
@@ -114,14 +114,14 @@ Deno.serve(async (req) => {
       start += rows;
     }
 
-    // 2) Build email -> RITA profile id map for staff who can be technicians.
+    // 2) Build email -> SARWAM profile id map for staff who can be technicians.
     const { data: profs } = await supabase.from('profiles')
       .select('id').in('role', ['technician', 'admin', 'manager', 'ops_manager']).eq('is_active', true);
-    const emailToRita = new Map<string, string>();
+    const emailToSarwam = new Map<string, string>();
     for (const p of (profs ?? []) as { id: string }[]) {
       const { data: au } = await supabase.auth.admin.getUserById(p.id);
       const em = au?.user?.email?.toLowerCase().trim();
-      if (em) emailToRita.set(em, p.id);
+      if (em) emailToSarwam.set(em, p.id);
     }
 
     // 3) Upsert each Sampark technician.
@@ -129,14 +129,14 @@ Deno.serve(async (req) => {
     let matched = 0;
     const rowsToUpsert = all.map((rec) => {
       const email = String(rec.email_id ?? rec.email ?? '').toLowerCase().trim() || null;
-      const ritaId = email ? emailToRita.get(email) ?? null : null;
-      if (ritaId) matched++;
+      const sarwamId = email ? emailToSarwam.get(email) ?? null : null;
+      if (sarwamId) matched++;
       const { online, source } = deriveOnline(rec);
       return {
         sampark_id: String(rec.id ?? rec.user_id ?? email ?? crypto.randomUUID()),
         name: String(rec.name ?? rec.first_name ?? 'Technician'),
         email,
-        rita_profile_id: ritaId,
+        sarwam_profile_id: sarwamId,
         online,
         online_source: source,
         raw: rec,
@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({
       ok: true,
       total: all.length,
-      matchedToRita: matched,
+      matchedToSarwam: matched,
       onlineFieldDetected: rowsToUpsert.find((r) => r.online_source)?.online_source ?? null,
       sample: all[0] ? Object.keys(all[0]) : [],   // field names, to identify the availability field
     }), { headers: { ...CORS, 'Content-Type': 'application/json' } });

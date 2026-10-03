@@ -1,4 +1,4 @@
-// Localized keyword parser for RITA chat auto-triage — no AI API, runs entirely
+// Localized keyword parser for SARWAM chat auto-triage — no AI API, runs entirely
 // in the app. Ported verbatim from the Python local parser used in the sibling
 // system: decides whether a chat message should raise a ticket, then assigns a
 // category and priority. See PART 1 / PART 2 of the parser spec.
@@ -86,7 +86,7 @@ export function shouldCreateTicket(message: string): boolean {
 
 /**
  * Map urgency keywords to a priority. Checked high→low; first tier wins.
- * The spec's "Urgent" maps to RITA's `critical` priority.
+ * The spec's "Urgent" maps to SARWAM's `critical` priority.
  */
 export function parsePriority(message: string): TicketPriority {
   const t = message.toLowerCase();

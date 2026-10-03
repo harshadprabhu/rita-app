@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — FIX: "Store ID was not found" on registration
+-- SARWAM — FIX: "Store ID was not found" on registration
 -- =====================================================================
 -- The registration screen looks up a Store ID BEFORE the person has an
 -- account (so a bad Store ID is caught before creating a login). But the

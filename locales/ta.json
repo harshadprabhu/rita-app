@@ -11,7 +11,7 @@
     "clearAll": "அனைத்தையும் அழி"
   },
   "auth": {
-    "subtitle": "ரீடெயில் இஷ்யூ ட்ராக்கிங் AI · Indriya",
+    "subtitle": "Store Assistance Resolution Workflow And Monitoring · Indriya",
     "emailLabel": "மின்னஞ்சல்",
     "passwordLabel": "கடவுச்சொல்",
     "otpLabel": "OTP குறியீடு",
@@ -44,7 +44,7 @@
     "invalidMobile": "சரியான கைபேசி எண்ணை உள்ளிடவும்"
   },
   "register": {
-    "title": "உங்கள் RITA கணக்கை உருவாக்கவும்",
+    "title": "உங்கள் SARWAM கணக்கை உருவாக்கவும்",
     "firstName": "முதல் பெயர்",
     "lastName": "கடைசி பெயர்",
     "mobile": "மொபைல் தொலைபேசி",
@@ -120,7 +120,7 @@
   },
   "chat": {
     "group": "கடை அரட்டை",
-    "ritaBot": "RITA போட்",
+    "sarwamBot": "SARWAM போட்",
     "typeMessage": "செய்தியை உள்ளிடவும்…",
     "presetTitle": "விரைவு சூழ்நிலைகள்"
   },

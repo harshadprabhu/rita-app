@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — Store member profiles ("Netflix profiles")
+-- SARWAM — Store member profiles ("Netflix profiles")
 -- =====================================================================
 -- A store logs in with ONE shared AD account, but several staff use it. This
 -- lets that shared account hold multiple lightweight member profiles — each a

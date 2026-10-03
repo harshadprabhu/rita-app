@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — Alert-side de-duplication of OS pushes
+-- SARWAM — Alert-side de-duplication of OS pushes
 -- =====================================================================
 -- RCA: the notifications layer had NO idempotency. `notify_notification_push`
 -- fired an OS push on EVERY insert, and no producer (assignment sync, status

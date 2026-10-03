@@ -105,7 +105,7 @@ Deno.serve(async (req) => {
       const subjectSearch = new URL(req.url).searchParams.get('subject');
       if (subjectSearch) {
         // Ad-hoc subject-text search across recent requests — used to find a
-        // Sampark ticket whose RITA-side row was lost/deleted before its
+        // Sampark ticket whose SARWAM-side row was lost/deleted before its
         // sampark_request_id was ever recorded locally, so it can't be
         // looked up by id. Paginates up to 10 pages (1000 tickets, newest
         // first) and returns any whose subject contains the search text.

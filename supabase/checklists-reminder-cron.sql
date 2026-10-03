@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — Saksham checklist daily reminder (cron)
+-- SARWAM — Saksham checklist daily reminder (cron)
 -- =====================================================================
 -- Runs once daily at 05:30 UTC (11:00 IST) — checked against the
 -- checklists-setup.sql submission_date default (Asia/Kolkata), not tied to

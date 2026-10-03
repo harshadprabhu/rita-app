@@ -1,7 +1,7 @@
 -- =====================================================================
--- RITA — SSO (Entra) user sync (daily cron)
+-- SARWAM — SSO (Entra) user sync (daily cron)
 -- =====================================================================
--- Downloads RITA-eligible users from Microsoft Entra via Graph — the members
+-- Downloads SARWAM-eligible users from Microsoft Entra via Graph — the members
 -- of the NJ_Regular Profile and NJ_Store Tablets security groups — into the
 -- `workers` table (email, name, phone). Replaces the former D365 worker sync.
 -- On first SSO sign-in, ensureProfile matches the signed-in email to pre-fill

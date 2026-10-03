@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA -- Saksham checklist seed data
+-- SARWAM -- Saksham checklist seed data
 -- =====================================================================
 -- One-time load of the 4 templates + their questions, transcribed from the
 -- Saksham Checklist Questionnaire workbook. SM Checklist's non-question rows

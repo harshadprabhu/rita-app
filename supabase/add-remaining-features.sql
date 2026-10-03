@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — Gold Rate, Broadcast Read-Tracking, and SLA-style cron setup
+-- SARWAM — Gold Rate, Broadcast Read-Tracking, and SLA-style cron setup
 -- =====================================================================
 -- Adds everything the newly-ported Gold Rate + Broadcasts/Announcements
 -- features need: the gold_rates table (fed by the sync-gold-rate edge

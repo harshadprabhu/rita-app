@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Download RITA-eligible users from Entra (Azure AD) via Microsoft Graph —
+// Download SARWAM-eligible users from Entra (Azure AD) via Microsoft Graph —
 // specifically the members of the configured security groups (NJ_Regular
 // Profile / NJ_Store Tablets). Replaces the old D365 worker sync. On first SSO
 // sign-in, ensureProfile matches the signed-in email against this table to
@@ -16,7 +16,7 @@ const CORS = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Security groups whose members are RITA users.
+// Security groups whose members are SARWAM users.
 const GROUP_NAMES = ['NJ_Regular Profile', 'NJ_Store Tablets'];
 
 interface AzureCfg { clientId: string; clientSecret: string; tenantId: string; }

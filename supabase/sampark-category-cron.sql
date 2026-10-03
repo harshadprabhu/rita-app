@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — Sampark daily category sync (cron)
+-- SARWAM — Sampark daily category sync (cron)
 -- =====================================================================
 -- Runs the sampark-sync edge function daily at 21:15 UTC (02:45 IST) to keep
 -- ticket_categories in step with Sampark. It derives the taxonomy from recent

@@ -19,18 +19,18 @@ WebBrowser.maybeCompleteAuthSession();
  * Where Microsoft/Supabase sends the user back to.
  *
  * Web: derived from the current URL because the app is served under the
- * /rita-app subpath on GitHub Pages — makeRedirectUri only knows the origin
+ * /sarwam-app subpath on GitHub Pages — makeRedirectUri only knows the origin
  * and would build a path that 404s there. Local dev at the root still works.
- * Native: the rita:// deep link. Both forms must be registered in the
+ * Native: the sarwam:// deep link. Both forms must be registered in the
  * Supabase dashboard under Authentication → URL Configuration → Redirect URLs.
  */
 function getRedirectTo(): string {
   if (Platform.OS === 'web') {
     const { origin, pathname } = window.location;
-    const base = pathname.startsWith('/rita-app') ? '/rita-app' : '';
+    const base = pathname.startsWith('/sarwam-app') ? '/sarwam-app' : '';
     return `${origin}${base}/auth/callback`;
   }
-  return makeRedirectUri({ scheme: 'rita', path: 'auth/callback' });
+  return makeRedirectUri({ scheme: 'sarwam', path: 'auth/callback' });
 }
 
 /**
@@ -74,7 +74,7 @@ export async function signInWithMicrosoft(): Promise<void> {
   const redirectTo = getRedirectTo();
 
   // Without this, Microsoft's own SSO cookie in the browser/webview silently
-  // re-authenticates whoever last signed in — signing out of RITA only clears
+  // re-authenticates whoever last signed in — signing out of SARWAM only clears
   // Supabase's session, not Microsoft's, so a second person tapping "Sign in
   // with Microsoft" on the same device got logged straight back in as the
   // first person with no account picker (the reported "deadlock"). Azure AD's

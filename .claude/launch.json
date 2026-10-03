@@ -2,13 +2,13 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "rita-web-preview",
+      "name": "sarwam-web-preview",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["serve", "dist", "-l", "4173"],
       "port": 4173
     },
     {
-      "name": "rita-dev",
+      "name": "sarwam-dev",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["expo", "start", "--web", "--port", "8090"],
       "port": 8090

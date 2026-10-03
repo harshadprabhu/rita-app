@@ -1,9 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Push a RITA ticket into Sampark (ManageEngine SDP) as an incident, then store
+// Push a SARWAM ticket into Sampark (ManageEngine SDP) as an incident, then store
 // the Sampark request id + display id back on the ticket. Invoked right after a
 // ticket is created (and can be re-run to retry a failed push). Body:
-//   { "ticket_id": "<uuid>" }  or  { "ticket_number": "RITA-1012" }
+//   { "ticket_id": "<uuid>" }  or  { "ticket_number": "SARWAM-1012" }
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -11,7 +11,7 @@ const CORS = {
 };
 const SDP_ACCEPT = 'application/vnd.manageengine.sdp.v3+json';
 
-// RITA priority → Sampark priority name. Sampark's actual picklist (confirmed
+// SARWAM priority → Sampark priority name. Sampark's actual picklist (confirmed
 // live via sampark-sync's ?probe=1 against real historical requests) is
 // Low/Medium/High/Critical — no "Urgent" tier exists, so that guess silently
 // rejected every critical-priority push with a 400 (field: priority, failed).
@@ -97,7 +97,7 @@ Deno.serve(async (req) => {
     const token = await getToken(cfg, supabase);
 
     const desc = String((ticket as any).long_description || (ticket as any).description || '').trim();
-    const subject = (desc.split('\n')[0] || 'RITA ticket').slice(0, 200);
+    const subject = (desc.split('\n')[0] || 'SARWAM ticket').slice(0, 200);
 
     // Build the request. category/subcategory come FROM Sampark so names match.
     const request: Record<string, unknown> = {
@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
       // new contact from — it can only match an EXISTING requester by email,
       // which fails (status_code 4001, field "requester") for anyone who
       // hasn't been separately provisioned as a Sampark requester yet (e.g. a
-      // brand-new RITA user whose only identity so far is Azure AD/SSO).
+      // brand-new SARWAM user whose only identity so far is Azure AD/SSO).
       // Supplying name lets Sampark auto-create the requester on the fly.
       const requester: Record<string, string> = { email_id: email };
       if (requesterName) requester.name = requesterName;
@@ -138,7 +138,7 @@ Deno.serve(async (req) => {
 
     let attempt = await postRequest();
 
-    // Azure AD / SSO auto-provisions a RITA account the instant someone
+    // Azure AD / SSO auto-provisions a SARWAM account the instant someone
     // signs in — Sampark does not. Its POST /requests only MATCHES an
     // existing requester by email; it doesn't auto-create one (confirmed:
     // adding `name` to the requester object alone did not help). So on a
@@ -167,7 +167,12 @@ Deno.serve(async (req) => {
     }
 
     if (!attempt.ok) {
-      return new Response(JSON.stringify({ ok: false, status: attempt.status, sampark_error: attempt.text.slice(0, 500), sent: request, requesterProvisioned }), { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } });
+      // Signal the client when the failure is specifically that this email is
+      // not a Sampark requester (and couldn't be provisioned) — the ticket
+      // exists in SARWAM but never registered on Sampark, so the UI can warn the
+      // user to re-login with the common store ID that exists on both systems.
+      const requesterInvalid = !!email && /"field":"requester"/.test(attempt.text);
+      return new Response(JSON.stringify({ ok: false, status: attempt.status, requester_invalid: requesterInvalid, sampark_error: attempt.text.slice(0, 500), sent: request, requesterProvisioned }), { status: 502, headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
     const json = JSON.parse(attempt.text);
     const created = json.request ?? {};

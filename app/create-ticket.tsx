@@ -11,7 +11,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUiStore } from '../stores/uiStore';
 import { Screen } from '../components/common/Screen';
 import { SoftPress } from '../components/common/SoftPress';
-import { createTicket, uploadAttachment, pushTicketToSampark } from '../lib/api/tickets';
+import { createTicket, uploadAttachment, pushTicketToSampark, checkSamparkRequester, SamparkPushError } from '../lib/api/tickets';
 import { getTicketCategories } from '../lib/api/categories';
 import { parsePriority } from '../lib/utils/chatTicketParser';
 import { classifySamparkTicket } from '../lib/utils/samparkClassifier';
@@ -22,6 +22,7 @@ import { ALL_PRIORITIES } from '../constants/ticket';
 import { TicketPriority } from '../types';
 import { theme, webNoOutline } from '../constants/theme';
 import { showAlert } from '../lib/utils/alert';
+import { signOut } from '../lib/auth/session';
 
 // A chat-style ticket creation flow. The UI feels like the user is
 // conversing with a support bot: they describe the issue, the bot suggests
@@ -47,8 +48,26 @@ type Step = 'awaiting_input' | 'classify' | 'attach' | 'ready';
 
 export default function CreateTicket() {
   const profile = useAuthStore((s) => s.profile);
+  const session = useAuthStore((s) => s.session);
   const queryClient = useQueryClient();
   const showToast = useUiStore((s) => s.showToast);
+
+  // Warn (not block) when the signed-in AD/SSO ID isn't a Sampark requester:
+  // a ticket raised by such an ID never registers on Sampark, so the user
+  // should sign out and re-login with the common store ID that exists on both.
+  const samparkEmail = (session?.user?.email ?? '').trim().toLowerCase();
+  const requesterCheck = useQuery({
+    queryKey: ['sampark-requester-valid', samparkEmail],
+    queryFn: () => checkSamparkRequester(samparkEmail),
+    enabled: !!samparkEmail,
+    staleTime: 30 * 60 * 1000, // an ID's Sampark membership rarely changes mid-session
+  });
+  // Also set reactively when a submitted ticket's Sampark push fails BECAUSE
+  // this ID isn't a Sampark requester — the mechanism that works today, before
+  // the requester-read OAuth scope (needed by the live pre-check above) is added.
+  const [pushRequesterInvalid, setPushRequesterInvalid] = useState(false);
+  const idNotOnSampark = requesterCheck.data?.exists === false || pushRequesterInvalid;
+  const [warnDismissed, setWarnDismissed] = useState(false);
 
   // Description + all downstream classification state — same shape as before
   // so the mutation, classifier, and Sampark upload paths are untouched.
@@ -165,25 +184,36 @@ export default function CreateTicket() {
       }
 
       let samparkDisplayId: string | null = null;
+      let requesterInvalid = false;
       try {
         const res = await pushTicketToSampark(ticketId);
         samparkDisplayId = res.display_id;
       } catch (samparkErr) {
+        if (samparkErr instanceof SamparkPushError && samparkErr.requesterInvalid) {
+          // The ID has no Sampark requester — the ticket won't register there.
+          // Surface the re-login warning; don't treat as a transient retry.
+          requesterInvalid = true;
+          setPushRequesterInvalid(true);
+          setWarnDismissed(false);
+        }
         console.warn('[create-ticket] Sampark sync deferred, backstop poller will retry:', samparkErr);
       }
-      return { ticketId, samparkDisplayId };
+      return { ticketId, samparkDisplayId, requesterInvalid };
     },
-    onSuccess: ({ ticketId, samparkDisplayId }) => {
+    onSuccess: ({ ticketId, samparkDisplayId, requesterInvalid }) => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.tickets() });
       inFlightRef.current = false;
       createdTicketIdRef.current = null;
       const idLabel = samparkDisplayId ? `#${samparkDisplayId}` : 'created';
       showToast(`Ticket ${idLabel}`, 'success');
+      const body = samparkDisplayId
+        ? `Your ticket #${samparkDisplayId} has been created and registered at Sampark.`
+        : requesterInvalid
+          ? 'Your ticket was created in SARWAM, but it could NOT be registered on Sampark because this login isn’t a Sampark ID. Please sign out and log in with the common Store ID or SCM ID so IT receives it.'
+          : 'Your ticket has been created. The Sampark sync will complete in the background.';
       showAlert(
-        'Ticket created',
-        samparkDisplayId
-          ? `Your ticket #${samparkDisplayId} has been created and registered at Sampark.`
-          : 'Your ticket has been created. The Sampark sync will complete in the background.',
+        requesterInvalid ? 'Created in SARWAM — not on Sampark' : 'Ticket created',
+        body,
         [{ text: 'OK', onPress: () => router.replace(`/tickets/${ticketId}`) }],
       );
     },
@@ -487,6 +517,30 @@ export default function CreateTicket() {
         </TouchableOpacity>
       </View>
 
+      {/* Non-blocking warning: this signed-in ID has no Sampark requester, so a
+          ticket it raises won't register on Sampark. Encourage re-login with the
+          common store ID. The user can dismiss and still proceed. */}
+      {idNotOnSampark && !warnDismissed && (
+        <View style={styles.samparkWarn}>
+          <Ionicons name="warning-outline" size={18} color="#B45309" style={{ marginTop: 1 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.samparkWarnTitle}>This login isn’t registered on Sampark</Text>
+            <Text style={styles.samparkWarnBody}>
+              To create a ticket that reaches IT, please sign out and log in with the common
+              Store ID or SCM ID that is registered on Sampark.
+            </Text>
+            <View style={styles.samparkWarnActions}>
+              <TouchableOpacity onPress={() => signOut().catch(() => null)} hitSlop={8}>
+                <Text style={styles.samparkWarnPrimary}>Sign out &amp; switch ID</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setWarnDismissed(true)} hitSlop={8}>
+                <Text style={styles.samparkWarnDismiss}>Dismiss</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* padding on BOTH platforms — behavior=undefined on Android relies on
           windowSoftInputMode=adjustResize and fails when a fixed-height header
           sits above the scroller (composer stays hidden behind the keyboard).
@@ -628,6 +682,21 @@ const styles = StyleSheet.create({
   headerSide: { flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 80 },
   headerSideRight: { justifyContent: 'flex-end' },
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: '700', letterSpacing: 0.2 },
+  // ── Sampark ID warning banner (non-blocking) ───────────────────────────
+  samparkWarn: {
+    flexDirection: 'row',
+    gap: 10,
+    backgroundColor: '#FFFBEB',
+    borderBottomWidth: 1,
+    borderBottomColor: '#FDE68A',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: 10,
+  },
+  samparkWarnTitle: { fontSize: 13, fontWeight: '700', color: '#92400E' },
+  samparkWarnBody: { fontSize: 12, color: '#92400E', marginTop: 2, lineHeight: 17 },
+  samparkWarnActions: { flexDirection: 'row', gap: 18, marginTop: 8 },
+  samparkWarnPrimary: { fontSize: 12, fontWeight: '700', color: '#B45309' },
+  samparkWarnDismiss: { fontSize: 12, fontWeight: '600', color: theme.colors.textTertiary },
   headerDiscardText: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '600' },
 
   // ── Chat scroll ────────────────────────────────────────────────────────

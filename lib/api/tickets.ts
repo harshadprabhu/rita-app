@@ -15,9 +15,9 @@ interface TicketFilters {
   sla_breached?: boolean;
 }
 
-// Mirror a RITA-side ticket action onto the linked Sampark request. Fire-and-
+// Mirror a SARWAM-side ticket action onto the linked Sampark request. Fire-and-
 // forget from the caller's perspective — a Sampark hiccup must NOT fail the
-// RITA action (the inbound poll will reconcile). Never throws.
+// SARWAM action (the inbound poll will reconcile). Never throws.
 export async function mirrorToSampark(
   ticketId: string,
   patch: { status?: TicketStatus; technician_id?: string },
@@ -148,10 +148,59 @@ export async function createTicket(payload: {
   return data as DbTicket;
 }
 
+/**
+ * Ask Sampark whether this email is a registered requester. Used to WARN (not
+ * block) a user whose Azure AD / SSO ID has no Sampark counterpart — tickets
+ * such an ID raises never register on Sampark, so they should re-login with the
+ * common store ID. Fail-open: any error / unknown result returns `exists: true`
+ * so a transient Sampark hiccup never nags everyone.
+ */
+export async function checkSamparkRequester(email: string): Promise<{ exists: boolean }> {
+  if (!email) return { exists: true };
+  try {
+    const { data, error } = await supabase.functions.invoke('sampark-check-requester', { body: { email } });
+    if (error || !data?.ok) return { exists: true };
+    return { exists: !!data.exists };
+  } catch {
+    return { exists: true };
+  }
+}
+
+/** Thrown by pushTicketToSampark; `requesterInvalid` is true when the push
+ *  failed specifically because the ID isn't a Sampark requester. */
+export class SamparkPushError extends Error {
+  requesterInvalid: boolean;
+  constructor(message: string, requesterInvalid: boolean) {
+    super(message);
+    this.name = 'SamparkPushError';
+    this.requesterInvalid = requesterInvalid;
+  }
+}
+
 export async function pushTicketToSampark(ticketId: string): Promise<{ request_id: string; display_id: string }> {
   const { data, error } = await supabase.functions.invoke('sampark-push', { body: { ticket_id: ticketId } });
-  if (error) throw new Error(`Sampark sync failed: ${error.message}`);
-  if (!data?.ok) throw new Error(data?.sampark_error ?? data?.error ?? 'Sampark sync failed — unknown error');
+  if (error) {
+    // functions.invoke surfaces a non-2xx (the push returns 502 on failure) as
+    // a FunctionsHttpError with the JSON body on `context`; read it so we can
+    // tell a requester-not-on-Sampark failure apart from a transient one.
+    let requesterInvalid = false;
+    let detail = error.message;
+    const ctx = (error as { context?: Response }).context;
+    if (ctx && typeof ctx.json === 'function') {
+      try {
+        const body = await ctx.json();
+        requesterInvalid = !!body?.requester_invalid;
+        detail = body?.sampark_error ?? body?.error ?? detail;
+      } catch { /* keep generic message */ }
+    }
+    throw new SamparkPushError(`Sampark sync failed: ${detail}`, requesterInvalid);
+  }
+  if (!data?.ok) {
+    throw new SamparkPushError(
+      data?.sampark_error ?? data?.error ?? 'Sampark sync failed — unknown error',
+      !!data?.requester_invalid,
+    );
+  }
   return { request_id: data.request_id, display_id: data.display_id };
 }
 

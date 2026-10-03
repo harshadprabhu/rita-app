@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — Promotions (Ops Manager gold-rate poster offers)
+-- SARWAM — Promotions (Ops Manager gold-rate poster offers)
 -- =====================================================================
 -- Applied to the live DB already; kept here for reproducibility on fresh
 -- installs. A dedicated table, not a `broadcasts` row, because promotions

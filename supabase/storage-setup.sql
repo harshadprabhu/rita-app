@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — OPTIONAL: enable photo/file attachments on tickets
+-- SARWAM — OPTIONAL: enable photo/file attachments on tickets
 -- =====================================================================
 -- The app works fine without this — tickets, chat, and the bot all run
 -- without it. Do this only if you want users to attach photos to tickets.

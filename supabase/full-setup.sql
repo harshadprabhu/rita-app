@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — ONE-CLICK BACKEND SETUP
+-- SARWAM — ONE-CLICK BACKEND SETUP
 -- =====================================================================
 -- HOW TO USE: open your Supabase project → SQL Editor → New query →
 -- paste this ENTIRE file → click "Run". That's it. It creates every table,
@@ -60,7 +60,7 @@ create sequence ticket_number_seq start 1001;
 
 create table tickets (
   id uuid primary key default gen_random_uuid(),
-  ticket_number text not null unique default ('RITA-' || nextval('ticket_number_seq')::text),
+  ticket_number text not null unique default ('SARWAM-' || nextval('ticket_number_seq')::text),
   requester_id uuid not null references profiles(id),
   assignee_id uuid references profiles(id),
   department_id uuid references departments(id),

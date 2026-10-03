@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — RLS performance fix: hoist auth.uid() out of per-row evaluation
+-- SARWAM — RLS performance fix: hoist auth.uid() out of per-row evaluation
 -- =====================================================================
 -- current_role_is/current_store_id are marked STABLE, but that alone does
 -- NOT make Postgres cache their result once per statement inside an RLS

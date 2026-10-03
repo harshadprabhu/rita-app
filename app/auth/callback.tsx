@@ -16,7 +16,7 @@ import { LoadingOverlay } from '../../components/common/LoadingOverlay';
  * getSession() resolves after the client's initialization, exchange included
  * — then bounces to '/' where AuthGate routes by role.
  *
- * Native: lands the rita://auth/callback deep link. On Android the deep link
+ * Native: lands the sarwam://auth/callback deep link. On Android the deep link
  * fires in addition to the sign-in helper resolving, so the exchange here is
  * idempotent (completeSessionFromCode short-circuits on an existing session).
  * Without this route expo-router would show its "Unmatched Route" screen.

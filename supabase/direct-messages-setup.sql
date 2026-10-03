@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — Direct messages (user ↔ technician)
+-- SARWAM — Direct messages (user ↔ technician)
 -- =====================================================================
 -- A lightweight in-app 1:1 chat so a store user can reach out to a
 -- technician directly — nudge them to pick up a ticket, or a casual

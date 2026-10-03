@@ -73,7 +73,7 @@ export default function DirectMessageScreen() {
 
   if (!me) return <LoadingOverlay />;
 
-  // Online = live RITA presence OR active in Sampark within the last 10 min.
+  // Online = live SARWAM presence OR active in Sampark within the last 10 min.
   const samparkActive = other?.last_sampark_active_at
     ? Date.now() - new Date(other.last_sampark_active_at).getTime() < 10 * 60 * 1000
     : false;

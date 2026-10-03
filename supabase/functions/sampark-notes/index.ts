@@ -1,7 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Proxy for a RITA ticket's Sampark notes — GET lists them, POST adds one.
-// Sampark is the single source of truth for the chat, so RITA no longer
+// Proxy for a SARWAM ticket's Sampark notes — GET lists them, POST adds one.
+// Sampark is the single source of truth for the chat, so SARWAM no longer
 // stores comment bodies in ticket_comments; it fetches them on demand and
 // caches them in AsyncStorage on the device. Only the ticket→sampark_request_id
 // mapping is looked up in the DB here; everything else round-trips Sampark.
@@ -77,11 +77,11 @@ interface AppMedia {
 }
 interface AppNote {
   id: string;               // Sampark's note id
-  author: string;           // "Yajuvender Rawat" or "harshad prabhu (RITA)"
+  author: string;           // "Yajuvender Rawat" or "harshad prabhu (SARWAM)"
   authorEmail: string | null;
   body: string;             // Description with HTML stripped
   createdAt: string;        // ISO timestamp
-  fromRita: boolean;        // Was this note written from the RITA app side?
+  fromSarwam: boolean;        // Was this note written from the SARWAM app side?
   showToRequester: boolean; // Public vs. internal in Sampark
   media?: AppMedia | null;  // attached file, if this note carries one
 }
@@ -116,10 +116,11 @@ function normalize(raw: Record<string, unknown>): AppNote {
   const authorName = String(author?.name || 'Support');
   const authorEmail = (author?.email_id as string) ?? null;
 
-  const ritaMatch = description.match(/^(.+?)\s+\(RITA\):\s*(.*)$/s);
-  const fromRita = !!ritaMatch;
-  const body = fromRita ? ritaMatch![2].trim() : description;
-  const displayAuthor = fromRita ? ritaMatch![1].trim() : authorName;
+  // Accepts the legacy pre-rename tag too, so older notes already in Sampark are stripped, never shown.
+  const sarwamMatch = description.match(/^(.+?)\s+\((?:SARWAM|RITA)\):\s*(.*)$/s);
+  const fromSarwam = !!sarwamMatch;
+  const body = fromSarwam ? sarwamMatch![2].trim() : description;
+  const displayAuthor = fromSarwam ? sarwamMatch![1].trim() : authorName;
 
   const timeVal = ((raw.created_time as any)?.value ?? (raw.time as any)?.value) as string | undefined;
   const createdAt = timeVal ? new Date(Number(timeVal)).toISOString() : new Date().toISOString();
@@ -131,7 +132,7 @@ function normalize(raw: Record<string, unknown>): AppNote {
     authorEmail,
     body,
     createdAt,
-    fromRita,
+    fromSarwam,
     showToRequester: visible !== false,
   };
 }
@@ -210,7 +211,7 @@ Deno.serve(async (req) => {
       };
 
 
-      // 1) /notes — the "Notes" tab in Sampark. Contains RITA-authored
+      // 1) /notes — the "Notes" tab in Sampark. Contains SARWAM-authored
       //    messages (posted via POST below) + any note a technician typed
       //    directly on the Notes tab.
       let notesFromApi: Record<string, unknown>[] = [];
@@ -340,7 +341,7 @@ Deno.serve(async (req) => {
         // silently dropped the filename. "[file] <name>" reads fine for the
         // technician and round-trips intact.
         const authoredBody = requesterName
-          ? `${requesterName} (RITA): ${MEDIA_MARKER} ${fname}`
+          ? `${requesterName} (SARWAM): ${MEDIA_MARKER} ${fname}`
           : `${MEDIA_MARKER} ${fname}`;
         const noteForm = new URLSearchParams({
           input_data: JSON.stringify({
@@ -385,9 +386,9 @@ Deno.serve(async (req) => {
       const r = await resolveRequestId(supabase, ticket_id);
       if (r.err) return new Response(JSON.stringify({ error: r.err }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
       const token = await getToken(cfg, supabase);
-      // Prefix with `<user> (RITA):` so the normalize() step on any subsequent
-      // GET flags it as fromRita — same convention sampark-comment-push used.
-      const authoredBody = requester_name ? `${requester_name} (RITA): ${body.trim()}` : body.trim();
+      // Prefix with `<user> (SARWAM):` so the normalize() step on any subsequent
+      // GET flags it as fromSarwam — same convention sampark-comment-push used.
+      const authoredBody = requester_name ? `${requester_name} (SARWAM): ${body.trim()}` : body.trim();
       // SDP v3 wants `request_note` as the wrapper key, NOT `note`. Confirmed
       // live: `{"note": …}` returns 400 EXTRA_KEY_FOUND_IN_JSON (field=note),
       // which the app previously swallowed — the composer cleared, the POST

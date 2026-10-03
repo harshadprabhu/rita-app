@@ -533,7 +533,7 @@ export function inferPriority(description: string): TicketPriority {
   return 'medium';
 }
 
-// Full keyword triage used by the RITA bot: classify + prioritise + build a
+// Full keyword triage used by the SARWAM bot: classify + prioritise + build a
 // human-readable summary line — entirely local, no API key.
 export function triageMessage(message: string): {
   category: TicketCategory;

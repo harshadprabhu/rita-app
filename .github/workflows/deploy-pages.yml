@@ -35,15 +35,15 @@ jobs:
 
       - name: Build web export
         env:
-          # Served under https://<user>.github.io/rita-app/
-          PAGES_BASE_URL: /rita-app
+          # Served under https://<user>.github.io/sarwam-app/
+          PAGES_BASE_URL: /sarwam-app
           # Public Supabase project URL (safe to expose; anon key is protected by RLS).
           EXPO_PUBLIC_SUPABASE_URL: https://ftzczoiucqrirkcpzdyl.supabase.co
         run: npm run build:web
 
       - name: SPA fallback + disable Jekyll
         run: |
-          # Deep links (e.g. /rita-app/tickets/123) 404 on Pages; fall back to
+          # Deep links (e.g. /sarwam-app/tickets/123) 404 on Pages; fall back to
           # the SPA shell so Expo Router can handle the route client-side.
           cp dist/index.html dist/404.html
           # Stop Pages' Jekyll from stripping Expo's _expo/ asset folder.

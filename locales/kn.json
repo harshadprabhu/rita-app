@@ -11,7 +11,7 @@
     "clearAll": "ಎಲ್ಲವನ್ನೂ ತೆರವುಗೊಳಿಸಿ"
   },
   "auth": {
-    "subtitle": "ರಿಟೇಲ್ ಇಶ್ಯೂ ಟ್ರ್ಯಾಕಿಂಗ್ AI · Indriya",
+    "subtitle": "Store Assistance Resolution Workflow And Monitoring · Indriya",
     "emailLabel": "ಇಮೇಲ್",
     "passwordLabel": "ಪಾಸ್‌ವರ್ಡ್",
     "otpLabel": "OTP ಕೋಡ್",
@@ -44,7 +44,7 @@
     "invalidMobile": "ಮಾನ್ಯವಾದ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ"
   },
   "register": {
-    "title": "ನಿಮ್ಮ RITA ಖಾತೆಯನ್ನು ರಚಿಸಿ",
+    "title": "ನಿಮ್ಮ SARWAM ಖಾತೆಯನ್ನು ರಚಿಸಿ",
     "firstName": "ಮೊದಲ ಹೆಸರು",
     "lastName": "ಕೊನೆಯ ಹೆಸರು",
     "mobile": "ಮೊಬೈಲ್ ಫೋನ್",
@@ -120,7 +120,7 @@
   },
   "chat": {
     "group": "ಸ್ಟೋರ್ ಚಾಟ್",
-    "ritaBot": "RITA ಬಾಟ್",
+    "sarwamBot": "SARWAM ಬಾಟ್",
     "typeMessage": "ಸಂದೇಶ ಟೈಪ್ ಮಾಡಿ…",
     "presetTitle": "ತ್ವರಿತ ಸನ್ನಿವೇಶಗಳು"
   },

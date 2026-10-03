@@ -138,7 +138,7 @@ function volumePrior(node: TicketCategory): number {
 // A small number of Sampark items legitimately compete for very similar
 // generic phrasing, where text-matching alone can't tell them apart, but one
 // is confirmed (by actual usage volume + a human decision, not guessed) to
-// be the overwhelmingly correct read in RITA's real usage. Verified live:
+// be the overwhelmingly correct read in SARWAM's real usage. Verified live:
 // "Mobile number changing request" scores well against BOTH "Phone No.
 // Change" (Email ID Issue > Accounts and Groups — a staff member's own
 // number for MFA/login, 9 historical tickets) and "Customer details change"

@@ -1,4 +1,4 @@
-# RITA — Running, Testing & Hosting Guide
+# SARWAM — Running, Testing & Hosting Guide
 
 This covers two things:
 
@@ -48,7 +48,7 @@ After editing `.env`, **restart** the dev server (env is read at startup, not ho
 This is your "make many changes, test, rerun" workflow.
 
 ```bash
-cd rita-app
+cd sarwam-app
 npx expo start
 ```
 
@@ -112,7 +112,7 @@ Just put a real (non-production) Supabase project's URL + anon key in `.env`. Yo
 Requires **Docker Desktop**.
 
 ```bash
-cd rita-app
+cd sarwam-app
 supabase start            # boots local Postgres + Auth + Storage + Studio in Docker
 supabase db reset         # applies everything in supabase/migrations to the local DB
 ```
@@ -139,7 +139,7 @@ The frontend is useless without the backend, so set this up first.
 ### 4.2 Link the CLI and push the schema
 
 ```bash
-cd rita-app
+cd sarwam-app
 supabase login
 supabase link --project-ref YOUR-PROJECT-REF     # ref is in the dashboard URL
 supabase db push                                  # applies supabase/migrations/* to the cloud DB
@@ -153,7 +153,7 @@ In the dashboard → **Storage** → create a bucket named **`ticket-attachments
 
 ### 4.4 Deploy the Edge Functions
 
-> **No AI API key needed.** The RITA bot's triage runs entirely in the app via a
+> **No AI API key needed.** The SARWAM bot's triage runs entirely in the app via a
 > local keyword classifier (`lib/utils/categoryClassifier.ts`). Only these two
 > server-side helpers get deployed. `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`
 > are injected automatically — you don't set any secrets.
@@ -194,7 +194,7 @@ The web build is static files — host them anywhere.
 ### Build
 
 ```bash
-cd rita-app
+cd sarwam-app
 npx expo export -p web        # outputs to ./dist  (re-run once if the CSS race hits)
 ```
 
@@ -210,7 +210,7 @@ npx expo export -p web        # outputs to ./dist  (re-run once if the CSS race 
 
 **Supabase Hosting / any static host:** upload the `dist` folder.
 
-The web build already includes the **PWA manifest** ("RITA POS Triage", navy theme) from `app.json`, so users can "Add to Home Screen."
+The web build already includes the **PWA manifest** ("SARWAM", navy theme) from `app.json`, so users can "Add to Home Screen."
 
 ---
 

@@ -1,7 +1,7 @@
 import { supabase } from '../supabase';
 
 // Sampark is the single source of truth for the chat. Every read hits the
-// live edge function which proxies Sampark; nothing is cached in RITA's DB
+// live edge function which proxies Sampark; nothing is cached in SARWAM's DB
 // or on device — matches the "chat like WhatsApp, but Sampark is the
 // server" model the user asked for. The TicketDetail screen polls this on
 // a short interval while the screen is focused so incoming Sampark notes
@@ -22,7 +22,7 @@ export interface SamparkNote {
   authorEmail: string | null;
   body: string;
   createdAt: string;
-  fromRita: boolean;
+  fromSarwam: boolean;
   showToRequester: boolean;
   media?: SamparkMedia | null;
   /** Client-only transient flag. True on the optimistic echo of a message

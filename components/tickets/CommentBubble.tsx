@@ -12,10 +12,10 @@ export type DeliveryStatus = 'sent' | 'delivered' | 'read';
 interface Props {
   comment: CommentWithAuthor;
   isOwnComment: boolean;
-  /** Where the note originated — drives bubble color so RITA users vs
+  /** Where the note originated — drives bubble color so SARWAM users vs
    *  Sampark technicians are visually distinct, WhatsApp-style. Default
-   *  'rita' preserves the old look for callers that don't yet pass it. */
-  source?: 'rita' | 'sampark';
+   *  'sarwam' preserves the old look for callers that don't yet pass it. */
+  source?: 'sarwam' | 'sampark';
   /** WhatsApp-style delivery ticks — only meaningful on own (outgoing)
    *  messages. undefined hides ticks entirely (inbound / other users). */
   deliveryStatus?: DeliveryStatus;
@@ -28,11 +28,11 @@ interface Props {
   mediaAuthHeader?: Record<string, string>;
 }
 
-export function CommentBubble({ comment, isOwnComment, source = 'rita', deliveryStatus, failed, onRetry, media, mediaAuthHeader }: Props) {
+export function CommentBubble({ comment, isOwnComment, source = 'sarwam', deliveryStatus, failed, onRetry, media, mediaAuthHeader }: Props) {
   const { t } = useTranslation();
   const isInternal = comment.is_internal;
   const isSampark = source === 'sampark';
-  // Sampark-synced notes have no RITA author; fall back to their external name.
+  // Sampark-synced notes have no SARWAM author; fall back to their external name.
   const authorName = comment.author?.display_name ?? comment.external_author ?? t('comments.unknownAuthor');
   const initials = authorName
     .split(' ')
@@ -42,8 +42,8 @@ export function CommentBubble({ comment, isOwnComment, source = 'rita', delivery
     .toUpperCase();
 
   // Three visual states, WhatsApp-inspired:
-  //   • own (me, RITA)        → navy right-aligned  (accent avatar)
-  //   • incoming RITA user    → white left-aligned  (navy avatar)
+  //   • own (me, SARWAM)        → navy right-aligned  (accent avatar)
+  //   • incoming SARWAM user    → white left-aligned  (navy avatar)
   //   • incoming Sampark tech → amber-tinted left   (amber avatar)
   const avatarStyle = isOwnComment
     ? styles.avatarOwn

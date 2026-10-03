@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — ticket_categories.ticket_count (real ticket-volume prior)
+-- SARWAM — ticket_categories.ticket_count (real ticket-volume prior)
 -- =====================================================================
 -- Populated by sampark-sync alongside keywords, recomputed fresh on every
 -- run just like keywords are (not cumulative — a wide `pages` sample IS

@@ -13,7 +13,7 @@ import { extractErrorMessage } from '../../lib/utils/error';
 import { theme } from '../../constants/theme';
 
 /**
- * Sign-in is Microsoft (Entra ID) SSO only — every RITA user is an Aditya Birla
+ * Sign-in is Microsoft (Entra ID) SSO only — every SARWAM user is an Aditya Birla
  * employee with an AD account, and their profile is auto-provisioned from the
  * D365 worker master on first sign-in, so no password/OTP/registration path
  * exists.
@@ -54,7 +54,7 @@ export default function Login() {
           {/* Gold emblem sits directly on the metallic navy hero (no card). */}
           <Image source={require('../../assets/logo.png')} style={styles.logoImage} resizeMode="contain" />
           <Text style={styles.brand}>Indriya Jewellery</Text>
-          <Text style={styles.brandEyebrow}>RITA · POS TRIAGE</Text>
+          <Text style={styles.brandEyebrow}>SARWAM</Text>
           <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
         </MetalNavy>
 

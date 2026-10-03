@@ -1,10 +1,10 @@
 -- =====================================================================
--- RITA ↔ Sampark — Phase 2 (create-on-raise) + Phase 3 (webhook) schema
+-- SARWAM ↔ Sampark — Phase 2 (create-on-raise) + Phase 3 (webhook) schema
 -- =====================================================================
 -- Applied live already; kept for reproducibility.
 --
 -- ticket_comments now also holds notes synced back from Sampark technicians:
--- those have no RITA author, carry the technician's name in external_author,
+-- those have no SARWAM author, carry the technician's name in external_author,
 -- and are de-duplicated by sampark_note_id.
 -- =====================================================================
 

@@ -53,7 +53,7 @@ export default function TicketDetail() {
   const [tab, setTab] = useState<Tab>('comments');
 
   const { data: ticket, isLoading } = useQuery({ queryKey: QUERY_KEYS.ticket(id), queryFn: () => getTicketById(id) });
-  // Comments come DIRECTLY from Sampark (single source of truth). RITA no
+  // Comments come DIRECTLY from Sampark (single source of truth). SARWAM no
   // longer stores chat bodies anywhere — not in the DB, not on device.
   // A 3s refetch interval while the screen is open gives the WhatsApp-like
   // liveness the user asked for, and refetchOnWindowFocus catches the
@@ -117,7 +117,7 @@ export default function TicketDetail() {
   }, [id]);
 
   // Send a comment straight to Sampark. Internal notes toggle is no longer
-  // wired — Sampark public notes are all we deal with here; if RITA needs
+  // wired — Sampark public notes are all we deal with here; if SARWAM needs
   // internal staff notes later they'd need their own storage separate from
   // Sampark. Optimistic append gives instant echo; the next 3s poll picks
   // up the authoritative note (or corrects if Sampark reformatted it).
@@ -153,7 +153,7 @@ export default function TicketDetail() {
       ...prev,
       {
         id: tempId, author: profile?.display_name ?? 'You', authorEmail: null,
-        body, createdAt: new Date().toISOString(), fromRita: true,
+        body, createdAt: new Date().toISOString(), fromSarwam: true,
         showToRequester: true, pending: true,
       },
     ]);
@@ -187,7 +187,7 @@ export default function TicketDetail() {
       ...prev,
       {
         id: tempId, author: profile?.display_name ?? 'You', authorEmail: null,
-        body: '', createdAt: new Date().toISOString(), fromRita: true,
+        body: '', createdAt: new Date().toISOString(), fromSarwam: true,
         showToRequester: true, pending: true,
         media: { name: file.name, contentType: file.type, url: file.uri, kind },
       } as any,
@@ -288,7 +288,7 @@ export default function TicketDetail() {
   if (isLoading || !ticket || !profile) return <LoadingOverlay />;
 
   const canStatus = canChangeStatus(profile);
-  // Sampark notes have no "internal" concept from RITA's side — all
+  // Sampark notes have no "internal" concept from SARWAM's side — all
   // public-visible technician notes flow through. The former internal-notes
   // toggle in CommentInput is disabled by omitting canMarkInternal below.
   // Merge Sampark's authoritative notes with the local optimistic/failed
@@ -302,12 +302,12 @@ export default function TicketDetail() {
   // of my messages at or before it is treated as "read" — the tech clearly
   // engaged with the thread after it. Drives the blue double-tick.
   const lastInboundAt = visibleNotes.reduce<string | null>(
-    (acc, n) => (!n.fromRita && (!acc || n.createdAt > acc) ? n.createdAt : acc),
+    (acc, n) => (!n.fromSarwam && (!acc || n.createdAt > acc) ? n.createdAt : acc),
     null,
   );
 
   // Ticket ID label: use Sampark's id when synced; fall back to "IND-####"
-  // built from the RITA UUID's first block so the header always has SOMETHING
+  // built from the SARWAM UUID's first block so the header always has SOMETHING
   // matching the mockup's IND-0035 look instead of "Sync pending".
   const displayId = ticket.sampark_display_id
     ? `#${ticket.sampark_display_id}`
@@ -393,13 +393,13 @@ export default function TicketDetail() {
                 </View>
               ) : (
                 // Adapt SamparkNote to CommentBubble's expected shape. The
-                // ownership check (fromRita AND author matches) mirrors the
+                // ownership check (fromSarwam AND author matches) mirrors the
                 // WhatsApp visual: "my messages on the right, theirs on the
-                // left". A note authored from RITA by anyone counts as
+                // left". A note authored from SARWAM by anyone counts as
                 // "outgoing" from the requester's perspective, which is what
                 // the requester actually wants to see anyway.
                 visibleNotes.map((n) => {
-                  const isOwn = n.fromRita && n.author.toLowerCase() === (profile.display_name ?? '').toLowerCase();
+                  const isOwn = n.fromSarwam && n.author.toLowerCase() === (profile.display_name ?? '').toLowerCase();
                   // WhatsApp-style delivery state for MY messages only:
                   //   sent      → still pending (POSTed, not yet re-confirmed by Sampark)
                   //   delivered → present in the authoritative Sampark GET
@@ -419,7 +419,7 @@ export default function TicketDetail() {
                   <CommentBubble
                     key={n.id}
                     isOwnComment={isOwn}
-                    source={n.fromRita ? 'rita' : 'sampark'}
+                    source={n.fromSarwam ? 'sarwam' : 'sampark'}
                     deliveryStatus={deliveryStatus}
                     failed={failed}
                     onRetry={failed ? () => {
@@ -433,7 +433,7 @@ export default function TicketDetail() {
                       id: n.id,
                       ticket_id: id,
                       author_id: null,
-                      external_author: n.fromRita ? `${n.author} (RITA)` : n.author,
+                      external_author: n.fromSarwam ? `${n.author} (SARWAM)` : n.author,
                       body: n.body,
                       is_internal: false,
                       created_at: n.createdAt,

@@ -33,7 +33,7 @@ export const useMemberProfileStore = create<MemberProfileStore>()(
       clear: () => set({ active: null, accountId: null }),
     }),
     {
-      name: 'rita-member-profile',
+      name: 'sarwam-member-profile',
       storage: createJSONStorage(() => AsyncStorage),
     },
   ),

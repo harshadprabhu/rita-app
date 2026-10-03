@@ -19,10 +19,10 @@ import { theme } from '../../constants/theme';
 // A normalized Connect row, whichever source it came from.
 interface Row { id: string; name: string; online: boolean }
 
-// "Connect with IT" — lists technicians LICENSED IN SAMPARK (matched to a RITA
+// "Connect with IT" — lists technicians LICENSED IN SAMPARK (matched to a SARWAM
 // account by email so they're chattable), with availability from Sampark's own
 // signal. Until that roster is synced (Zoho users scope pending), it falls back
-// to RITA technician profiles with RITA-presence / recent-Sampark-activity.
+// to SARWAM technician profiles with SARWAM-presence / recent-Sampark-activity.
 // Available technicians sort to the top; tap to open a direct message.
 export function TechnicianConnect() {
   const me = useAuthStore((s) => s.profile);
@@ -36,8 +36,8 @@ export function TechnicianConnect() {
     refetchInterval: 30000,
   });
 
-  // Fallback source: RITA technician profiles.
-  const { data: ritaTechs, isLoading, refetch, isRefetching } = useQuery({
+  // Fallback source: SARWAM technician profiles.
+  const { data: sarwamTechs, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['technicians', 'connect'],
     queryFn: getTechnicians,
     refetchInterval: 30000,
@@ -65,11 +65,11 @@ export function TechnicianConnect() {
     const usingSampark = (samparkTechs?.length ?? 0) > 0;
     let list: Row[];
     if (usingSampark) {
-      // Availability = Sampark's own signal, OR live RITA presence as a bonus.
-      list = samparkTechs!.map((t) => ({ id: t.ritaProfileId, name: t.name, online: t.online || online.has(t.ritaProfileId) }));
+      // Availability = Sampark's own signal, OR live SARWAM presence as a bonus.
+      list = samparkTechs!.map((t) => ({ id: t.sarwamProfileId, name: t.name, online: t.online || online.has(t.sarwamProfileId) }));
     } else {
-      // Fallback: RITA presence OR recent Sampark activity.
-      list = (ritaTechs ?? []).map((p) => ({
+      // Fallback: SARWAM presence OR recent Sampark activity.
+      list = (sarwamTechs ?? []).map((p) => ({
         id: p.id,
         name: p.display_name,
         online: online.has(p.id) || (!!p.last_sampark_active_at && Date.now() - new Date(p.last_sampark_active_at).getTime() < SAMPARK_ACTIVE_MS),
@@ -79,7 +79,7 @@ export function TechnicianConnect() {
       .filter((r) => r.id !== me?.id)
       .sort((a, b) => (a.online === b.online ? a.name.localeCompare(b.name) : a.online ? -1 : 1));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [samparkTechs, ritaTechs, online, me?.id]);
+  }, [samparkTechs, sarwamTechs, online, me?.id]);
 
   const availableCount = rows.filter((r) => r.online).length;
 
@@ -104,7 +104,7 @@ export function TechnicianConnect() {
           </Text>
         </View>
 
-        {/* Chat — in-app RITA direct message (not Sampark). */}
+        {/* Chat — in-app SARWAM direct message (not Sampark). */}
         <View style={styles.actionBtn}>
           <Ionicons name="chatbubble-ellipses" size={18} color={theme.colors.brand} />
           {unreadCount > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{unreadCount}</Text></View>}

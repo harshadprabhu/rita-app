@@ -51,7 +51,7 @@ export function HomeDashboard({ stats, showGoldRate, quickActions }: Props) {
       <AppHeader
         title="Indriya"
         titleNode={<IndriyaWordmark color="#fff" width={104} />}
-        subtitle="RITA · POS Triage"
+        subtitle="SARWAM"
         right={profile ? <ProfileIconButton profile={profile} /> : null}
       />
       <ScrollView contentContainerStyle={styles.body}>

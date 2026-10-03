@@ -103,7 +103,7 @@ export function PocFeedbackForm() {
     <Screen edges={['top', 'left', 'right']}>
       <AppHeader title="App Feedback" showBack />
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
-        <Text style={s.intro}>Help us improve RITA! Your honest feedback will shape the future of this app.</Text>
+        <Text style={s.intro}>Help us improve SARWAM! Your honest feedback will shape the future of this app.</Text>
 
         <Section title="1. How easy was it to create a ticket?">
           <StarRow value={ease} onChange={setEase} />

@@ -1,10 +1,10 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Push a RITA comment out to its Sampark request as a public note.
+// Push a SARWAM comment out to its Sampark request as a public note.
 //
 // Two ways in:
 //   POST { "comment_id": "..." }  — real-time, called by a DB trigger on
-//     ticket_comments INSERT (only for genuine RITA comments: author_id set,
+//     ticket_comments INSERT (only for genuine SARWAM comments: author_id set,
 //     sampark_note_id null, so Sampark-synced notes never loop back).
 //   POST ?reconcile=1             — sweep mode, called by a cron. The
 //     trigger above is a single fire-and-forget net.http_post with no retry;
@@ -56,9 +56,9 @@ async function pushComment(supabase: ReturnType<typeof createClient>, cfg: Cfg, 
   if (!reqId) return { ok: true, skipped: 'no_sampark_request' };
 
   const { data: p } = await supabase.from('profiles').select('display_name').eq('id', cmt.author_id).maybeSingle();
-  const author = (p as { display_name: string } | null)?.display_name ?? 'RITA user';
+  const author = (p as { display_name: string } | null)?.display_name ?? 'SARWAM user';
 
-  const input = JSON.stringify({ request_note: { description: `<b>${author} (RITA):</b> ${cmt.body.trim()}`, show_to_requester: true, mark_first_response: false, add_to_linked_requests: false, notify_technician: false } });
+  const input = JSON.stringify({ request_note: { description: `<b>${author} (SARWAM):</b> ${cmt.body.trim()}`, show_to_requester: true, mark_first_response: false, add_to_linked_requests: false, notify_technician: false } });
 
   let lastError = '';
   for (let attempt = 1; attempt <= 3; attempt++) {
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
     const cfg = await loadCfg(supabase);
 
     if (reconcile) {
-      // Every comment that's eligible to sync (real RITA comment, not yet
+      // Every comment that's eligible to sync (real SARWAM comment, not yet
       // synced) whose ticket now has a Sampark id — covers both the
       // "ticket wasn't synced yet when the comment was posted" case and any
       // one-off transient failure the real-time trigger didn't recover from.

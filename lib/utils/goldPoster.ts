@@ -179,7 +179,7 @@ function formatPosterTime(d: Date): string {
   return `${h}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
-/** Map RITA's D365 purity-keyed rates to the poster's four fixed rows. */
+/** Map SARWAM's D365 purity-keyed rates to the poster's four fixed rows. */
 export function ratesFromGold(rates: Record<string, number>): PosterRates | null {
   const r: PosterRates = {
     '24k_999': rates['24KT 999'],

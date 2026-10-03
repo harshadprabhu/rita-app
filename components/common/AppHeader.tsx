@@ -7,7 +7,7 @@ import { theme } from '../../constants/theme';
 
 interface Props {
   title: string;
-  /** Small uppercase eyebrow under the title (e.g. "RITA · POS Triage"). */
+  /** Small uppercase eyebrow under the title (e.g. "SARWAM"). */
   subtitle?: string;
   showBack?: boolean;
   right?: React.ReactNode;

@@ -91,7 +91,7 @@ async function syncOne(
     if (mapped) { newStatus = mapped.status; newLifecycle = mapped.lifecycle; }
   }
 
-  // Match the Sampark technician (name, normalized) against a RITA staff
+  // Match the Sampark technician (name, normalized) against a SARWAM staff
   // profile — same as the webhook, not restricted to role='technician'
   // since admins/managers/ops managers routinely pick up tickets too.
   let assigneeChanged = false;
@@ -103,7 +103,7 @@ async function syncOne(
     const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
     const { data: techs } = await supabase.from('profiles')
       .select('id, display_name').in('role', ['technician', 'admin', 'manager', 'ops_manager']).eq('is_active', true);
-    console.log('[sampark-poll] RITA staff names:', (techs ?? []).map(p => `"${p.display_name}"`).join(', '));
+    console.log('[sampark-poll] SARWAM staff names:', (techs ?? []).map(p => `"${p.display_name}"`).join(', '));
     // Duplicate-name guard: keep the current assignee if it already matches
     // this technician, else pick deterministically (lowest id). Without this,
     // two same-name profiles make the assignee flip every poll and each flip
@@ -178,7 +178,7 @@ async function syncOne(
     for (const note of (notesRes.notes ?? []) as Record<string, any>[]) {
       if (note.show_to_requester === false) continue;
       const rawBody = String(note.description ?? '').replace(/<[^>]+>/g, '').trim();
-      if (!rawBody || /^.+?\s+\(RITA\):/i.test(rawBody)) continue;
+      if (!rawBody || /^.+?\s+\((?:SARWAM|RITA)\):/i.test(rawBody)) continue;
       await emit(String(note.id ?? ''), String(note.created_by?.name || 'Support'), rawBody);
     }
   } catch { /* notes optional */ }

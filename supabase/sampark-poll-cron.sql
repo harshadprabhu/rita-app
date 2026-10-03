@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA ↔ Sampark — inbound safety-net poll (cron)
+-- SARWAM ↔ Sampark — inbound safety-net poll (cron)
 -- =====================================================================
 -- The sampark-webhook (Custom Trigger) is the real-time inbound path. This
 -- poll is the backstop: it re-syncs status + technician notes for every

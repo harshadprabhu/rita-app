@@ -37,7 +37,7 @@ yarn-error.*
 .env*.local
 
 # personal notes that might contain secrets/keys — never commit these
-RITA.txt
+SARWAM.txt
 notes.txt
 secrets.txt
 credentials.txt

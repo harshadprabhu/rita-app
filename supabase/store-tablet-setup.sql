@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — Store-tablet (shared kiosk) accounts
+-- SARWAM — Store-tablet (shared kiosk) accounts
 -- =====================================================================
 -- Store-tablet SSO accounts (NJ_Store Tablets group) are shared devices whose
 -- store is derived from the AD login id (lib/auth/session.ts storeFromAdId).

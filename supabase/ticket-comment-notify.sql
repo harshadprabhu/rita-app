@@ -33,7 +33,7 @@ begin
   from public.tickets t
   where t.id = new.ticket_id;
 
-  -- Author name: RITA profile when the comment was written in-app, otherwise
+  -- Author name: SARWAM profile when the comment was written in-app, otherwise
   -- the Sampark-side name preserved on the comment row itself.
   if new.author_id is not null then
     select coalesce(p.display_name, 'Someone')

@@ -32,7 +32,7 @@ export async function exportTicketsToPdf(tickets: TicketWithRelations[]): Promis
     .join('');
   const html = `
     <html><body>
-      <h2 style="font-family:sans-serif;color:#1B3A7A;">RITA Ticket Export</h2>
+      <h2 style="font-family:sans-serif;color:#1B3A7A;">SARWAM Ticket Export</h2>
       <table style="border-collapse:collapse;width:100%;">
         <tr>${headerCells}</tr>
         ${tableRows}
@@ -52,7 +52,7 @@ export async function exportTicketsToSpreadsheet(tickets: TicketWithRelations[])
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Tickets');
   const base64 = XLSX.write(workbook, { type: 'base64', bookType: 'xlsx' });
 
-  const path = `${FileSystem.cacheDirectory}rita-tickets-${Date.now()}.xlsx`;
+  const path = `${FileSystem.cacheDirectory}sarwam-tickets-${Date.now()}.xlsx`;
   await FileSystem.writeAsStringAsync(path, base64, { encoding: FileSystem.EncodingType.Base64 });
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(path, {

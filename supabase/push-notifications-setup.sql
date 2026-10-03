@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — Push notifications (Expo) trigger
+-- SARWAM — Push notifications (Expo) trigger
 -- =====================================================================
 -- New broadcasts (manager announcements, admin broadcasts) fire an Expo push
 -- to the targeted users via the send-push edge function. Gold-rate changes call

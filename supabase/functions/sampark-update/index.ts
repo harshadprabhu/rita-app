@@ -1,9 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// RITA → Sampark write-back. Mirrors a technician's RITA-side action (claim,
+// SARWAM → Sampark write-back. Mirrors a technician's SARWAM-side action (claim,
 // resolve, reassign, status change) onto the linked Sampark request via
 // PUT /requests/{id}. This is the outbound counterpart to sampark-webhook/
-// sampark-poll (which sync Sampark → RITA). Body:
+// sampark-poll (which sync Sampark → SARWAM). Body:
 //   { ticket_id, status?, technician_email?, technician_name? }
 // Any subset; at least one of status / technician must be present.
 //
@@ -18,7 +18,7 @@ const CORS = {
 };
 const SDP_ACCEPT = 'application/vnd.manageengine.sdp.v3+json';
 
-// RITA status → Sampark status name. Sampark's picklist is Open / In Progress
+// SARWAM status → Sampark status name. Sampark's picklist is Open / In Progress
 // / On Hold / Resolved / Closed (confirmed via historical requests).
 const STATUS_MAP: Record<string, string> = {
   open: 'Open',
@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
     const { technician_id } = payload as { technician_id?: string };
     if (!ticket_id) return new Response(JSON.stringify({ error: 'ticket_id required' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
-    // Resolve a RITA technician profile → the email/name Sampark matches on.
+    // Resolve a SARWAM technician profile → the email/name Sampark matches on.
     // The client can't read auth emails; the service role here can.
     if (technician_id && !technician_email) {
       const { data: authUser } = await supabase.auth.admin.getUserById(technician_id);
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
     const requestId = (ticket as { sampark_request_id?: string } | null)?.sampark_request_id;
     if (!requestId) {
       // Not yet synced to Sampark — nothing to write back. Not an error; the
-      // RITA-side change stands and the initial push will carry current state.
+      // SARWAM-side change stands and the initial push will carry current state.
       return new Response(JSON.stringify({ ok: true, skipped: 'no_sampark_request_id' }), { headers: { ...CORS, 'Content-Type': 'application/json' } });
     }
 

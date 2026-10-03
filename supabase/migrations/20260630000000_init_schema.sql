@@ -1,4 +1,4 @@
--- RITA base schema: profiles, stores, tickets, chat, audit logs, departments.
+-- SARWAM base schema: profiles, stores, tickets, chat, audit logs, departments.
 
 create type user_role as enum ('user', 'manager', 'technician', 'admin');
 create type approval_status as enum ('pending', 'approved', 'rejected');
@@ -51,7 +51,7 @@ create sequence ticket_number_seq start 1001;
 
 create table tickets (
   id uuid primary key default gen_random_uuid(),
-  ticket_number text not null unique default ('RITA-' || nextval('ticket_number_seq')::text),
+  ticket_number text not null unique default ('SARWAM-' || nextval('ticket_number_seq')::text),
   requester_id uuid not null references profiles(id),
   assignee_id uuid references profiles(id),
   department_id uuid references departments(id),
@@ -140,7 +140,7 @@ create table chat_participants (
 create table chat_messages (
   id uuid primary key default gen_random_uuid(),
   channel_id uuid not null references chat_channels(id) on delete cascade,
-  sender_id uuid references profiles(id), -- null = RITA bot
+  sender_id uuid references profiles(id), -- null = SARWAM bot
   body text not null,
   ticket_id uuid references tickets(id),
   created_at timestamptz not null default now()

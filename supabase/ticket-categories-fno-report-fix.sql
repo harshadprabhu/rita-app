@@ -1,7 +1,7 @@
 -- Ticket #63678 "Scheme is not reflecting in scheme report in FNO" was
 -- classified as Data and Reporting - Request > Report (shared via
 -- Mail/SFTP) > Other. "FNO" = Finance & Operations, i.e. Microsoft
--- Dynamics 365 F&O — RITA's ERP.
+-- Dynamics 365 F&O — SARWAM's ERP.
 --
 -- First attempt routed this to ERP Finance > General Ledger >
 -- Financial Reports/MIS, but on review the correct destination is

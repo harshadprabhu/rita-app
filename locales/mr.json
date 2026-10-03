@@ -11,7 +11,7 @@
     "clearAll": "सर्व साफ करा"
   },
   "auth": {
-    "subtitle": "रिटेल इश्यू ट्रॅकिंग AI · Indriya",
+    "subtitle": "Store Assistance Resolution Workflow And Monitoring · Indriya",
     "emailLabel": "ईमेल",
     "passwordLabel": "पासवर्ड",
     "otpLabel": "OTP कोड",
@@ -44,7 +44,7 @@
     "invalidMobile": "वैध मोबाइल क्रमांक प्रविष्ट करा"
   },
   "register": {
-    "title": "तुमचे RITA खाते तयार करा",
+    "title": "तुमचे SARWAM खाते तयार करा",
     "firstName": "पहिले नाव",
     "lastName": "आडनाव",
     "mobile": "मोबाइल फोन",
@@ -120,7 +120,7 @@
   },
   "chat": {
     "group": "स्टोअर चॅट",
-    "ritaBot": "RITA बॉट",
+    "sarwamBot": "SARWAM बॉट",
     "typeMessage": "संदेश टाइप करा…",
     "presetTitle": "जलद परिस्थिती"
   },

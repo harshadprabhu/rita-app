@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — Daily D365 store-master sync (cron schedule)
+-- SARWAM — Daily D365 store-master sync (cron schedule)
 -- =====================================================================
 -- Runs the `sync-stores` edge function once a day at 20:30 UTC (02:00 IST)
 -- to refresh the `stores` table (onboarding store picker + broadcast

@@ -11,7 +11,7 @@
     "clearAll": "Clear All"
   },
   "auth": {
-    "subtitle": "Retail Issue Tracking AI · Indriya",
+    "subtitle": "Store Assistance Resolution Workflow And Monitoring · Indriya",
     "emailLabel": "EMAIL",
     "passwordLabel": "PASSWORD",
     "otpLabel": "OTP CODE",
@@ -44,7 +44,7 @@
     "invalidMobile": "Enter a valid mobile number"
   },
   "register": {
-    "title": "Create your RITA account",
+    "title": "Create your SARWAM account",
     "firstName": "First Name",
     "lastName": "Last Name",
     "mobile": "Mobile Phone",
@@ -120,7 +120,7 @@
   },
   "chat": {
     "group": "Store Chat",
-    "ritaBot": "RITA Bot",
+    "sarwamBot": "SARWAM Bot",
     "typeMessage": "Type a message…",
     "presetTitle": "Quick scenarios"
   },

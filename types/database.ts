@@ -21,7 +21,7 @@ export type NotificationType =
   | 'checklist_reminder';
 export type ChatChannelType = 'group' | 'dm' | 'bot';
 
-export const RITA_BOT_ID = 'rita_bot';
+export const SARWAM_BOT_ID = 'sarwam_bot';
 
 export interface DbDepartment {
   id: string;
@@ -57,7 +57,7 @@ export interface DbProfile {
   is_active: boolean;
   expo_push_token: string | null;
   /** When this technician last acted in Sampark (reply/note/owned request).
-   *  Used to show them "online" in Connect even without RITA presence. */
+   *  Used to show them "online" in Connect even without SARWAM presence. */
   last_sampark_active_at?: string | null;
   created_at: string;
 }
@@ -105,7 +105,7 @@ export interface DbTicketComment {
   id: string;
   ticket_id: string;
   author_id: string | null;      // null for notes synced from Sampark
-  external_author: string | null; // display name for a synced (non-RITA) author
+  external_author: string | null; // display name for a synced (non-SARWAM) author
   sampark_note_id: string | null; // dedup key for Sampark-originated notes
   body: string;
   is_internal: boolean;
@@ -164,7 +164,7 @@ export interface DbChatParticipant {
 export interface DbChatMessage {
   id: string;
   channel_id: string;
-  sender_id: string | null; // null/RITA_BOT_ID for bot messages
+  sender_id: string | null; // null/SARWAM_BOT_ID for bot messages
   body: string;
   ticket_id: string | null; // set when bot confirms a created ticket
   created_at: string;

@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // Inbound real-time sync from Sampark (ManageEngine SDP). A Custom Trigger in
 // Sampark POSTs here whenever a request is edited or a note is added; we then
 // PULL the authoritative request detail + notes from Sampark and mirror the
-// status change + any new technician notes onto the matching RITA ticket.
+// status change + any new technician notes onto the matching SARWAM ticket.
 //
 // Security: the trigger must include ?token=<SAMPARK_WEBHOOK_SECRET>. Kept a
 // pull-on-signal design so we don't depend on fragile note-content templating
@@ -15,7 +15,7 @@ const CORS = {
 };
 const SDP_ACCEPT = 'application/vnd.manageengine.sdp.v3+json';
 
-// Sampark status name → RITA status + lifecycle.
+// Sampark status name → SARWAM status + lifecycle.
 function mapStatus(name: string): { status: string; lifecycle: string } | null {
   const n = name.toLowerCase();
   if (n.includes('resolved')) return { status: 'resolved', lifecycle: 'resolved' };
@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
   try {
     if (!requestId) return new Response(JSON.stringify({ ok: false, error: 'no_request_id' }), { status: 400, headers: { ...CORS, 'Content-Type': 'application/json' } });
 
-    // Find the RITA ticket linked to this Sampark request.
+    // Find the SARWAM ticket linked to this Sampark request.
     const { data: ticket } = await supabase.from('tickets')
       .select('id, status, lifecycle, assignee_id, requester_id, ticket_number, sampark_display_id, sampark_technician_name')
       .eq('sampark_request_id', requestId).maybeSingle();
@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
       if (mapped) { newStatus = mapped.status; newLifecycle = mapped.lifecycle; }
     }
 
-    // Match the Sampark technician (name, normalized) against a RITA staff
+    // Match the Sampark technician (name, normalized) against a SARWAM staff
     // profile, so self-assignment in Sampark reflects who owns the ticket here.
     // Not restricted to role='technician' — admins/managers/ops managers
     // routinely pick up tickets in Sampark too (confirmed live: an admin
@@ -180,9 +180,9 @@ Deno.serve(async (req) => {
       const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
       const { data: techs } = await supabase.from('profiles')
         .select('id, display_name').in('role', ['technician', 'admin', 'manager', 'ops_manager']).eq('is_active', true);
-      console.log('[sampark-webhook] RITA staff names:', (techs ?? []).map(p => `"${p.display_name}"`).join(', '));
+      console.log('[sampark-webhook] SARWAM staff names:', (techs ?? []).map(p => `"${p.display_name}"`).join(', '));
       console.log('[sampark-webhook] looking for normalized:', `"${norm(techName)}"`);
-      // A person can have more than one RITA profile with the same name (e.g.
+      // A person can have more than one SARWAM profile with the same name (e.g.
       // "Harshad Prabhu" and "harshad prabhu"). If we naively .find() one, the
       // pick is non-deterministic across runs and the assignee flip-flops
       // between the duplicates every poll — each flip firing a spurious
@@ -253,12 +253,12 @@ Deno.serve(async (req) => {
     //    not in /notes — Sampark's technicians reply via email more often
     //    than typing on the Notes tab). Emit a notification row for each
     //    new visible message so a push lands on the requester's phone.
-    //    Bodies are NEVER stored in RITA (Sampark is sole source of truth).
+    //    Bodies are NEVER stored in SARWAM (Sampark is sole source of truth).
     let notesAdded = 0;
     // Author names seen acting in Sampark (note authors / reply senders). Any
-    // that map to a RITA technician get their last_sampark_active_at bumped so
+    // that map to a SARWAM technician get their last_sampark_active_at bumped so
     // Connect can show them "online" (active in Sampark), not just present in
-    // RITA. RITA-authored notes never reach here (filtered before emit).
+    // SARWAM. SARWAM-authored notes never reach here (filtered before emit).
     const activeAuthors = new Set<string>();
     const emit = async (id: string, author: string, body: string) => {
       if (author) activeAuthors.add(author);
@@ -279,7 +279,7 @@ Deno.serve(async (req) => {
       for (const note of (notesRes.notes ?? []) as Record<string, any>[]) {
         if (note.show_to_requester === false) continue;
         const rawBody = String(note.description ?? '').replace(/<[^>]+>/g, '').trim();
-        if (!rawBody || /^.+?\s+\(RITA\):/i.test(rawBody)) continue;
+        if (!rawBody || /^.+?\s+\((?:SARWAM|RITA)\):/i.test(rawBody)) continue;
         await emit(String(note.id ?? ''), String(note.created_by?.name || 'Support'), rawBody);
       }
     } catch (e) { console.warn('[sampark-webhook] notes pull failed:', e); }

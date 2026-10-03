@@ -1,11 +1,11 @@
 -- =====================================================================
--- RITA — Technician "active in Sampark" signal
+-- SARWAM — Technician "active in Sampark" signal
 -- =====================================================================
 -- Sampark (ManageEngine SDP) has no live presence API, so we approximate
 -- "online in Sampark" as "acted in Sampark recently". The inbound sync
 -- (sampark-webhook / sampark-poll) stamps this timestamp whenever it sees a
 -- technician reply, add a note, or own an active request. The Connect screen
--- then shows a technician as available (green) if they're present in RITA
+-- then shows a technician as available (green) if they're present in SARWAM
 -- OR were active in Sampark within the last few minutes.
 --
 -- Idempotent; applied live via:

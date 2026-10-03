@@ -11,7 +11,7 @@
     "clearAll": "ਸਭ ਸਾਫ਼ ਕਰੋ"
   },
   "auth": {
-    "subtitle": "ਰਿਟੇਲ ਇਸ਼ੂ ਟ੍ਰੈਕਿੰਗ AI · Indriya",
+    "subtitle": "Store Assistance Resolution Workflow And Monitoring · Indriya",
     "emailLabel": "ਈਮੇਲ",
     "passwordLabel": "ਪਾਸਵਰਡ",
     "otpLabel": "OTP ਕੋਡ",
@@ -44,7 +44,7 @@
     "invalidMobile": "ਵੈਧ ਮੋਬਾਈਲ ਨੰਬਰ ਦਰਜ ਕਰੋ"
   },
   "register": {
-    "title": "ਆਪਣਾ RITA ਖਾਤਾ ਬਣਾਓ",
+    "title": "ਆਪਣਾ SARWAM ਖਾਤਾ ਬਣਾਓ",
     "firstName": "ਪਹਿਲਾ ਨਾਮ",
     "lastName": "ਆਖਰੀ ਨਾਮ",
     "mobile": "ਮੋਬਾਈਲ ਫ਼ੋਨ",
@@ -120,7 +120,7 @@
   },
   "chat": {
     "group": "ਸਟੋਰ ਚੈਟ",
-    "ritaBot": "RITA ਬੋਟ",
+    "sarwamBot": "SARWAM ਬੋਟ",
     "typeMessage": "ਇੱਕ ਸੁਨੇਹਾ ਟਾਈਪ ਕਰੋ…",
     "presetTitle": "ਤੇਜ਼ ਸਥਿਤੀਆਂ"
   },

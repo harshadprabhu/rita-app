@@ -49,7 +49,7 @@ export default function Analytics() {
     return Math.floor(total / resolvedTickets.length);
   }, [resolvedTickets]);
 
-  // Group by resolver: prefer RITA's assignee.display_name; fall back to the
+  // Group by resolver: prefer SARWAM's assignee.display_name; fall back to the
   // Sampark-side technician name for tickets that resolved before an assignee
   // was set locally.
   const byTechnician = useMemo(() => {

@@ -1,4 +1,4 @@
--- Row Level Security for RITA. Mirrors lib/auth/permissions.ts.
+-- Row Level Security for SARWAM. Mirrors lib/auth/permissions.ts.
 
 alter table profiles enable row level security;
 alter table stores enable row level security;

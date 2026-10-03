@@ -1,10 +1,10 @@
 -- =====================================================================
--- RITA — Sampark technician roster (source of truth for Connect)
+-- SARWAM — Sampark technician roster (source of truth for Connect)
 -- =====================================================================
--- The Connect screen lists technicians licensed in Sampark (not RITA
+-- The Connect screen lists technicians licensed in Sampark (not SARWAM
 -- profiles). A sync edge fn (sampark-technicians-sync) pulls the roster from
 -- Sampark's /technicians API and upserts it here, pre-matching each Sampark
--- technician to a RITA account by email so the app can DM them in-app.
+-- technician to a SARWAM account by email so the app can DM them in-app.
 --
 -- Availability: Sampark exposes no presence webhook, so the sync also captures
 -- whatever "online/available" signal the technician record carries and writes
@@ -22,10 +22,10 @@ create table if not exists public.sampark_technicians (
   sampark_id text primary key,
   name text,
   email text,
-  -- Matched RITA account (by email). Only rows with this set are shown in
-  -- Connect (chat needs a RITA account). null = licensed in Sampark but not
-  -- on RITA yet.
-  rita_profile_id uuid references public.profiles(id) on delete set null,
+  -- Matched SARWAM account (by email). Only rows with this set are shown in
+  -- Connect (chat needs a SARWAM account). null = licensed in Sampark but not
+  -- on SARWAM yet.
+  sarwam_profile_id uuid references public.profiles(id) on delete set null,
   -- Availability derived from Sampark's own technician record (the "green"
   -- signal). Best-effort until the real field is confirmed against live data.
   online boolean not null default false,
@@ -34,7 +34,7 @@ create table if not exists public.sampark_technicians (
   last_synced_at timestamptz not null default now()
 );
 
-create index if not exists idx_sampark_tech_rita on public.sampark_technicians (rita_profile_id);
+create index if not exists idx_sampark_tech_sarwam on public.sampark_technicians (sarwam_profile_id);
 create index if not exists idx_sampark_tech_online on public.sampark_technicians (online);
 
 alter table public.sampark_technicians enable row level security;

@@ -35,7 +35,7 @@ import { showAlert } from '../lib/utils/alert';
 // useFonts name. The two names never matched, so the CDN font was never
 // actually applied to any RN Text component; it just cost two preconnects
 // plus a stylesheet + font fetch on every web load for no visual benefit.
-// RITA is a plain SPA (no SSR/static HTML before hydration), so there was
+// SARWAM is a plain SPA (no SSR/static HTML before hydration), so there was
 // never any pre-JS content for it to style either. Removed.
 const FONT_FAMILY = 'BricolageGrotesque';
 
@@ -180,7 +180,7 @@ function AuthGate() {
           if (!useAuthStore.getState().profile && useAuthStore.getState().session) {
             showAlert(
               'Could not load your account',
-              'Signed in with Microsoft, but RITA could not load your account profile. Please try again — if this keeps happening, contact your admin.',
+              'Signed in with Microsoft, but SARWAM could not load your account profile. Please try again — if this keeps happening, contact your admin.',
             );
             signOut().catch(() => null);
           }
@@ -198,7 +198,7 @@ function AuthGate() {
     let rejectionReason: string | null = null;
     if (!profile.is_active) {
       dest = 'login';
-      rejectionReason = 'Your RITA account has been deactivated. Contact your admin to have it reactivated.';
+      rejectionReason = 'Your SARWAM account has been deactivated. Contact your admin to have it reactivated.';
     } else if (profile.role === 'technician' && profile.approval_status === 'pending') {
       dest = 'pending';
     } else if ((profile.role === 'user' || profile.role === 'in_store_manager') && profile.approval_status === 'approved') {

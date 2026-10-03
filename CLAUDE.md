@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-RITA (POS Triage) — Indriya Jewellery's internal IT ticketing app, built with Expo/React Native (iOS, Android, Web/PWA from one codebase) on a Supabase backend (Postgres + Auth + Storage + Edge Functions + pg_cron). No separate backend server; the "admin console" is the same app running on web.
+SARWAM (Store Assistance Resolution Workflow And Monitoring) — Indriya Jewellery's internal IT ticketing app, built with Expo/React Native (iOS, Android, Web/PWA from one codebase) on a Supabase backend (Postgres + Auth + Storage + Edge Functions + pg_cron). No separate backend server; the "admin console" is the same app running on web.
 
 It is a fork/port of a sibling project, `indriya-it-app`, with a richer role model and a two-way integration with Sampark (ManageEngine ServiceDesk Plus) that the sibling app doesn't have.
 
@@ -34,7 +34,7 @@ Deploy with `--no-verify-jwt` for functions that authenticate via their own toke
 
 ## Deployment (both are live and auto-deploy on push to `main`)
 
-- **Web** — `.github/workflows/deploy-pages.yml` builds and publishes to GitHub Pages under `/rita-app` automatically on every push to `main`. It pulls the public Supabase anon key out of a committed migration file (the anon key is intentionally committed — it's safe to expose, protected by RLS — never commit the *service role* key or any Sampark/Firebase secret).
+- **Web** — `.github/workflows/deploy-pages.yml` builds and publishes to GitHub Pages under `/sarwam-app` automatically on every push to `main`. It pulls the public Supabase anon key out of a committed migration file (the anon key is intentionally committed — it's safe to expose, protected by RLS — never commit the *service role* key or any Sampark/Firebase secret).
 - **Android** — `.github/workflows/build-android.yml` is manual (`workflow_dispatch` only, from the Actions tab). It runs `expo prebuild` + Gradle directly on GitHub's runner (arm64-v8a only, tuned heap) and uploads a debug-signed installable APK as a build artifact — **not** EAS Build. `RUNNING.md`/`HOSTING-GUIDE.md` predate this and describe an EAS-centric flow; the GitHub Actions path is what's actually wired up and current.
 - **iOS** — `.github/workflows/ios.yml` exists but has not been exercised as part of this session's work; verify before relying on it.
 
@@ -42,7 +42,7 @@ Deploy with `--no-verify-jwt` for functions that authenticate via their own toke
 
 ### Role model and route groups
 
-Six roles (`types/database.ts` → `UserRole`): `user`, `manager`, `technician`, `admin`, `ops_manager`, `in_store_manager`. The last two are RITA-specific additions layered on top of the sibling app's original three (`requester`→`user`, `technician`, `admin`):
+Six roles (`types/database.ts` → `UserRole`): `user`, `manager`, `technician`, `admin`, `ops_manager`, `in_store_manager`. The last two are SARWAM-specific additions layered on top of the sibling app's original three (`requester`→`user`, `technician`, `admin`):
 
 - `ops_manager` = full manager rights **+ promotions**. Routes through the `(manager)` screen group.
 - `in_store_manager` = mirrors `user` today (reserved for future features). Routes through the `(user)` group.
@@ -53,10 +53,10 @@ Six roles (`types/database.ts` → `UserRole`): `user`, `manager`, `technician`,
 
 ### Sampark integration (two-way sync with ManageEngine ServiceDesk Plus)
 
-This is the part with no equivalent in the sibling app. RITA tickets mirror into Sampark and back:
+This is the part with no equivalent in the sibling app. SARWAM tickets mirror into Sampark and back:
 
-- **RITA → Sampark**: `sampark-push` creates the Sampark request on ticket creation (idempotent — no-ops if `tickets.sampark_request_id` is already set); `sampark-comment-push` mirrors a new RITA comment out as a Sampark note, fired by a DB trigger on `ticket_comments` insert (skips notes that came *from* Sampark, to avoid an echo loop).
-- **Sampark → RITA**: `sampark-webhook` is what a Sampark Custom Trigger calls (on request edit / note added). It's a **pull-on-signal** design — the trigger just sends the request id; the function then pulls the authoritative request detail from Sampark's API and mirrors status + technician assignment + new public notes onto the RITA ticket. It also matches the Sampark technician's name against a RITA `role='technician'` profile (normalized string match) to set `assignee_id`, and will bump a still-"open" RITA ticket to `in_progress` when a technician takes ownership even if Sampark's own status field hasn't moved yet. Any status/assignee change inserts a row into `notifications`, which a separate DB trigger (`notification_push`) turns into an OS push automatically — don't add a second push call for this path.
+- **SARWAM → Sampark**: `sampark-push` creates the Sampark request on ticket creation (idempotent — no-ops if `tickets.sampark_request_id` is already set); `sampark-comment-push` mirrors a new SARWAM comment out as a Sampark note, fired by a DB trigger on `ticket_comments` insert (skips notes that came *from* Sampark, to avoid an echo loop).
+- **Sampark → SARWAM**: `sampark-webhook` is what a Sampark Custom Trigger calls (on request edit / note added). It's a **pull-on-signal** design — the trigger just sends the request id; the function then pulls the authoritative request detail from Sampark's API and mirrors status + technician assignment + new public notes onto the SARWAM ticket. It also matches the Sampark technician's name against a SARWAM `role='technician'` profile (normalized string match) to set `assignee_id`, and will bump a still-"open" SARWAM ticket to `in_progress` when a technician takes ownership even if Sampark's own status field hasn't moved yet. Any status/assignee change inserts a row into `notifications`, which a separate DB trigger (`notification_push`) turns into an OS push automatically — don't add a second push call for this path.
 - **Category taxonomy + auto-parse**: `sampark-sync` pages through real historical Sampark tickets and populates `ticket_categories` with Sampark's actual Category → Subcategory → Item tree (`is_subcategory`, `is_item`, `parent_id` chain). It also computes real TF-IDF keyword scores per node from ticket subjects and stores them in `ticket_categories.keywords` — this is what `lib/utils/samparkClassifier.ts` uses to auto-suggest category/subcategory/item on `create-ticket.tsx`, instead of a hand-maintained keyword list. The taxonomy/keywords re-learn on every sync run (cron: `sampark-category-cron.sql`, currently `pages=30` — deliberately wide, since a small daily sample would overwrite a well-trained node's keywords with noise). When tuning auto-parse accuracy, the right lever is usually re-running `sampark-sync` with more `pages`, not editing a keyword list by hand.
 - All Sampark functions read connection config from the `integration_settings` table (service URL, portal, data center) plus `SAMPARK_CLIENT_ID`/`SAMPARK_CLIENT_SECRET`/`SAMPARK_REFRESH_TOKEN` env secrets (Zoho OAuth self-client, refresh-token flow) — never hardcode these; they're set via `supabase secrets set`, not visible to me or committed anywhere.
 

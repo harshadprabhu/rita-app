@@ -1,4 +1,4 @@
--- Fix: creating a RITA bot chat channel returned 403.
+-- Fix: creating a SARWAM bot chat channel returned 403.
 -- The chat_channels SELECT policy only allows reading a channel you already
 -- participate in (or a group in your store). Inserting a bot channel and
 -- reading it back via RETURNING failed RLS because the participant row didn't

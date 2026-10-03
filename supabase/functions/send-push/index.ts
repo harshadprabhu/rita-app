@@ -1,6 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Sends an OS push notification to RITA users via Firebase Cloud Messaging.
+// Sends an OS push notification to SARWAM users via Firebase Cloud Messaging.
 // Called by DB triggers (new broadcast / new notification row).
 //
 //   { "title": "...", "body": "...",

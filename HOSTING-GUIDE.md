@@ -1,7 +1,7 @@
-# 🚀 Put RITA on the Internet — Super Simple Guide
+# 🚀 Put SARWAM on the Internet — Super Simple Guide
 
-This guide gets your RITA app **live on the internet for free**, with a real login,
-real tickets, and the RITA helper bot — all working. No experience needed.
+This guide gets your SARWAM app **live on the internet for free**, with a real login,
+real tickets, and the SARWAM helper bot — all working. No experience needed.
 
 You'll do 3 things:
 
@@ -21,8 +21,8 @@ You need:
 
 - A computer with internet (you're on it 🙂).
 - An email address.
-- The RITA project folder on your computer:
-  `C:\Users\Hemant Prabhu\Desktop\rita-app`
+- The SARWAM project folder on your computer:
+  `C:\Users\Hemant Prabhu\Desktop\sarwam-app`
 
 That's it. Let's go.
 
@@ -38,7 +38,7 @@ This is where all your users, tickets, and messages get stored.
 
 ### A2. Make a new project
 1. Click **New project**.
-2. **Name:** `rita`
+2. **Name:** `sarwam`
 3. **Database Password:** click **Generate a password**, then **copy it and paste it somewhere safe** (Notes/Notepad). You may need it later.
 4. **Region:** pick the one closest to you (e.g. *Mumbai* / *Singapore*).
 5. Click **Create new project**. Wait ~2 minutes while it builds. ⏳
@@ -47,7 +47,7 @@ This is where all your users, tickets, and messages get stored.
 1. On the left sidebar, click **SQL Editor**.
 2. Click **New query**.
 3. Open this file on your computer with Notepad:
-   `C:\Users\Hemant Prabhu\Desktop\rita-app\supabase\full-setup.sql`
+   `C:\Users\Hemant Prabhu\Desktop\sarwam-app\supabase\full-setup.sql`
 4. Select **all** of it (Ctrl+A), copy (Ctrl+C).
 5. Paste it into the big empty box in Supabase (Ctrl+V).
 6. Click the green **Run** button (bottom right).
@@ -88,7 +88,7 @@ Now we turn the app into a website and put it online.
 
 ### B1. Put your keys into the app
 1. Open this file with **Notepad**:
-   `C:\Users\Hemant Prabhu\Desktop\rita-app\.env`
+   `C:\Users\Hemant Prabhu\Desktop\sarwam-app\.env`
    *(If it's not there, right-click in the folder → New → Text Document, name it exactly `.env`, and remove the “.txt”.)*
 2. Make it look **exactly** like this, using YOUR values from step A5:
    ```
@@ -98,7 +98,7 @@ Now we turn the app into a website and put it online.
 3. Save and close (Ctrl+S).
 
 ### B2. Open a terminal in the app folder
-1. Open the folder `C:\Users\Hemant Prabhu\Desktop\rita-app` in File Explorer.
+1. Open the folder `C:\Users\Hemant Prabhu\Desktop\sarwam-app` in File Explorer.
 2. Click the address bar at the top, type **`powershell`**, and press Enter.
    A blue/black window opens — that's the terminal. It's already in the right folder. 👍
 
@@ -114,7 +114,7 @@ This created a new folder called **`dist`** inside your app folder. That folder 
 
 ### B4. Put it online (drag & drop — no account needed to try)
 1. Go to **https://app.netlify.com/drop** in your browser.
-2. Open File Explorer to `C:\Users\Hemant Prabhu\Desktop\rita-app`.
+2. Open File Explorer to `C:\Users\Hemant Prabhu\Desktop\sarwam-app`.
 3. **Drag the `dist` folder** onto the Netlify page where it says “Drag and drop your site folder here.”
 4. Wait a few seconds. Netlify gives you a live link like
    `https://random-name-123.netlify.app` — **that's your app on the internet!** 🎉
@@ -127,7 +127,7 @@ This created a new folder called **`dist`** inside your app folder. That folder 
 2. In **Site URL** (and **Redirect URLs**), paste your Netlify link (e.g. `https://random-name-123.netlify.app`).
 3. Save.
 
-✅ **Part B done!** Open your Netlify link — you should see the **RITA login screen**. 🎊
+✅ **Part B done!** Open your Netlify link — you should see the **SARWAM login screen**. 🎊
 
 ---
 
@@ -152,7 +152,7 @@ Right now anyone who signs up is a normal store user. Let's make YOU the admin s
    *(This promotes the most recently created user — that's you.)*
 3. In your app, **log out and log back in.** You'll now land on the **Admin** home. 👑
 
-✅ **Everything works now:** login, reporting tickets, the RITA bot logging tickets from chat, technicians claiming tickets, and the admin dashboards.
+✅ **Everything works now:** login, reporting tickets, the SARWAM bot logging tickets from chat, technicians claiming tickets, and the admin dashboards.
 
 ---
 
@@ -168,7 +168,7 @@ Supabase → **Table Editor** → `profiles` → find the person → change thei
 
 # 🛠️ Changing the app later (then re-publishing)
 
-The app lives in `C:\Users\Hemant Prabhu\Desktop\rita-app`. When you want to change something:
+The app lives in `C:\Users\Hemant Prabhu\Desktop\sarwam-app`. When you want to change something:
 
 1. **See changes instantly while you work** (no publishing needed):
    In the terminal (from B2), run:
@@ -177,7 +177,7 @@ The app lives in `C:\Users\Hemant Prabhu\Desktop\rita-app`. When you want to cha
    ```
    then press **`w`** to open it in your browser. Edit a file, save, and it updates live. Press **Ctrl+C** to stop.
 
-   *(Common thing to edit: the RITA bot's keywords live in
+   *(Common thing to edit: the SARWAM bot's keywords live in
    `lib\utils\categoryClassifier.ts` — add words to the lists to change how it
    sorts tickets. No AI, just word matching.)*
 

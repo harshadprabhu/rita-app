@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — checklist photo attachments bucket
+-- SARWAM — checklist photo attachments bucket
 -- =====================================================================
 -- Kept separate from ticket-attachments: that bucket's storage RLS is
 -- deliberately bucket-scoped only (no per-record check — access control

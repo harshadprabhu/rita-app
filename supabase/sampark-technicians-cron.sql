@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA ↔ Sampark — technician roster + availability sync (cron)
+-- SARWAM ↔ Sampark — technician roster + availability sync (cron)
 -- =====================================================================
 -- Pulls the licensed Sampark technician roster (and each one's availability
 -- signal) into public.sampark_technicians. Sampark exposes no presence

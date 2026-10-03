@@ -3,10 +3,10 @@ import { AppState } from 'react-native';
 import { supabase } from '../lib/supabase';
 
 // A single shared Supabase Realtime Presence channel names every technician
-// who currently has the RITA app open. Technicians `track` themselves on it;
+// who currently has the SARWAM app open. Technicians `track` themselves on it;
 // everyone (users included) reads its state to know who is online right now.
 //
-// Availability shown to users = "is a technician in the RITA roster" (the
+// Availability shown to users = "is a technician in the SARWAM roster" (the
 // caller supplies that list) AND "is present on this channel" (online now).
 const PRESENCE_CHANNEL = 'tech-presence';
 

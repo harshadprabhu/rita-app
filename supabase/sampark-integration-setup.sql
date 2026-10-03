@@ -1,18 +1,18 @@
 -- =====================================================================
--- RITA — ManageEngine ServiceDesk Plus (Sampark) integration: data layer
+-- SARWAM — ManageEngine ServiceDesk Plus (Sampark) integration: data layer
 -- =====================================================================
 -- Foundation for the Sampark integration. Applied to the live DB already;
 -- kept here for reproducibility on fresh installs.
 --
 -- Flow (built in later phases once OAuth creds are configured):
---   - On ticket raise, RITA creates a request in Sampark and stores its
---     display_id as the RITA ticket's Sampark id (RITA id == Sampark id).
+--   - On ticket raise, SARWAM creates a request in Sampark and stores its
+--     display_id as the SARWAM ticket's Sampark id (SARWAM id == Sampark id).
 --   - Sampark's internal request id is kept for API calls (notes, status,
 --     attachments).
 --   - A daily job syncs Sampark's category/subcategory taxonomy into
---     ticket_categories; the RITA keyword parser is tuned to match it.
+--     ticket_categories; the SARWAM keyword parser is tuned to match it.
 --   - A webhook (Sampark Custom Trigger) pushes technician notes + status
---     changes back onto the RITA ticket in real time.
+--     changes back onto the SARWAM ticket in real time.
 -- =====================================================================
 
 -- Admin-managed Sampark connection settings (Zoho OAuth self-client).
@@ -25,14 +25,14 @@ alter table integration_settings
   add column if not exists sampark_client_secret text,
   add column if not exists sampark_refresh_token text;
 
--- Link a RITA ticket to its Sampark request.
+-- Link a SARWAM ticket to its Sampark request.
 alter table tickets
   add column if not exists sampark_request_id text,  -- Sampark internal id (for API calls)
   add column if not exists sampark_display_id text,  -- Sampark human ticket no. (mirrors ticket_number)
   add column if not exists sampark_synced_at  timestamptz,
   add column if not exists item               text;  -- Sampark's finest classification level (below subcategory)
 
--- Category/subcategory/item taxonomy synced from Sampark; the RITA parser and
+-- Category/subcategory/item taxonomy synced from Sampark; the SARWAM parser and
 -- the create-ticket picker use only these values. `item` is Sampark's finest
 -- classification level (parent_id points at a subcategory, or a category if
 -- that category has no subcategories).

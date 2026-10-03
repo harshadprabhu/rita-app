@@ -1,5 +1,5 @@
 -- With chat moved to Sampark as the sole source of truth:
---   - RITA no longer writes new ticket_comments rows from the app (the
+--   - SARWAM no longer writes new ticket_comments rows from the app (the
 --     add-comment path posts directly to Sampark via the sampark-notes edge
 --     function; the reply thread is read live from Sampark on every screen
 --     open).

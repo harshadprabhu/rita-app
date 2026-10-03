@@ -127,7 +127,7 @@ export function ProfileScreen({ tools, toolsTitle = 'Tools' }: { tools?: Profile
           <Text style={styles.signOutText}>{t('common.signOut')}</Text>
         </SoftPress>
 
-        <Text style={styles.version}>RITA · Indriya Jewellery</Text>
+        <Text style={styles.version}>SARWAM · Indriya Jewellery</Text>
       </ScrollView>
 
       <Modal visible={editingPhone} transparent animationType="fade" onRequestClose={() => setEditingPhone(false)}>

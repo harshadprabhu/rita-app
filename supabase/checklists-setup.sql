@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — Saksham Daily Store Checklists
+-- SARWAM — Saksham Daily Store Checklists
 -- =====================================================================
 -- Digital version of the paper/Excel "Saksham Checklist" — 4 fixed daily
 -- checklists (Store Opening, Store Closing, SM Checklist, SCM Checklist)

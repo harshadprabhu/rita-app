@@ -1,5 +1,5 @@
 -- =====================================================================
--- RITA — Microsoft SSO: auto-provision a bare profile on first sign-in
+-- SARWAM — Microsoft SSO: auto-provision a bare profile on first sign-in
 -- =====================================================================
 -- Microsoft (Azure/Entra ID) sign-in creates a Supabase auth user but has no
 -- way to insert a matching row into our own `profiles` table -- there's no
