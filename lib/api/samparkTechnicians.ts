@@ -7,17 +7,17 @@ export interface ConnectTechnician {
   online: boolean;         // Sampark's own availability signal
 }
 
-// Licensed Sampark technicians who also have a SARWAM account (sarwam_profile_id
+// Licensed Sampark technicians who also have a SARWAM account (rita_profile_id
 // set by the sync). Only these are chattable in-app, so only these are shown.
 // Returns [] until the roster is synced (Zoho users scope pending), which lets
 // Connect fall back to its SARWAM-profile list.
 export async function getSamparkConnectTechnicians(): Promise<ConnectTechnician[]> {
   const { data, error } = await supabase
     .from('sampark_technicians')
-    .select('sarwam_profile_id, name, online')
-    .not('sarwam_profile_id', 'is', null)
+    .select('rita_profile_id, name, online')
+    .not('rita_profile_id', 'is', null)
     .order('online', { ascending: false })
     .order('name', { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((r: any) => ({ sarwamProfileId: r.sarwam_profile_id as string, name: r.name as string, online: !!r.online }));
+  return (data ?? []).map((r: any) => ({ sarwamProfileId: r.rita_profile_id as string, name: r.name as string, online: !!r.online }));
 }

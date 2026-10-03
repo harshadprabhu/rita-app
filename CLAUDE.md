@@ -10,6 +10,8 @@ SARWAM (Store Assistance Resolution Workflow And Monitoring) — Indriya Jewelle
 
 It is a fork/port of a sibling project, `indriya-it-app`, with a richer role model and a two-way integration with Sampark (ManageEngine ServiceDesk Plus) that the sibling app doesn't have.
 
+**Naming:** the product was renamed from RITA to SARWAM (brand-only). Hidden technical IDs deliberately keep the old name to avoid a reinstall / login / push break — Android package + iOS bundle `com.indriyajewellery.rita`, deep-link scheme `rita://`, Pages path `/rita-app`, Expo slug, Firebase project `indriya-rita`, persisted storage keys `rita-*`, DB column `sampark_technicians.rita_profile_id`, the `RITA-` ticket_number default (internal; display uses the Sampark number), and the repo name. Don't "fix" these. Sampark note parsers still accept the legacy `(RITA):` author tag so pre-rename notes are stripped.
+
 ## Commands
 
 ```bash
@@ -34,7 +36,7 @@ Deploy with `--no-verify-jwt` for functions that authenticate via their own toke
 
 ## Deployment (both are live and auto-deploy on push to `main`)
 
-- **Web** — `.github/workflows/deploy-pages.yml` builds and publishes to GitHub Pages under `/sarwam-app` automatically on every push to `main`. It pulls the public Supabase anon key out of a committed migration file (the anon key is intentionally committed — it's safe to expose, protected by RLS — never commit the *service role* key or any Sampark/Firebase secret).
+- **Web** — `.github/workflows/deploy-pages.yml` builds and publishes to GitHub Pages under `/rita-app` automatically on every push to `main`. It pulls the public Supabase anon key out of a committed migration file (the anon key is intentionally committed — it's safe to expose, protected by RLS — never commit the *service role* key or any Sampark/Firebase secret).
 - **Android** — `.github/workflows/build-android.yml` is manual (`workflow_dispatch` only, from the Actions tab). It runs `expo prebuild` + Gradle directly on GitHub's runner (arm64-v8a only, tuned heap) and uploads a debug-signed installable APK as a build artifact — **not** EAS Build. `RUNNING.md`/`HOSTING-GUIDE.md` predate this and describe an EAS-centric flow; the GitHub Actions path is what's actually wired up and current.
 - **iOS** — `.github/workflows/ios.yml` exists but has not been exercised as part of this session's work; verify before relying on it.
 

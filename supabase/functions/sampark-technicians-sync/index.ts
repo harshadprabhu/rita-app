@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
         sampark_id: String(rec.id ?? rec.user_id ?? email ?? crypto.randomUUID()),
         name: String(rec.name ?? rec.first_name ?? 'Technician'),
         email,
-        sarwam_profile_id: sarwamId,
+        rita_profile_id: sarwamId,
         online,
         online_source: source,
         raw: rec,

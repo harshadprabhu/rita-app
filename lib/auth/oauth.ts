@@ -19,18 +19,18 @@ WebBrowser.maybeCompleteAuthSession();
  * Where Microsoft/Supabase sends the user back to.
  *
  * Web: derived from the current URL because the app is served under the
- * /sarwam-app subpath on GitHub Pages — makeRedirectUri only knows the origin
+ * /rita-app subpath on GitHub Pages — makeRedirectUri only knows the origin
  * and would build a path that 404s there. Local dev at the root still works.
- * Native: the sarwam:// deep link. Both forms must be registered in the
+ * Native: the rita:// deep link. Both forms must be registered in the
  * Supabase dashboard under Authentication → URL Configuration → Redirect URLs.
  */
 function getRedirectTo(): string {
   if (Platform.OS === 'web') {
     const { origin, pathname } = window.location;
-    const base = pathname.startsWith('/sarwam-app') ? '/sarwam-app' : '';
+    const base = pathname.startsWith('/rita-app') ? '/rita-app' : '';
     return `${origin}${base}/auth/callback`;
   }
-  return makeRedirectUri({ scheme: 'sarwam', path: 'auth/callback' });
+  return makeRedirectUri({ scheme: 'rita', path: 'auth/callback' });
 }
 
 /**

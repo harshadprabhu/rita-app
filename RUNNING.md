@@ -48,7 +48,7 @@ After editing `.env`, **restart** the dev server (env is read at startup, not ho
 This is your "make many changes, test, rerun" workflow.
 
 ```bash
-cd sarwam-app
+cd rita-app
 npx expo start
 ```
 
@@ -112,7 +112,7 @@ Just put a real (non-production) Supabase project's URL + anon key in `.env`. Yo
 Requires **Docker Desktop**.
 
 ```bash
-cd sarwam-app
+cd rita-app
 supabase start            # boots local Postgres + Auth + Storage + Studio in Docker
 supabase db reset         # applies everything in supabase/migrations to the local DB
 ```
@@ -139,7 +139,7 @@ The frontend is useless without the backend, so set this up first.
 ### 4.2 Link the CLI and push the schema
 
 ```bash
-cd sarwam-app
+cd rita-app
 supabase login
 supabase link --project-ref YOUR-PROJECT-REF     # ref is in the dashboard URL
 supabase db push                                  # applies supabase/migrations/* to the cloud DB
@@ -194,7 +194,7 @@ The web build is static files — host them anywhere.
 ### Build
 
 ```bash
-cd sarwam-app
+cd rita-app
 npx expo export -p web        # outputs to ./dist  (re-run once if the CSS race hits)
 ```
 

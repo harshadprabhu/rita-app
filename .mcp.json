@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "supabase-sarwam": {
+    "supabase-rita": {
       "command": "npx",
       "args": [
         "-y",

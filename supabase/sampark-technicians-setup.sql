@@ -25,7 +25,7 @@ create table if not exists public.sampark_technicians (
   -- Matched SARWAM account (by email). Only rows with this set are shown in
   -- Connect (chat needs a SARWAM account). null = licensed in Sampark but not
   -- on SARWAM yet.
-  sarwam_profile_id uuid references public.profiles(id) on delete set null,
+  rita_profile_id uuid references public.profiles(id) on delete set null,
   -- Availability derived from Sampark's own technician record (the "green"
   -- signal). Best-effort until the real field is confirmed against live data.
   online boolean not null default false,
@@ -34,7 +34,7 @@ create table if not exists public.sampark_technicians (
   last_synced_at timestamptz not null default now()
 );
 
-create index if not exists idx_sampark_tech_sarwam on public.sampark_technicians (sarwam_profile_id);
+create index if not exists idx_sampark_tech_rita on public.sampark_technicians (rita_profile_id);
 create index if not exists idx_sampark_tech_online on public.sampark_technicians (online);
 
 alter table public.sampark_technicians enable row level security;

@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "SARWAM",
-    "slug": "sarwam-app",
+    "slug": "rita-app",
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/logo.png",
-    "scheme": "sarwam",
+    "scheme": "rita",
     "userInterfaceStyle": "automatic",
     "splash": {
       "image": "./assets/logo.png",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "buildNumber": "1",
-      "bundleIdentifier": "com.indriyajewellery.sarwam",
+      "bundleIdentifier": "com.indriyajewellery.rita",
       "infoPlist": {
         "NSCameraUsageDescription": "Used to attach photos to SARWAM tickets",
         "NSPhotoLibraryUsageDescription": "Used to attach photos and videos from gallery to SARWAM tickets"
@@ -28,7 +28,7 @@
         "backgroundColor": "#1A2D5C"
       },
       "googleServicesFile": "./google-services.json",
-      "package": "com.indriyajewellery.sarwam",
+      "package": "com.indriyajewellery.rita",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",

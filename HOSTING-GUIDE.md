@@ -22,7 +22,7 @@ You need:
 - A computer with internet (you're on it 🙂).
 - An email address.
 - The SARWAM project folder on your computer:
-  `C:\Users\Hemant Prabhu\Desktop\sarwam-app`
+  `C:\Users\Hemant Prabhu\Desktop\rita-app`
 
 That's it. Let's go.
 
@@ -47,7 +47,7 @@ This is where all your users, tickets, and messages get stored.
 1. On the left sidebar, click **SQL Editor**.
 2. Click **New query**.
 3. Open this file on your computer with Notepad:
-   `C:\Users\Hemant Prabhu\Desktop\sarwam-app\supabase\full-setup.sql`
+   `C:\Users\Hemant Prabhu\Desktop\rita-app\supabase\full-setup.sql`
 4. Select **all** of it (Ctrl+A), copy (Ctrl+C).
 5. Paste it into the big empty box in Supabase (Ctrl+V).
 6. Click the green **Run** button (bottom right).
@@ -88,7 +88,7 @@ Now we turn the app into a website and put it online.
 
 ### B1. Put your keys into the app
 1. Open this file with **Notepad**:
-   `C:\Users\Hemant Prabhu\Desktop\sarwam-app\.env`
+   `C:\Users\Hemant Prabhu\Desktop\rita-app\.env`
    *(If it's not there, right-click in the folder → New → Text Document, name it exactly `.env`, and remove the “.txt”.)*
 2. Make it look **exactly** like this, using YOUR values from step A5:
    ```
@@ -98,7 +98,7 @@ Now we turn the app into a website and put it online.
 3. Save and close (Ctrl+S).
 
 ### B2. Open a terminal in the app folder
-1. Open the folder `C:\Users\Hemant Prabhu\Desktop\sarwam-app` in File Explorer.
+1. Open the folder `C:\Users\Hemant Prabhu\Desktop\rita-app` in File Explorer.
 2. Click the address bar at the top, type **`powershell`**, and press Enter.
    A blue/black window opens — that's the terminal. It's already in the right folder. 👍
 
@@ -114,7 +114,7 @@ This created a new folder called **`dist`** inside your app folder. That folder 
 
 ### B4. Put it online (drag & drop — no account needed to try)
 1. Go to **https://app.netlify.com/drop** in your browser.
-2. Open File Explorer to `C:\Users\Hemant Prabhu\Desktop\sarwam-app`.
+2. Open File Explorer to `C:\Users\Hemant Prabhu\Desktop\rita-app`.
 3. **Drag the `dist` folder** onto the Netlify page where it says “Drag and drop your site folder here.”
 4. Wait a few seconds. Netlify gives you a live link like
    `https://random-name-123.netlify.app` — **that's your app on the internet!** 🎉
@@ -168,7 +168,7 @@ Supabase → **Table Editor** → `profiles` → find the person → change thei
 
 # 🛠️ Changing the app later (then re-publishing)
 
-The app lives in `C:\Users\Hemant Prabhu\Desktop\sarwam-app`. When you want to change something:
+The app lives in `C:\Users\Hemant Prabhu\Desktop\rita-app`. When you want to change something:
 
 1. **See changes instantly while you work** (no publishing needed):
    In the terminal (from B2), run:

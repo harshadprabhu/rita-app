@@ -34,7 +34,7 @@ export const useNotificationStore = create<NotificationStore>()(
       setAlertsClearedAt: (alertsClearedAt) => set({ alertsClearedAt }),
     }),
     {
-      name: 'sarwam-notifications',
+      name: 'rita-notifications',
       storage: createJSONStorage(() => AsyncStorage),
       // Only the cleared marker needs to survive restarts; the live counts are
       // recomputed from the server on every load.
