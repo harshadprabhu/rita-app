@@ -73,7 +73,13 @@ async function getD365Token(cfg: D365Config): Promise<string> {
     `https://login.microsoftonline.com/${cfg.tenantId}/oauth2/token`,
     { method: 'POST', body },
   );
-  if (!res.ok) throw new Error(`OAuth failed: ${res.status}`);
+  if (!res.ok) {
+    // Entra's error_description carries the AADSTS code (e.g. 7000222 = client
+    // secret expired) — no credentials, safe to surface.
+    const j = await res.json().catch(() => ({})) as { error_description?: string };
+    const why = (j.error_description ?? '').split('\n')[0].slice(0, 200);
+    throw new Error(`OAuth failed: ${res.status}${why ? ` — ${why}` : ''}`);
+  }
   const { access_token } = await res.json();
   return access_token as string;
 }
@@ -427,7 +433,9 @@ Deno.serve(async (req) => {
       (latestDay as { entry_date: string }).entry_date,
     );
 
-    return new Response(JSON.stringify(result), {
+    // Same degraded marker as above — without it a multi-day D365 outage looks
+    // like a healthy response carrying an old entry_date.
+    return new Response(JSON.stringify({ ...result, degraded: true, error: errMsg, _diag: diag }), {
       headers: { ...CORS, 'Content-Type': 'application/json' },
     });
   }
