@@ -4,13 +4,13 @@
     "slug": "rita-app",
     "version": "0.1.0",
     "orientation": "portrait",
-    "icon": "./assets/logo.png",
+    "icon": "./assets/sarwam-icon.png",
     "scheme": "rita",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/logo.png",
+      "image": "./assets/sarwam-mark.png",
       "resizeMode": "contain",
-      "backgroundColor": "#EDE8DC"
+      "backgroundColor": "#0E2148"
     },
     "ios": {
       "supportsTablet": true,
@@ -24,8 +24,8 @@
     "android": {
       "versionCode": 1,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.png",
-        "backgroundColor": "#1A2D5C"
+        "foregroundImage": "./assets/sarwam-adaptive-foreground.png",
+        "backgroundColor": "#0E2148"
       },
       "googleServicesFile": "./google-services.json",
       "package": "com.indriyajewellery.rita",
@@ -55,8 +55,8 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/logo.png",
-          "color": "#1A2D5C"
+          "icon": "./assets/sarwam-notification.png",
+          "color": "#0E2148"
         }
       ],
       [

@@ -52,7 +52,7 @@ export default function Login() {
           <View style={styles.heroGlowLg} pointerEvents="none" />
           <View style={styles.heroGlowSm} pointerEvents="none" />
           {/* Gold emblem sits directly on the metallic navy hero (no card). */}
-          <Image source={require('../../assets/logo.png')} style={styles.logoImage} resizeMode="contain" />
+          <Image source={require('../../assets/sarwam-mark.png')} style={styles.logoImage} resizeMode="contain" />
           <Text style={styles.brand}>Indriya Jewellery</Text>
           <Text style={styles.brandEyebrow}>SARWAM</Text>
           <Text style={styles.subtitle}>{t('auth.subtitle')}</Text>
