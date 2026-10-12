@@ -92,11 +92,25 @@ function AuthGate() {
   // Tapping an OS push notification deep-links into the relevant screen. The
   // push payload carries either a ticketId (→ ticket detail) or an explicit
   // route (→ that screen, e.g. the Alerts tab for broadcasts/gold updates).
+  //
+  // The target is held in pendingDeepLink until the routing effect below has
+  // put the user on their home screen. Pushing straight away (as before) ran
+  // during a cold start, before auth resolved — the ticket screen mounted
+  // behind the loading overlay, then the home redirect replaced it, so the
+  // tap was lost. The last response is also cleared once handled; Android
+  // otherwise hands back the same old tap on every later launch.
+  const pendingDeepLink = useRef<string | null>(null);
+  const routedHome = useRef(false);
   useEffect(() => {
     const openFrom = (resp: Notifications.NotificationResponse | null) => {
       const data = (resp?.notification?.request?.content?.data ?? {}) as { ticketId?: string; route?: string };
-      if (data.ticketId) router.push(`/tickets/${data.ticketId}`);
-      else if (typeof data.route === 'string' && data.route.startsWith('/')) router.push(data.route as never);
+      const target = data.ticketId
+        ? `/tickets/${data.ticketId}`
+        : typeof data.route === 'string' && data.route.startsWith('/') ? data.route : null;
+      if (!target) return;
+      try { Notifications.clearLastNotificationResponse(); } catch { /* older native module */ }
+      if (routedHome.current) router.push(target as never);
+      else pendingDeepLink.current = target;
     };
     const sub = Notifications.addNotificationResponseReceivedListener(openFrom);
     // Cold start: app was launched by tapping a notification.
@@ -153,6 +167,7 @@ function AuthGate() {
     if (isLoading) return;
 
     if (!session) {
+      routedHome.current = false;
       // The OAuth callback route is mid-exchange (code → session) when the app
       // boots there after the Microsoft redirect — yanking it to /login here
       // would abort the sign-in. It redirects itself when it's done or fails.
@@ -228,10 +243,19 @@ function AuthGate() {
     if (lastNav.current === dest) return;
     lastNav.current = dest;
 
-    if (dest === 'user') router.replace('/(user)/home');
-    else if (dest === 'manager') router.replace('/(manager)/home');
-    else if (dest === 'technician') router.replace('/(technician)/home');
-    else if (dest === 'admin') router.replace('/(admin)/home');
+    const home = dest === 'user' ? '/(user)/home'
+      : dest === 'manager' ? '/(manager)/home'
+      : dest === 'technician' ? '/(technician)/home'
+      : dest === 'admin' ? '/(admin)/home' : null;
+    if (home) {
+      router.replace(home);
+      routedHome.current = true;
+      // A notification tapped during startup opens on top of home, so Back
+      // returns to home instead of exiting the app.
+      const target = pendingDeepLink.current;
+      pendingDeepLink.current = null;
+      if (target) setTimeout(() => router.push(target as never), 0);
+    }
     else if (dest === 'pending') router.replace('/pending-approval');
     else {
       router.replace('/(auth)/login');

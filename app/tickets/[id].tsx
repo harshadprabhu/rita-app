@@ -55,7 +55,7 @@ export default function TicketDetail() {
   const { data: ticket, isLoading } = useQuery({ queryKey: QUERY_KEYS.ticket(id), queryFn: () => getTicketById(id) });
   // Comments come DIRECTLY from Sampark (single source of truth). SARWAM no
   // longer stores chat bodies anywhere — not in the DB, not on device.
-  // A 3s refetch interval while the screen is open gives the WhatsApp-like
+  // A short refetch interval while the screen is open gives the WhatsApp-like
   // liveness the user asked for, and refetchOnWindowFocus catches the
   // background-to-foreground case.
   const {
@@ -66,13 +66,13 @@ export default function TicketDetail() {
     queryKey: ['sampark-notes', id],
     queryFn: () => getSamparkNotes(id),
     enabled: !!id,
-    // 2s — the Zoho token is DB-cached (one refresh per ~55 min shared across
-    // all sampark-* edge fns), so we no longer thrash the OAuth endpoint. The
-    // remaining budget is Sampark's own /notes + /conversations reads; 2s
-    // (≈30/min) is comfortably under any observed limit and gives the
-    // "chatting like WhatsApp" feel the user asked for. Also refetches on
-    // window focus so a background→foreground return is instant, not 2s.
-    refetchInterval: 2000,
+    // 5s, not 2s: each poll is a full edge-function → Sampark round trip, and
+    // at 2s a slow mobile link stacked several in flight at once, filling the
+    // OS's per-host connection pool so auth/profile/ticket requests queued
+    // behind them (the "stuck loading after tapping a notification" report).
+    // New replies still arrive instantly: a notification INSERT refetches
+    // this query directly, and window focus refetches on return.
+    refetchInterval: 5000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
     // 4s staleTime lets prefetch-on-tap results serve the just-opened screen
@@ -98,9 +98,9 @@ export default function TicketDetail() {
   // DETECTS a new Sampark reply and inserts a `notifications` row for it.
   // That INSERT arrives here over Supabase realtime instantly — so the
   // moment detection happens we pull the fresh chat from Sampark rather than
-  // waiting for the next 2s poll tick. Bounds "Hemant replied" → "shows in
+  // waiting for the next 5s poll tick. Bounds "Hemant replied" → "shows in
   // my open chat" to (poll detection ≤60s) + (~0s realtime hop), instead of
-  // (≤60s) + (up to 2s). Filtered to THIS ticket so unrelated notifications
+  // (≤60s) + (up to 5s). Filtered to THIS ticket so unrelated notifications
   // don't thrash the fetch.
   useEffect(() => {
     if (!id) return;
